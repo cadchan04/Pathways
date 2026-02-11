@@ -17,7 +17,6 @@ nvm install --lts # Install the latest Long Term Support (LTS) Version
 nvm use --lts
 node -v # Check version
 ```
-```
 
 # Backend (Node.js)
 

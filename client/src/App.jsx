@@ -1,14 +1,18 @@
 import { BrowserRouter } from 'react-router-dom'
 import AppRoutes from './routes/AppRoutes'
+import Navbar from './components/Home/Navbar/Navbar'
 
 // import { useState } from 'react'
 import './App.css'
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <div>
+      <BrowserRouter>
+        <Navbar />
+        <AppRoutes />
+      </BrowserRouter>
+    </div>
   )
 }
 
