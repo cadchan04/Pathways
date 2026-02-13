@@ -7,9 +7,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #333;
+  background-color: #307bac;
   color: #fff;
-  padding: 1rem;
+  padding: 0.5rem 1rem;
   z-index: 1000;
   box-sizing: border-box;
 }
