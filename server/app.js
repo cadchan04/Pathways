@@ -1,4 +1,5 @@
 require('dotenv').config();
+<<<<<<< HEAD
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -36,3 +37,33 @@ mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })
   .catch(err => console.error(err));
 
 app.listen(8080, () => console.log("Server running on port 8080"));
+=======
+
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+
+// ROUTES IMPORTS
+const exampleRoute = require('./routes/example-route.js');
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+app.listen(process.env.PORT || 8080, () => {
+  console.log(`Server is running on port ${process.env.PORT || 8080}`);
+});
+
+// ROUTES
+app.use('/api/example', exampleRoute); //examples route functions
+
+// Define a simple route - DELETE THIS LATER
+app.get('/api-test', (req, res) => {
+  res.json({ message: 'Hello from the backend!' });
+});
+>>>>>>> 70e4a86 (set up database with examples)
