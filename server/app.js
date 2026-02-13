@@ -1,17 +1,29 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
+
+// ROUTES IMPORTS
+const exampleRoute = require('./routes/example-route.js');
 
 const app = express();
 
-//console.log(app);
-
 app.use(cors());
+app.use(express.json());
 
-app.listen(8080, () => {
-  console.log('Server is running on port 8080');
+mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+app.listen(process.env.PORT || 8080, () => {
+  console.log(`Server is running on port ${process.env.PORT || 8080}`);
 });
 
-// Define a simple route
+// ROUTES
+app.use('/api/example', exampleRoute); //examples route functions
+
+// Define a simple route - DELETE THIS LATER
 app.get('/api-test', (req, res) => {
   res.json({ message: 'Hello from the backend!' });
 });
