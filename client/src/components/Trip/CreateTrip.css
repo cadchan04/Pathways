@@ -1,0 +1,13 @@
+.create-trip-container {
+    display: flex;
+    flex-direction: column;
+    marginTop: 80px;
+    padding: 20px;
+}
+
+.create-trip-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 300px;
+}

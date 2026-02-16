@@ -5,13 +5,17 @@ import Account from "../components/Account/Account";
 import ProtectedRoute from "./ProtectedRoute";
 import Callback from "../Callback";
 import Login from "../components/Login/Login.jsx";
-
+import CreateTrip from "../components/Trip/CreateTrip"
 
 export default function AppRoutes() {
   return (
     <Routes>
       {/* Redirect root → login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<Home />} />
+      <Route path="/account" element={<Account />} />
+      <Route path="/my-trips" element={<MyTrip />} />
+      <Route path="/create-trip" element={<CreateTrip />} />
 
       {/* Auth0 callback */}
       <Route path="/callback" element={<Callback />} />
