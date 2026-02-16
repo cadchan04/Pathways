@@ -1,13 +1,66 @@
 .create-trip-container {
     display: flex;
     flex-direction: column;
-    marginTop: 80px;
-    padding: 20px;
+    align-items: center;
+    width: 100vw;
+    margin-top: 100px;
+    padding: 40px 0px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #333;
+}
+
+.create-trip-container h2 {
+    margin-bottom: 24px;
+    font-weight: 700;
+    color: #1a1a1a;
 }
 
 .create-trip-form {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    max-width: 300px;
+    gap: 16px;
+    width: 90%;
+    max-width: 800px;
+    padding: 40px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+}
+
+.create-trip-form input {
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.create-trip-form input:focus {
+    outline: none;
+    border-color: #307bac;
+    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
+}
+
+.create-trip-form button[type="submit"] {
+    padding: 12px;
+    background-color: #3fa8c6aa;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.create-trip-form button[type="submit"]:hover {
+    background-color: #3fa8c6;
+    box-shadow: 0 4px 12px rgba(63, 168, 198, 0.3); /* Adds a colored glow */
+}
+
+.create-trip-form button[type="button"]:hover {
+    color: #1a1a1a;
+    text-decoration: underline;
+    background-color: #f0f0f0;
+    border-radius: 8px;
 }
