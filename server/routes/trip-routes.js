@@ -13,4 +13,15 @@ router.post('/', async (req, res) => {
     }
 });
 
+// GET route to fetch all trips for a user (replace "mock_user_123" with actual user ID from auth later)
+router.get('/', async (req, res) => {
+    try {
+        const userId = "mock_user_123"; // replace with actual user ID from auth
+        const trips = await Trip.find({ owner: userId });
+        res.status(200).json(trips);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+})
+
 module.exports = router;
