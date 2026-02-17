@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 
 // ROUTES IMPORTS
 const exampleRoute = require('./routes/example-route.js');
+const routesRoute = require('./routes/routes-route.js');
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.listen(process.env.PORT || 8080, () => {
 
 // ROUTES
 app.use('/api/example', exampleRoute); //examples route functions
+app.use('/api/routes', routesRoute);
 
 // Define a simple route - DELETE THIS LATER
 app.get('/api-test', (req, res) => {
