@@ -1,0 +1,51 @@
+.back-btn {
+    padding: 12px 24px;
+    background-color: #3fa8c6;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.create-btn:hover {
+    background-color: #348ea8;
+}
+
+.details-container {
+    max-width: 900px;
+    margin: 100px auto;
+    padding: 40px;
+    text-align: left;
+    background: #ffffff;
+}
+
+.details-header {
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 30px;
+    margin-bottom: 30px;
+}
+
+.routes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.route-item {
+    padding: 24px;
+    border-radius: 12px;
+    border-left: 5px solid #3fa8c6; /* Use your primary color as an accent */
+    background: #f8f9fa;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.route-item h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.25rem;
+}
+

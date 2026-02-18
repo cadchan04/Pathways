@@ -10,9 +10,9 @@
 
 .my-trips-header {
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
     width: 100%;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
 }
 
 .my-trips-header h2 {
@@ -27,6 +27,10 @@
     flex-direction: column;
     align-items: center;
     gap: 16px;
+}
+
+.trips-list p {
+    color: #454545;
 }
 
 .trip-row {

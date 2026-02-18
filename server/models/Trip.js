@@ -7,7 +7,7 @@ const TripSchema = new mongoose.Schema({
     startDate: { type: Date },
     endDate: { type: Date },
     collaboratorIds: [{ type: String }], // array of user IDs who are collaborators
-    // routes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Route' }], // will be array of route IDs
+    routes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Route' }],
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });

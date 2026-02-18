@@ -6,6 +6,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import Callback from "../Callback";
 import Login from "../components/Login/Login.jsx";
 import CreateTrip from "../components/Trip/CreateTrip"
+import TripDetails from "../components/Trip/TripDetails"
 
 export default function AppRoutes() {
   return (
@@ -16,6 +17,7 @@ export default function AppRoutes() {
       <Route path="/account" element={<Account />} />
       <Route path="/my-trips" element={<MyTrip />} />
       <Route path="/create-trip" element={<CreateTrip />} />
+      <Route path="/view-details/:id" element={<TripDetails />} />
 
       {/* Auth0 callback */}
       <Route path="/callback" element={<Callback />} />
