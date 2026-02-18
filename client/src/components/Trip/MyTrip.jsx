@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import './MyTrip.css';
 
 export default function MyTrip() {
@@ -11,9 +12,13 @@ export default function MyTrip() {
   useEffect(() => {
     const fetchTrips = async () => {
       try {
-        const response = await fetch('/api/trips');
-        if (response.ok) {
-          const data = await response.json();
+        const response = await axios.get('/api/trips');
+        // const response = await fetch('/api/trips');
+
+        // if (response.ok) {
+        if (response.status == 200) {
+          const data = response.data;
+          // const data = await response.json();
           console.log("Fetched trips:", data);
           setTrips(data);
         }

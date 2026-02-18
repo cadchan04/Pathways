@@ -1,7 +1,11 @@
 {
   "dependencies": {
+<<<<<<< HEAD
     "axios": "^1.13.4",
     "express": "^5.2.1",
     "express-openid-connect": "^2.19.4"
+=======
+    "axios": "^1.13.5"
+>>>>>>> 665679d (transitioned to axios instead of fetch())
   }
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import './TripDetails.css';
 
 export default function TripDetails() {
@@ -11,9 +12,13 @@ export default function TripDetails() {
     useEffect(() => {
         const fetchTripDetails = async () => {
             try {
-                const response = await fetch(`/api/trips/${id}`);
-                if (response.ok) {
-                    const data = await response.json();
+                const response = await axios.get(`/api/trips/${id}`);
+                // const response = await fetch(`/api/trips/${id}`);
+
+                if (response.status == 200) {
+                // if (response.ok) {
+                    const data = response.data;
+                    // const data = await response.json();
 
                     // TODO: TEMPORARY - hardcoded route for testing
                     data.routes = [
