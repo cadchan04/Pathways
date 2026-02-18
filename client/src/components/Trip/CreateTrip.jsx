@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 import './CreateTrip.css';
 
@@ -25,13 +26,9 @@ export default function CreateTrip() {
         };
 
         try {
-            const response = await fetch('/api/trips', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newTrip)
-            });
+            const response = await axios.post('/api/trips', newTrip);
 
-            if (response.ok) {
+            if (response.status == 201 || response.status === 200) {
                 console.log("Trip saved to MongoDB!")
                 navigate('/my-trips');
             }

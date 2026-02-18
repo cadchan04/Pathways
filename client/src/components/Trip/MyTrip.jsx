@@ -13,12 +13,9 @@ export default function MyTrip() {
     const fetchTrips = async () => {
       try {
         const response = await axios.get('/api/trips');
-        // const response = await fetch('/api/trips');
 
-        // if (response.ok) {
         if (response.status == 200) {
           const data = response.data;
-          // const data = await response.json();
           console.log("Fetched trips:", data);
           setTrips(data);
         }
