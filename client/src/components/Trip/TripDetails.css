@@ -9,12 +9,12 @@
     transition: background 0.2s;
 }
 
-.create-btn:hover {
+.back-btn:hover {
     background-color: #348ea8;
 }
 
 .details-container {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 100px auto;
     padding: 40px;
     text-align: left;
@@ -27,25 +27,78 @@
     margin-bottom: 30px;
 }
 
+.details-content {
+    max-width: 100%;
+    width: 100%;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.details-content h2 {
+    font-size: 1.4rem;
+    color: #1a1a1a;
+    margin-bottom: 24px;
+}
+
 .routes-list {
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
 
-.route-item {
-    padding: 24px;
-    border-radius: 12px;
-    border-left: 5px solid #3fa8c6; /* Use your primary color as an accent */
-    background: #f8f9fa;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+.route-row {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 30px;
+    width: 100%;
 }
 
-.route-item h3 {
-    margin: 0 0 8px 0;
-    font-size: 1.25rem;
+.route-date-circle {
+    min-width: 70px;
+    height: 70px;
+    background-color: #3fa8c6aa;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+    box-shadow: 0 4px 10px rgba(63, 168, 198, 0.2);
 }
 
+.route-card {
+    flex-grow: 1;
+    padding: 35px 30px; /* horizontal padding for 'runway' look */
+    border-radius: 12px;
+    border: 1px solid #eef2f5;
+    border-left: 6px solid #3fa8c6; /* accent bar */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    transition: transform 0.2s ease;
+}
+
+.route-card:hover {
+    transform: translateX(5px); /* interactive slide effect */
+}
+
+.route-info {
+    max-width: 100%;
+    text-align: left;
+}
+
+.route-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.3rem;
+    color: #1a1a1a;
+}
+
+.route-info p {
+    margin: 0;
+    color: #666;
+}

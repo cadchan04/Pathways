@@ -70,6 +70,12 @@ export default function TripDetails() {
     console.log("Trip description stored:", trip.description);
     console.log("Trip routes stored:", trip.routes);
 
+    const formatDate = (dateString) => {
+        if (!dateString) return 'MM/DD';
+        const date = new Date(dateString);
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+    }
+
     return (
         <div className="details-container">
             <button className="back-btn" onClick={() => navigate('/my-trips')}>← Back to My Trips</button>
@@ -85,10 +91,20 @@ export default function TripDetails() {
                 {trip.routes && trip.routes.length > 0 ? (
                     <div className="routes-list">
                         {trip.routes.map((route, index) => (
-                            <div key={index} className="route-item">
-                                <h3>{route.name}</h3>
-                                <div className="route-dates">{new Date(route.startDate).toLocaleDateString()} - {new Date(route.endDate).toLocaleDateString()}</div>
-                                <p>{route.origin} to {route.destination}</p>
+                            <div key={index} className="route-row">
+                                {/* date circle on the left */}
+                                <div className="route-date-circle">
+                                    {formatDate(route.startDate)}
+                                </div>
+
+                                {/* route card on the right */}
+                                <div className="route-card">
+                                    <div className="route-info">
+                                        <h3>{route.name}</h3>
+                                        {/* <div className="route-dates">{new Date(route.startDate).toLocaleDateString()} - {new Date(route.endDate).toLocaleDateString()}</div> */}
+                                        <p>{route.origin} to {route.destination}</p>
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </div>
