@@ -62,16 +62,26 @@ export default function RouteOptions() {
   // also hardcoding route details for testing - replace with actual route details from route suggestions when integrated with choosing a route to add
   const handleAddRoute = async (route) => {
       try {
+        // change to accomodate multiple legs when those are incorporated to the route suggestions - currently just using overall route details for testing
+        const legs = [{ mode: route.mode,
+                      origin: { name: originName, address: "address", coordinates: { lat: 0, lng: 0 } },
+                      destination: { name: destinationName, address: "address", coordinates: { lat: 0, lng: 0 } },
+                      departAt: route.departureTime,
+                      arriveAt: route.arrivalTime,
+                      durationMinutes: route.durationMinutes,
+                      distanceKm: 0,
+                      costUsd: route.estimatedCostUsd,
+                      provider: route.provider }]
         const addedRoute = await addRoute("699372005537e006fcc02660", { 
-          name: "routename", // future implementation - generate route name based on origin/destination/time or allow user to input custom name
+          name: `${originName} to ${destinationName} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
           origin: { name: originName, address: "address", coordinates: { lat: 0, lng: 0 } }, // future implementation - add address and coordinates based on route details
           destination: { name: destinationName, address: "address", coordinates: { lat: 0, lng: 0 } }, // future implementation - add address and coordinates based on route details
           departAt: route.departureTime,
           arriveAt: route.arrivalTime,
-          totalDuration: route.durationMinutes,
-          totalDistance: 0, // future implementation - calculate distance based on legs
-          totalCost: route.estimatedCostUsd,
-          legs: [] // future implementation - add legs based on route details
+          totalDuration: legs.reduce((sum, leg) => sum + leg.durationMinutes, 0),
+          totalDistance: legs.reduce((sum, leg) => sum + leg.distanceKm, 0),
+          totalCost: legs.reduce((sum, leg) => sum + leg.costUsd, 0),
+          legs: legs // future implementation - add legs based on route details
          })
         console.log("Added Route:", addedRoute)
       } catch (err) {
