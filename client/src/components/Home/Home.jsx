@@ -1,4 +1,5 @@
 import { testApiCall, createExample, getExamples } from "../../example_services.jsx";
+import { getRoutes } from "../../services/routeServices.js";
 
 function Home() {
   // CAN DELETE THIS - just here to show how to call the backend API from the frontend
@@ -32,6 +33,16 @@ function Home() {
     }
   }
 
+  // GET ROUTES TEST - replace with actual trip ID when integrated with choosing a trip to view
+  const handleGetRoutes = async () => {
+    try {
+      const routes = await getRoutes("699372005537e006fcc02660")
+      console.log("Routes for Trip:", routes)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   return (
     <div>
         <h1>Pathways</h1>
@@ -39,7 +50,7 @@ function Home() {
         <button onClick={handleClick}>Test Button</button>
         <button onClick={handleAddExample}>Add Example</button>
         <button onClick={handleGetExamples}>Print Example</button>
-
+        <button onClick={handleGetRoutes}>Print Routes</button>
     </div>
   )
 }

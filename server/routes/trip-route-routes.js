@@ -22,6 +22,7 @@ router.post('/', async (req, res) => {
             totalDistance: req.body.totalDistance
         });
         await trip.save();
+        //console.log("Updated Trip with new route:", trip)
         res.status(201).json(trip);
     } catch (err) {
         res.status(400).json({ error: err.message });

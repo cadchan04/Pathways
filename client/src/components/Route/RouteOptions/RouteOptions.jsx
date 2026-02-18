@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchRouteSuggestions } from '../../../services/routeServices'
+import { fetchRouteSuggestions, addRoute } from '../../../services/routeServices'
 import { formatTimeRange } from '../routeUtils'
 import './RouteOptions.css'
 
@@ -57,6 +57,29 @@ export default function RouteOptions() {
     loadSuggestions()
   }, [departDate, destinationId, originId])
 
+/* ---------- FOR TESTING ADD ROUTE TO TRIP --------------*/
+  //trip-id hardcoded for testing add route functions - replace with actual trip/route ID when integrated with choosing a trip to add/creating a new trip
+  // also hardcoding route details for testing - replace with actual route details from route suggestions when integrated with choosing a route to add
+  const handleAddRoute = async (route) => {
+      try {
+        const addedRoute = await addRoute("699372005537e006fcc02660", { 
+          name: "routename", // future implementation - generate route name based on origin/destination/time or allow user to input custom name
+          origin: { name: originName, address: "address", coordinates: { lat: 0, lng: 0 } }, // future implementation - add address and coordinates based on route details
+          destination: { name: destinationName, address: "address", coordinates: { lat: 0, lng: 0 } }, // future implementation - add address and coordinates based on route details
+          departAt: route.departureTime,
+          arriveAt: route.arrivalTime,
+          totalDuration: route.durationMinutes,
+          totalDistance: 0, // future implementation - calculate distance based on legs
+          totalCost: route.estimatedCostUsd,
+          legs: [] // future implementation - add legs based on route details
+         })
+        console.log("Added Route:", addedRoute)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+  /* ---------- DONE --------------*/
+
 // Filtering and sorting to be implemented
 /*
   const availableModes = useMemo()
@@ -89,6 +112,8 @@ export default function RouteOptions() {
               <p>Duration: {formatDuration(route.durationMinutes)}</p>
               <p>Stops: {route.stops}</p>
               <p>Estimated Cost: ${route.estimatedCostUsd}</p>
+              <button className="route-option-select-button"
+               onClick={() => handleAddRoute(route)}>Select This Route</button>
             </li>
           ))}
         </ul>

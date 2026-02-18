@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
-const Location = require('./Location');
+const { locationSchema } = require('./Location');
 
 const legSchema = new mongoose.Schema({
   transportationMode: { type: String, required: true },
-  origin: { type: Location, required: true },
-  destination: { type: Location, required: true },
+  origin: { type: locationSchema, required: true },
+  destination: { type: locationSchema, required: true },
   departAt: { type: Date, required: true },
   arriveAt: { type: Date, required: true },
   cost: { type: Number, required: true },
@@ -18,4 +18,4 @@ const legSchema = new mongoose.Schema({
 });
 
 const Leg = mongoose.model('Leg', legSchema);
-module.exports = Leg;
+module.exports = { Leg, legSchema };

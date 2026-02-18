@@ -5,11 +5,10 @@ const locationSchema = new mongoose.Schema({
   address: { type: String, required: true },
   coordinates: {
     lat: { type: Number, required: true },
-    lng: { type: Number, required: true },
-    required: true
+    lng: { type: Number, required: true }
   }
 });
 
 const Location = mongoose.model('Location', locationSchema);
 
-module.exports = Location;
+module.exports = { Location, locationSchema };
