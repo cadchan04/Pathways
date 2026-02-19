@@ -7,7 +7,7 @@ const locationSchema = new mongoose.Schema({
     lat: { type: Number, required: true },
     lng: { type: Number, required: true }
   }
-});
+}, { _id: false });
 
 const Location = mongoose.model('Location', locationSchema);
 

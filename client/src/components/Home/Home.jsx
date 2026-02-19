@@ -1,5 +1,5 @@
 import { testApiCall, createExample, getExamples } from "../../example_services.jsx";
-import { getRoutes } from "../../services/routeServices.js";
+import { getRoutes, updateLeg, getLegs } from "../../services/routeServices.js";
 
 function Home() {
   // CAN DELETE THIS - just here to show how to call the backend API from the frontend
@@ -43,6 +43,22 @@ function Home() {
     }
   }
 
+  // Update leg test
+  const handleUpdateLeg = async () => {
+    try {
+      // The req body has to have the same name as the field in the schema that needs to be updated
+      const routeId = await getRoutes("699372005537e006fcc02660").then(routes => routes[0]._id) // get the first route's ID for testing
+      const legId = await getLegs("699372005537e006fcc02660", routeId).then(legs => legs[0]._id) // get the first leg's ID for testing
+      //const updatedLeg = await updateLeg("699372005537e006fcc02660", routeId, legId, { "origin.name": "San Jose, CA" })
+      //const updatedLeg = await updateLeg("699372005537e006fcc02660", routeId, legId, { cost: 67 })
+      const updatedLeg = await updateLeg("699372005537e006fcc02660", routeId, legId, { cost: 50, duration: 160 })
+      
+      console.log("Updated Leg:", updatedLeg)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   return (
     <div>
         <h1>Pathways</h1>
@@ -51,6 +67,7 @@ function Home() {
         <button onClick={handleAddExample}>Add Example</button>
         <button onClick={handleGetExamples}>Print Example</button>
         <button onClick={handleGetRoutes}>Print Routes</button>
+        <button onClick={handleUpdateLeg}>Test Update Leg</button>
     </div>
   )
 }
