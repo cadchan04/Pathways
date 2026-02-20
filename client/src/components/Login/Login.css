@@ -1,0 +1,49 @@
+/* Fullscreen white background */
+.login-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: #ffffff;
+    padding: 2rem;
+    text-align: center;
+  }
+  
+  /* Huge logo */
+  .login-logo {
+    width: 500px; /* adjust as needed */
+    height: auto;
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Bold + italic slogan */
+  .login-slogan {
+    font-size: 1.8rem;
+    color: #333;
+    margin-bottom: 2rem;
+    font-weight: bold;
+    font-style: italic;
+  }
+  
+  /* Blue login button */
+  .login-button {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.9rem 2.2rem;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.15s ease;
+  }
+  
+  .login-button:hover {
+    background-color: #2563eb;
+    transform: translateY(-2px);
+  }
+  
+  .login-button:active {
+    transform: translateY(0);
+  }
+  
