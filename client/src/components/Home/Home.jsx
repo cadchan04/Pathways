@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth0 } from "@auth0/auth0-react";
 
 function Home() {
-  const { getAccessTokenSilently, isAuthenticated, user } = useAuth0();
+  const { getAccessTokenSilently, isAuthenticated, user, isLoading } = useAuth0();
 
   useEffect(() => {
     const syncUser = async () => {
@@ -34,10 +34,20 @@ function Home() {
     syncUser();
   }, [isAuthenticated, user, getAccessTokenSilently]);
 
+  if (isLoading) return <p>Loading...</p>;
+
   return (
     <div>
       <h1>Pathways</h1>
       <p>Let's Get Going! 🌍</p>
+
+      {isAuthenticated && (
+        <div>
+          <p>Name: {user.name}</p>
+          <p>Email: {user.email}</p>
+          <img src={user.picture} alt="profile" width={80} />
+        </div>
+      )}
     </div>
   );
 }
