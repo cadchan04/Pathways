@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { createTrip } from '../../services/tripServices';
 
 import './CreateTrip.css';
 
@@ -26,12 +26,13 @@ export default function CreateTrip() {
         };
 
         try {
-            const response = await axios.post('/api/trips', newTrip);
-
-            if (response.status == 201 || response.status === 200) {
-                console.log("Trip saved to MongoDB!")
+            const savedTrip = await createTrip(newTrip);
+            
+            if (savedTrip) {
+                console.log("Trip saved to MongoDB vai service");
                 navigate('/my-trips');
             }
+
         } catch (err) {
             console.error("Error creating trip:", err);
         }
