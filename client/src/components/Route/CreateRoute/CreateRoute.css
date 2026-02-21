@@ -1,0 +1,59 @@
+.create-route-page {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.create-route-page h1 {
+  margin-bottom: 0.4rem;
+}
+
+.create-route-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.create-route-field {
+  position: relative;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.create-route-field input {
+  padding: 0.55rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.create-route-suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0.2rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.create-route-suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #222;
+  padding: 0.5rem;
+}
+
+.create-route-suggestions button:hover {
+  background: #f3f4f6;
+}
+
+.create-route-error {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #b00020;
+}

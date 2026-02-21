@@ -7,6 +7,8 @@ import Callback from "../Callback";
 import Login from "../components/Login/Login.jsx";
 import CreateTrip from "../components/Trip/CreateTrip"
 import TripDetails from "../components/Trip/TripDetails"
+import CreateRoute from "../components/Route/CreateRoute/CreateRoute"
+import RouteOptions from "../components/Route/RouteOptions/RouteOptions"
 
 export default function AppRoutes() {
   return (
@@ -18,6 +20,8 @@ export default function AppRoutes() {
       <Route path="/my-trips" element={<MyTrip />} />
       <Route path="/create-trip" element={<CreateTrip />} />
       <Route path="/view-details/:id" element={<TripDetails />} />
+      <Route path="/create-route" element={<CreateRoute />} />
+      <Route path="/route-options" element={<RouteOptions />} />
 
       {/* Auth0 callback */}
       <Route path="/callback" element={<Callback />} />

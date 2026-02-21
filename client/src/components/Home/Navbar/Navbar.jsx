@@ -13,6 +13,9 @@ const Navbar = () => {
       <div className="navbar-right">
         <ul className="nav-links">
           <li>
+            <Link to="/create-route">Route</Link>
+          </li>
+          <li>
             <Link to="/my-trips">My Trips</Link>
           </li>
           <li>
