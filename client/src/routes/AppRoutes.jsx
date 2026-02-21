@@ -14,48 +14,20 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* Redirect root → login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/" element={<Home />} />
-      <Route path="/account" element={<Account />} />
-      <Route path="/my-trips" element={<MyTrip />} />
-      <Route path="/create-trip" element={<CreateTrip />} />
-      <Route path="/view-details/:id" element={<TripDetails />} />
-      <Route path="/create-route" element={<CreateRoute />} />
-      <Route path="/route-options" element={<RouteOptions />} />
+      <Route path="/" element={<Navigate to="/home" replace />} />
 
-      {/* Auth0 callback */}
-      <Route path="/callback" element={<Callback />} />
+      {/* Public routes - accessible without logging in */}
+      <Route path="/login" element={<Login />} />             {/* LOGIN SHOULD BE PUBLIC */}
+      <Route path="/callback" element={<Callback />} />       {/* Auth0 callback */}
 
-      {/* LOGIN SHOULD BE PUBLIC */}
-      <Route path="/login" element={<Login />} />
-
-      {/* PROTECTED ROUTES */}
-      <Route
-        path="/home"
-        element={
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/my-trips"
-        element={
-          <ProtectedRoute>
-            <MyTrip />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/account"
-        element={
-          <ProtectedRoute>
-            <Account />
-          </ProtectedRoute>
-        }
-      />
+      {/* Protected routes - login only */}
+      <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+      <Route path="/my-trips" element={<ProtectedRoute><MyTrip /></ProtectedRoute>} />
+      <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+      <Route path="/create-trip" element={<ProtectedRoute><CreateTrip /></ProtectedRoute>} />
+      <Route path="/view-details/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
+      <Route path="/create-route" element={<ProtectedRoute><CreateRoute /></ProtectedRoute>} />
+      <Route path="/route-options" element={<ProtectedRoute><RouteOptions /></ProtectedRoute>} />
 
       {/* 404 fallback */}
       <Route path="*" element={<h1>404: Page Not Found</h1>} />

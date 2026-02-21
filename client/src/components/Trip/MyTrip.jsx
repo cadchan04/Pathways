@@ -53,7 +53,7 @@ export default function MyTrip() {
                   </div>
                 </div>
 
-                <button className="view-btn" onClick={() => navigate(`/view-details/${trip._id}`)}>View Details</button>
+                <button className="view-button" onClick={() => navigate(`/view-details/${trip._id}`)}>View Details</button>
               </div>
             ))
           ) : (
@@ -63,7 +63,7 @@ export default function MyTrip() {
       )}
 
       <div className="my-trips-footer">
-        <button className="create-btn" onClick={() => navigate('/create-trip')}>Create New Trip</button>
+        <button className="create-button" onClick={() => navigate('/create-trip')}>Create New Trip +</button>
       </div>
     </div>
   )

@@ -1,7 +1,10 @@
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Auth0Provider } from '@auth0/auth0-react';
-import App from './App';
+
+import './index.css'; // global styles (baseline)
+import App from './App'; // app component (which imports App.css)
+import './App.css'; // layout styles
 
 const domain = "dev-tttdz2uurevzcaog.us.auth0.com";  // Your Auth0 Domain
 const clientId = "og3kzXtXzUuXYCsvb5cmUXYVW76UEI7X"; // Your Auth0 Client ID

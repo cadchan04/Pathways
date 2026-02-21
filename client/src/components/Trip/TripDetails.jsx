@@ -54,7 +54,7 @@ export default function TripDetails() {
 
     return (
         <div className="details-container">
-            <button className="back-btn" onClick={() => navigate('/my-trips')}>← Back to My Trips</button>
+            <button className="back-button" onClick={() => navigate('/my-trips')}>← Back to My Trips</button>
             
             <div className="details-header">
                 <h1>{trip.name}</h1>
