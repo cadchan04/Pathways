@@ -2,6 +2,7 @@ import { BrowserRouter } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
 import AppRoutes from "./routes/AppRoutes";
 import Navbar from "./components/Home/Navbar/Navbar";
+import { UserProvider } from "../context/UserContext";
 
 function App() {
   const { isAuthenticated, isLoading } = useAuth0();
@@ -14,10 +15,12 @@ function App() {
 
   return (
     <div>
-      <Navbar />
-      <main className="app-content">
-        <AppRoutes />
-      </main>
+      <UserProvider>
+        <Navbar />
+        <main className="app-content">
+          <AppRoutes />
+        </main>
+      </UserProvider>
     </div>
   );
 }

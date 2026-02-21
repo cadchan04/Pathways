@@ -10,7 +10,7 @@ const exampleRoute = require('./routes/example-route.js');
 const tripRouteRoute = require('./routes/trip-route-routes.js');
 const routesRoute = require('./routes/routes-route.js');
 const legRoute = require('./routes/leg-routes.js');
-const userRoute = require('./routes/user.js');
+const userRoute = require('./routes/user-routes.js');
 const tripRoute = require('./routes/trip-routes.js');
 
 const app = express();
@@ -26,13 +26,6 @@ mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })
 app.listen(process.env.PORT || 8080, () => {
   console.log(`Server is running on port ${process.env.PORT || 8080}`);
 });
-
-/* ROUTES */
-app.use('/api/example', exampleRoute); //examples route functions
-app.use('/api/trips/:tripId/routes', tripRouteRoute); //trip route route functions - handles adding/getting/editing routes for a specific trip
-app.use('/api/trips/:tripId/routes/:routeId/legs', legRoute); //route leg functions
-app.use('/api/routes', routesRoute);
-app.use('/api/trips', tripRoute); // trip route functions
 
 // Define a simple route - DELETE THIS LATER
 app.get('/api-test', (req, res) => {
@@ -55,7 +48,12 @@ app.get("/protected", checkJwt, (req, res) => {
   res.json({ message: "You accessed a protected route!" });
 });
 
-// User sync
+/* ROUTES */
+app.use('/api/example', exampleRoute); //examples route functions
+app.use('/api/trips/:tripId/routes', tripRouteRoute); //trip route route functions - handles adding/getting/editing routes for a specific trip
+app.use('/api/trips/:tripId/routes/:routeId/legs', legRoute); //route leg functions
+app.use('/api/routes', routesRoute);
+app.use('/api/trips', tripRoute); // trip route functions
 app.use('/api/user', userRoute);
 
 mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })

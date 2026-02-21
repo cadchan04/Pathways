@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { getTrips } from '../../services/tripServices';
+import { useUser } from '../../../context/UserContext';
 
 import './MyTrip.css';
 
@@ -9,11 +10,14 @@ export default function MyTrip() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { dbUser } = useUser();
 
   useEffect(() => {
     const fetchTrips = async () => {
+      if (!dbUser?._id) return;
+
       try {
-        const data = await getTrips();
+        const data = await getTrips(dbUser._id);
         console.log("Fetched trips:", data);
         setTrips(data);
 
