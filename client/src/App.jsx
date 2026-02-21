@@ -5,7 +5,8 @@ import AppRoutes from "./routes/AppRoutes";
 import Navbar from "./components/Home/Navbar/Navbar";
 
 function App() {
-  const { isAuthenticated, isLoading, loginWithRedirect, user } = useAuth0();
+  // const { isAuthenticated, isLoading, loginWithRedirect, user } = useAuth0();
+  const { isAuthenticated, isLoading } = useAuth0();
   const navigate = useNavigate();
 
   useEffect(() => {

@@ -1,8 +1,70 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { getTrips } from '../../services/tripServices';
+
+import './MyTrip.css';
+
 export default function MyTrip() {
+  const navigate = useNavigate();
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTrips = async () => {
+      try {
+        const data = await getTrips();
+        console.log("Fetched trips:", data);
+        setTrips(data);
+
+      } catch (err) {
+        console.log("Error fetching trips:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchTrips();
+  }, []);
+
   return (
-    <div>
+    <div className="my-trips-container">
+      <div className="my-trips-header">
         <h2>My Trips</h2>
-        <p>Here are all your trips! 🧳</p>
+      </div>
+      
+      {loading ? (
+        <p>Loading your trips...</p>
+      ) : (
+        <div className="trips-list">
+          {trips.length > 0 ? (
+            trips.map((trip) => (
+              <div key={trip._id} className="trip-row">
+                <div className="trip-info">
+                  <h3>{trip.name}</h3>
+                  <p>{trip.description}</p>
+                </div>
+
+                <div className="trip-dates">
+                  <div className="trip-dates">
+                      <span>{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : 'TBD'}</span>
+                      <span> → </span>
+                      <span>{trip.endDate ? new Date(trip.endDate).toLocaleDateString() : 'TBD'}</span>
+                  </div>
+                </div>
+
+                <button className="view-btn" onClick={() => navigate(`/view-details/${trip._id}`)}>View Details</button>
+              </div>
+            ))
+          ) : (
+            <p>You haven't created any trips yet. Start planning your next adventure!</p>
+          )}
+        </div>
+      )}
+
+      <div className="my-trips-footer">
+        <button className="create-btn" onClick={() => navigate('/create-trip')}>Create New Trip</button>
+      </div>
     </div>
   )
 }
