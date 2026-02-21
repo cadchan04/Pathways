@@ -96,10 +96,8 @@ function Home() {
   }
 
   return (
-    <div>
-      <h1>Pathways</h1>
-      <p>Let's Get Going! 🌍</p>
-
+    <div className="home-container">
+      <h1>User Information</h1>
       {isAuthenticated && (
         <div>
           <p>Name: {user.name}</p>
@@ -107,13 +105,14 @@ function Home() {
           <img src={user.picture} alt="profile" width={80} />
         </div>
       )}
-        <h1>Pathways</h1>
-        <p>Let's Get Going! 🌍</p>
-        <button onClick={handleClick}>Test Button</button>
-        <button onClick={handleAddExample}>Add Example</button>
-        <button onClick={handleGetExamples}>Print Example</button>
-        <button onClick={handleGetRoutes}>Print Routes</button>
-        <button onClick={handleUpdateLeg}>Test Update Leg</button>
+
+      <h1>Pathways</h1>
+      <p>Let's Get Going! 🌍</p>
+      <button onClick={handleClick}>Test Button</button>
+      <button onClick={handleAddExample}>Add Example</button>
+      <button onClick={handleGetExamples}>Print Example</button>
+      <button onClick={handleGetRoutes}>Print Routes</button>
+      <button onClick={handleUpdateLeg}>Test Update Leg</button>
     </div>
   );
 }

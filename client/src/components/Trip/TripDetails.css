@@ -1,4 +1,4 @@
-.back-btn {
+.back-button {
     padding: 12px 24px;
     background-color: #3fa8c6;
     color: white;
@@ -9,22 +9,23 @@
     transition: background 0.2s;
 }
 
-.back-btn:hover {
+.back-button:hover {
     background-color: #348ea8;
 }
 
 .details-container {
     max-width: 1200px;
-    margin: 100px auto;
+    margin: 20px auto 100px auto;
     padding: 40px;
     text-align: left;
     background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
 }
 
 .details-header {
     border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 30px;
-    margin-bottom: 30px;
+    padding-top: 20px;
 }
 
 .details-content {

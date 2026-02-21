@@ -38,7 +38,7 @@
     justify-content: space-between;
     align-items: center;
     background: white;
-    width: 100%;
+    width: 70%;
     padding: 40px;
     margin-bottom: 12px;
     border-radius: 12px;
@@ -77,7 +77,7 @@
     text-align: left;
 }
 
-.view-btn {
+.view-button {
     align-self: flex-start;  /* Keeps the button on the left instead of stretching it */
     width: auto;             /* Button only as wide as its text */
     margin-top: 10px;
@@ -85,32 +85,38 @@
     background-color: #f1f3f5;
     border: none;
     border-radius: 8px;
+    font-size: 1rem;
     font-weight: 600;
     color: #495057;
     cursor: pointer;
     transition: background 0.2s;
 }
 
-.view-btn:hover {
+.view-button:hover {
     background-color: #e9ecef;
     color: #212529;
 }
 
 .my-trips-footer {
     margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    
 }
 
-.create-btn {
+.create-button {
     padding: 12px 24px;
     background-color: #3fa8c6;
     color: white;
     border: none;
     border-radius: 12px;
+    font-size: 0.9rem;
     font-weight: bold;
     cursor: pointer;
     transition: background 0.2s;
 }
 
-.create-btn:hover {
+.create-button:hover {
     background-color: #348ea8;
 }
