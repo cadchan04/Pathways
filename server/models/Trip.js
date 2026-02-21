@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { routeSchema } = require("./Route");
 
 const TripSchema = new mongoose.Schema({
     owner: { type: String, required: true }, // will be user ID of the trip creator
@@ -6,8 +7,8 @@ const TripSchema = new mongoose.Schema({
     description: { type: String },
     startDate: { type: Date },
     endDate: { type: Date },
-    collaboratorIds: [{ type: String }], // array of user IDs who are collaborators
-    routes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Route' }],
+    collaboratorIds: [{ type: String }], // will be array of user IDs who are collaborators
+    routes: [routeSchema],
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
