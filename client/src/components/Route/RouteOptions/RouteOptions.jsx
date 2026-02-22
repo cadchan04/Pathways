@@ -62,27 +62,17 @@ export default function RouteOptions() {
   // also hardcoding route details for testing - replace with actual route details from route suggestions when integrated with choosing a route to add
   const handleAddRoute = async (route) => {
       try {
-        // change to accomodate multiple legs when those are incorporated to the route suggestions - currently just using overall route details for testing
-        const legs = [{ mode: route.mode,
-                      origin: { name: originName, address: "address", coordinates: { lat: 0, lng: 0 } },
-                      destination: { name: destinationName, address: "address", coordinates: { lat: 0, lng: 0 } },
-                      departAt: route.departureTime,
-                      arriveAt: route.arrivalTime,
-                      durationMinutes: route.durationMinutes,
-                      distanceKm: 0,
-                      costUsd: route.estimatedCostUsd,
-                      provider: route.provider }]
-        const addedRoute = await addRoute("699372005537e006fcc02660", { 
+        const addedRoute = await addRoute("699a444e75d3995896fca38b", { 
           name: `${originName} to ${destinationName} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
-          origin: { name: originName, address: "address", coordinates: { lat: 0, lng: 0 } }, // future implementation - add address and coordinates based on route details
-          destination: { name: destinationName, address: "address", coordinates: { lat: 0, lng: 0 } }, // future implementation - add address and coordinates based on route details
-          departAt: route.departureTime,
-          arriveAt: route.arrivalTime,
-          totalDuration: legs.reduce((sum, leg) => sum + leg.durationMinutes, 0),
-          totalDistance: legs.reduce((sum, leg) => sum + leg.distanceKm, 0),
-          totalCost: legs.reduce((sum, leg) => sum + leg.costUsd, 0),
-          legs: legs // future implementation - add legs based on route details
-         })
+          origin: route.origin,
+          destination: route.destination,
+          departAt: route.departAt,
+          arriveAt: route.arriveAt,
+          totalDuration: route.totalDuration,
+          totalDistance: route.totalDistance,
+          totalCost: route.totalCost,
+          legs: route.legs
+        })
         console.log("Added Route:", addedRoute)
       } catch (err) {
         console.error(err)
@@ -116,12 +106,12 @@ export default function RouteOptions() {
         <ul className="route-options-list">
           {routes.map((route) => ( 
             <li key={route.id} className="route-option-card">
-              <h2>{route.mode}</h2>
-              <p>Provider: {route.provider}</p>
-              <p>{formatTimeRange(route.departureTime, route.arrivalTime)}</p>
-              <p>Duration: {formatDuration(route.durationMinutes)}</p>
-              <p>Stops: {route.stops}</p>
-              <p>Estimated Cost: ${route.estimatedCostUsd}</p>
+              <h2>{route.legs.map(leg => leg.transportationMode).join(' → ')}</h2>
+              <p>Provider: {route.legs.map(leg => leg.provider).join(', ')}</p>
+              <p>{formatTimeRange(route.departAt, route.arriveAt)}</p>
+              <p>Duration: {formatDuration(route.totalDuration)}</p>
+              <p>Stops: {route.legs.length - 1}</p>
+              <p>Estimated Cost: ${route.totalCost}</p>
               <button className="route-option-select-button"
                onClick={() => handleAddRoute(route)}>Select This Route</button>
             </li>

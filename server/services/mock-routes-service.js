@@ -13,11 +13,18 @@ const locations = [
   { id: 'loc_mia', name: 'Miami, FL', lat: 25.7617, lng: -80.1918 }
 ]
 
+const legTemplates = [
+  { mode: 'Flight', provider: 'MockAir', baseDuration: 110, baseCost: 165 },
+  { mode: 'Train', provider: 'InterState Rail', baseDuration: 300, baseCost: 95},
+  { mode: 'Bus', provider: 'GoBus', baseDuration: 420, baseCost: 65 },
+  { mode: 'Rideshare', provider: 'DriveNow', baseDuration: 360, baseCost: 130 }
+]
+
 const routeTemplates = [
-  { mode: 'Flight', provider: 'MockAir', baseDuration: 110, baseCost: 165, stops: 0 },
-  { mode: 'Train', provider: 'InterState Rail', baseDuration: 300, baseCost: 95, stops: 1 },
-  { mode: 'Bus', provider: 'GoBus', baseDuration: 420, baseCost: 65, stops: 1 },
-  { mode: 'Rideshare', provider: 'DriveNow', baseDuration: 360, baseCost: 130, stops: 0 }
+  {legs: [legTemplates[0]]},
+  {legs: [legTemplates[1]]},
+  {legs: [legTemplates[2]]},
+  {legs: [legTemplates[0], legTemplates[3]]}
 ]
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
@@ -90,30 +97,63 @@ const buildRouteSuggestions = ({ originId, destinationId, departDate }) => {
   const dateStart = new Date(`${departDate}T00:00:00`)
 
   return routeTemplates.map((template, index) => {
-    const seed = deterministicSeed(originId, destinationId, departDate, template.mode)
+    for (let leg of template.legs) {
+      const { departureTime, arrivalTime, durationMinutes, estimatedCostUsd } = createDepartureAndArrivalTimeAndCost(originId, destinationId, departDate, leg, index, dateStart)
+      leg.departAt = departureTime
+      leg.arriveAt = arrivalTime
+      leg.durationMinutes = durationMinutes
+      leg.costUsd = estimatedCostUsd
+    }
+
+    const legs = template.legs.map(leg => ({
+        transportationMode: leg.mode,
+        provider: leg.provider,
+        origin: { name: locations.find(loc => loc.id === originId).name, address: "address", coordinates: { lat: 0, lng: 0 } }, // add address and coords in the future
+        destination: { name: locations.find(loc => loc.id === destinationId).name, address: "address", coordinates: { lat: 0, lng: 0 } },
+        departAt: leg.departAt,
+        arriveAt: leg.arriveAt,
+        duration: leg.durationMinutes,
+        distance: 0, // get distance from api in future
+        cost: leg.costUsd // get cost from api in future
+      }))
+
+    return {
+      id: `route_${index + 1}`,
+      legs: legs,
+      origin: legs[0].origin,
+      destination: legs[legs.length - 1].destination,
+      totalCost: legs.reduce((sum, leg) => sum + leg.cost, 0),
+      totalDuration: legs.reduce((sum, leg) => sum + leg.duration, 0),
+      totalDistance: legs.reduce((sum, leg) => sum + leg.distance, 0),
+      departAt: legs[0].departAt,
+      arriveAt: legs[legs.length - 1].arriveAt
+    }
+  })
+}
+
+const createDepartureAndArrivalTimeAndCost = (originId, destinationId, departDate, leg, index, dateStart) => {
+    const seed = deterministicSeed(originId, destinationId, departDate, leg.mode)
     const departureMinutesOffset = (seed % 540) + index * 45
     const departureTime = new Date(dateStart)
     departureTime.setMinutes(departureMinutesOffset)
 
     const durationJitter = seed % 60
-    const durationMinutes = template.baseDuration + durationJitter
+    const durationMinutes = leg.baseDuration + durationJitter
     const arrivalTime = new Date(departureTime)
     arrivalTime.setMinutes(departureTime.getMinutes() + durationMinutes)
 
     const costJitter = seed % 70
-    const estimatedCostUsd = template.baseCost + costJitter
+    const estimatedCostUsd = leg.baseCost + costJitter
 
     return {
-      id: `route_${index + 1}`,
-      mode: template.mode,
-      provider: template.provider,
+      originId,
+      destinationId,
+      leg,
       departureTime: departureTime.toISOString(),
       arrivalTime: arrivalTime.toISOString(),
       durationMinutes,
-      stops: template.stops,
       estimatedCostUsd
     }
-  })
 }
 
 module.exports = {

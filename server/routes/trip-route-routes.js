@@ -10,24 +10,14 @@ router.post('/', async (req, res) => {
         if (!trip) {
             return res.status(404).json({ error: 'Trip not found' });
         }
-        const legs = req.body.legs.map(leg => ({
-            transportationMode: leg.mode,
-            origin: leg.origin,
-            destination: leg.destination,
-            departAt: leg.departAt,
-            arriveAt: leg.arriveAt,
-            duration: leg.durationMinutes,
-            distance: leg.distanceKm,
-            cost: leg.costUsd,
-            provider: leg.provider 
-        }));
+        //console.log("Received request to add route with data:", req.body)
         trip.routes.push({
             name: req.body.name,
             origin: req.body.origin,
             destination: req.body.destination,
             departAt: req.body.departAt,
             arriveAt: req.body.arriveAt,
-            legs: legs,
+            legs: req.body.legs,
             totalCost: req.body.totalCost,
             totalDuration: req.body.totalDuration,
             totalDistance: req.body.totalDistance
