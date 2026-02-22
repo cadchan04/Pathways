@@ -28,7 +28,6 @@ export default function CreateTrip() {
         const newTrip = {
             ...formData,
             owner: dbUser._id,
-            // owner: "mock_user_123", // replace this later with actual auth user ID
             collaboratorIds: [],
             routes: [],
             createdAt: new Date().toISOString(),

@@ -29,7 +29,7 @@ export default function MyTrip() {
     }
 
     fetchTrips();
-  }, []);
+  });
 
   return (
     <div className="my-trips-container">

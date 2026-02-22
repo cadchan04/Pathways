@@ -6,7 +6,7 @@ import { syncUser } from "../../services/userServices.js";
 import { useUser } from "../../../context/UserContext.jsx";
 
 function Home() {
-  const { getAccessTokenSilently, isAuthenticated, user, isLoading } = useAuth0();
+  const { isAuthenticated, user, isLoading } = useAuth0();
   const { setDbUser } = useUser();
 
   useEffect(() => {
@@ -24,31 +24,13 @@ function Home() {
         setDbUser(syncedData);
 
         console.log("User synced successfully");
-
-        // const token = await getAccessTokenSilently();
-
-        // await fetch("http://localhost:8080/api/user/sync", {
-        //   method: "POST",
-        //   headers: {
-        //     Authorization: `Bearer ${token}`,
-        //     "Content-Type": "application/json"
-        //   },
-        //   body: JSON.stringify({
-        //     sub: user.sub,
-        //     email: user.email,
-        //     name: user.name,
-        //     picture: user.picture
-        //   })
-        // });
-
-        // console.log("User synced successfully");
       } catch (err) {
         console.error("Error syncing user:", err);
       }
     };
 
     performSync();
-  }, [isAuthenticated, user, getAccessTokenSilently]);
+  });
 
   if (isLoading) return <p>Loading...</p>;
 
