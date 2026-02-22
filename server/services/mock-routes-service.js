@@ -14,10 +14,10 @@ const locations = [
 ]
 
 const legTemplates = [
-  { mode: 'Flight', provider: 'MockAir', baseDuration: 110, baseCost: 165 },
-  { mode: 'Train', provider: 'InterState Rail', baseDuration: 300, baseCost: 95},
-  { mode: 'Bus', provider: 'GoBus', baseDuration: 420, baseCost: 65 },
-  { mode: 'Rideshare', provider: 'DriveNow', baseDuration: 360, baseCost: 130 }
+  { mode: 'Flight', provider: 'MockAir', baseDuration: 110, baseCost: 165, baseDistance: 500 },
+  { mode: 'Train', provider: 'InterState Rail', baseDuration: 300, baseCost: 95, baseDistance: 400 },
+  { mode: 'Bus', provider: 'GoBus', baseDuration: 420, baseCost: 65, baseDistance: 350 },
+  { mode: 'Rideshare', provider: 'DriveNow', baseDuration: 360, baseCost: 130, baseDistance: 300 }
 ]
 
 const routeTemplates = [
@@ -113,7 +113,7 @@ const buildRouteSuggestions = ({ originId, destinationId, departDate }) => {
         departAt: leg.departAt,
         arriveAt: leg.arriveAt,
         duration: leg.durationMinutes,
-        distance: 0, // get distance from api in future
+        distance: leg.baseDistance, // get distance from api in future
         cost: leg.costUsd // get cost from api in future
       }))
 
