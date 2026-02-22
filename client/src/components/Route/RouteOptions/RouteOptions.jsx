@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { fetchRouteSuggestions, addRoute } from '../../../services/routeServices'
+import { getRouteSuggestions, addRoute } from '../../../services/routeServices'
 import { formatTimeRange } from '../routeUtils'
 import './RouteOptions.css'
 
@@ -40,7 +40,7 @@ export default function RouteOptions() {
     const loadSuggestions = async () => {
       try {
         setLoading(true)
-        const response = await fetchRouteSuggestions({
+        const response = await getRouteSuggestions({
           originId,
           destinationId,
           departDate

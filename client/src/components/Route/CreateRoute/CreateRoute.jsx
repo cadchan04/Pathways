@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchLocationAutocomplete } from '../../../services/routeServices'
+import { getLocationAutocomplete } from '../../../services/routeServices'
 import { getTodayDateString, validateCreateRouteInput } from '../routeUtils'
 import './CreateRoute.css'
 
@@ -66,7 +66,7 @@ export default function CreateRoute() {
 
     const timer = setTimeout(async () => {
       try {
-        const suggestions = await fetchLocationAutocomplete(trimmed)
+        const suggestions = await getLocationAutocomplete(trimmed)
         if (active) {
           setOriginSuggestions(suggestions)
           setRequestError('')
@@ -95,7 +95,7 @@ export default function CreateRoute() {
     }
     const timer = setTimeout(async () => {
       try {
-        const suggestions = await fetchLocationAutocomplete(trimmed)
+        const suggestions = await getLocationAutocomplete(trimmed)
         if (active) {
           setDestinationSuggestions(suggestions)
           setRequestError('')
