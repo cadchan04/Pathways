@@ -2,30 +2,26 @@ import { useEffect } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { testApiCall, createExample, getExamples } from "../../example_services.jsx";
 import { getRoutes, updateLeg, getLegs } from "../../services/routeServices.js";
+import { syncUser } from "../../services/userServices.js";
+import { useUser } from "../../../context/UserContext.jsx";
 
 function Home() {
-  const { getAccessTokenSilently, isAuthenticated, user, isLoading } = useAuth0();
+  const { isAuthenticated, user, isLoading } = useAuth0();
+  const { setDbUser } = useUser();
 
   useEffect(() => {
-    const syncUser = async () => {
+    const performSync = async () => {
       if (!isAuthenticated || !user) return;
 
       try {
-        const token = await getAccessTokenSilently();
-
-        await fetch("http://localhost:8080/api/user/sync", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            sub: user.sub,
-            email: user.email,
-            name: user.name,
-            picture: user.picture
-          })
+        const syncedData = await syncUser({
+          sub: user.sub,
+          email: user.email,
+          name: user.name,
+          picture: user.picture
         });
+
+        setDbUser(syncedData);
 
         console.log("User synced successfully");
       } catch (err) {
@@ -33,8 +29,8 @@ function Home() {
       }
     };
 
-    syncUser();
-  }, [isAuthenticated, user, getAccessTokenSilently]);
+    performSync();
+  });
 
   if (isLoading) return <p>Loading...</p>;
 

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createTrip } from '../../services/tripServices';
+import { useUser } from '../../../context/UserContext';
 
 import './CreateTrip.css';
 
 export default function CreateTrip() {
     const navigate = useNavigate();
+    const { dbUser } = useUser();
+
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -16,9 +19,15 @@ export default function CreateTrip() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // make sure userId exists
+        if (!dbUser?._id) {
+            console.error("No userId found. Please wait for sync or log in again.");
+            return;
+        }
+
         const newTrip = {
             ...formData,
-            owner: "mock_user_123", // replace this later with actual auth user ID
+            owner: dbUser._id,
             collaboratorIds: [],
             routes: [],
             createdAt: new Date().toISOString(),

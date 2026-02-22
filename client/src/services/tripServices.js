@@ -13,10 +13,12 @@ export const createTrip = async (tripData) => {
     }
 };
 
-// get all trips for the user
-export const getTrips = async () => {
+// get all trips for the specific user
+export const getTrips = async (userId) => {
     try {
-        const response = await axios.get(`${API_URL}/api/trips`);
+        const response = await axios.get(`${API_URL}/api/trips`, {
+            params: { userId }
+        });
         return response.data;
     } catch (err) {
         console.error("Error fetching trips:", err);
