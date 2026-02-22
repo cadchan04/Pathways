@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getLocationAutocomplete } from '../../../services/routeServices'
+import { getSearchLocations } from '../../../services/routeServices'
 import { getTodayDateString, validateCreateRouteInput } from '../routeUtils'
 import './CreateRoute.css'
 
@@ -58,6 +58,13 @@ export default function CreateRoute() {
   useEffect(() => {
     const trimmed = originText.trim()
     let active = true
+
+    if (origin && origin.name === trimmed) {
+      setOriginSuggestions([])
+      setRequestError('')
+      return
+    }
+
     if (trimmed.length < 2) {
       setOriginSuggestions([])
       setRequestError('')
@@ -66,7 +73,7 @@ export default function CreateRoute() {
 
     const timer = setTimeout(async () => {
       try {
-        const suggestions = await getLocationAutocomplete(trimmed)
+        const suggestions = await getSearchLocations(trimmed)
         if (active) {
           setOriginSuggestions(suggestions)
           setRequestError('')
@@ -82,11 +89,17 @@ export default function CreateRoute() {
       clearTimeout(timer)
       active = false
     }
-  }, [originText])
+  }, [originText, origin])
 
   useEffect(() => {
     const trimmed = destinationText.trim()
     let active = true
+
+    if (destination && destination.name === trimmed) {
+      setDestinationSuggestions([])
+      setRequestError('')
+      return
+    }
 
     if (trimmed.length < 2) {
       setDestinationSuggestions([])
@@ -95,7 +108,7 @@ export default function CreateRoute() {
     }
     const timer = setTimeout(async () => {
       try {
-        const suggestions = await getLocationAutocomplete(trimmed)
+        const suggestions = await getSearchLocations(trimmed)
         if (active) {
           setDestinationSuggestions(suggestions)
           setRequestError('')
@@ -111,7 +124,7 @@ export default function CreateRoute() {
       clearTimeout(timer)
       active = false
     }
-  }, [destinationText])
+  }, [destinationText, destination])
 
   const handleOriginChange = (value) => {
     setOriginText(value)

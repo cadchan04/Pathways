@@ -3,10 +3,10 @@ import axios from 'axios'
 //
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
-export const getLocationAutocomplete = async (query) => {
+export const getSearchLocations = async (query) => {
   if (!query || !query.trim()) return []
 
-  const response = await axios.get(`${API_URL}/api/routes/locations/autocomplete`, {
+  const response = await axios.get(`${API_URL}/api/routes/locations/search`, {
     params: { q: query.trim() }
   })
 

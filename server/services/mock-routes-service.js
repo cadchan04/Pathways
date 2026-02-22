@@ -55,7 +55,7 @@ const deterministicSeed = (...parts) => {
   return Math.abs(hash)
 }
 
-const autocompleteLocations = (query, limit = 8) => {
+const searchLocations = (query, limit = 8) => {
   if (!query || !query.trim()) return []
 
   const normalizedQuery = normalize(query)
@@ -65,16 +65,42 @@ const autocompleteLocations = (query, limit = 8) => {
     .slice(0, limit)
 }
 
-const validateSuggestionsQuery = ({ originId, destinationId, departDate }) => {
+const findLocationById = (id) => locations.find((location) => location.id === id)
+
+const resolveLocation = ({ id, name }) => {
+  const match = findLocationById(id)
+
+  if (match) {
+    return {
+      id: match.id,
+      name: match.name,
+      address: match.name,
+      coordinates: { lat: match.lat, lng: match.lng }
+    }
+  }
+
+  return {
+    id: id || `loc_${normalize(name || 'unknown')}`,
+    name: name || 'Unknown Location',
+    address: name || 'Unknown Location',
+    coordinates: { lat: 0, lng: 0 }
+  }
+}
+
+const validateSuggestionsQuery = ({ originId, destinationId, departDate, originName, destinationName }) => {
   if (!originId || !destinationId || !departDate) {
     return 'originId, destinationId, and departDate are required.'
   }
 
-  if (!locations.some((location) => location.id === originId)) {
+  const originExists = Boolean(findLocationById(originId))
+  const destinationExists = Boolean(findLocationById(destinationId))
+
+  // Allow non-mock provider IDs (e.g., Geoapify) as long as the UI sent display names.
+  if (!originExists && !originName) {
     return 'Unknown originId.'
   }
 
-  if (!locations.some((location) => location.id === destinationId)) {
+  if (!destinationExists && !destinationName) {
     return 'Unknown destinationId.'
   }
 
@@ -93,8 +119,10 @@ const validateSuggestionsQuery = ({ originId, destinationId, departDate }) => {
   return null
 }
 
-const buildRouteSuggestions = ({ originId, destinationId, departDate }) => {
+const buildRouteSuggestions = ({ originId, destinationId, departDate, originName, destinationName }) => {
   const dateStart = new Date(`${departDate}T00:00:00`)
+  const resolvedOrigin = resolveLocation({ id: originId, name: originName })
+  const resolvedDestination = resolveLocation({ id: destinationId, name: destinationName })
 
   return routeTemplates.map((template, index) => {
     for (let leg of template.legs) {
@@ -108,8 +136,8 @@ const buildRouteSuggestions = ({ originId, destinationId, departDate }) => {
     const legs = template.legs.map(leg => ({
         transportationMode: leg.mode,
         provider: leg.provider,
-        origin: { name: locations.find(loc => loc.id === originId).name, address: "address", coordinates: { lat: 0, lng: 0 } }, // add address and coords in the future
-        destination: { name: locations.find(loc => loc.id === destinationId).name, address: "address", coordinates: { lat: 0, lng: 0 } },
+        origin: resolvedOrigin,
+        destination: resolvedDestination,
         departAt: leg.departAt,
         arriveAt: leg.arriveAt,
         duration: leg.durationMinutes,
@@ -158,7 +186,7 @@ const createDepartureAndArrivalTimeAndCost = (originId, destinationId, departDat
 
 module.exports = {
   locations,
-  autocompleteLocations,
+  searchLocations,
   validateSuggestionsQuery,
   buildRouteSuggestions,
   isValidDateString,
