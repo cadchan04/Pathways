@@ -109,6 +109,7 @@ export default function RouteOptions() {
               <h2>{route.legs.map(leg => leg.transportationMode).join(' → ')}</h2>
               <p>Provider: {route.legs.map(leg => leg.provider).join(', ')}</p>
               <p>{formatTimeRange(route.departAt, route.arriveAt)}</p>
+              <p>Distance: {route.totalDistance} miles</p>
               <p>Duration: {formatDuration(route.totalDuration)}</p>
               <p>Stops: {route.legs.length - 1}</p>
               <p>Estimated Cost: ${route.totalCost}</p>

@@ -10,7 +10,7 @@ router.post('/', async (req, res) => {
         if (!trip) {
             return res.status(404).json({ error: 'Trip not found' });
         }
-        //console.log("Received request to add route with data:", req.body)
+        console.log("Received request to add route with data:", req.body)
         trip.routes.push({
             name: req.body.name,
             origin: req.body.origin,
