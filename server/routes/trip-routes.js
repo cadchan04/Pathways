@@ -42,4 +42,20 @@ router.get('/:id', async (req, res) => {
     }
 })
 
+// Delete a trip by ID
+router.delete('/:id', async(req, res) => {
+    try {
+        const deletedTrip = await Trip.findByIdAndDelete(req.params.id);
+
+        if (!deletedTrip) {
+            return res.status(404).json({ message: "Trip not found" });
+        }
+
+        res.status(200).json({ message: "Trip deleted successfully" });
+    } catch (err) {
+        console.error("Error deleting trip: ", err);
+        res.status(500).json({ error: "Failed to delete trip" });
+    }
+});
+
 module.exports = router;
