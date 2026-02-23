@@ -12,6 +12,11 @@ export default function MyTrip() {
   const [loading, setLoading] = useState(true);
   const { dbUser } = useUser();
 
+  // Delete popup state
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [tripToDelete, setTripToDelete] = useState(null);
+
+  // Fetch trips
   useEffect(() => {
     const fetchTrips = async () => {
       if (!dbUser?._id) return;
@@ -30,6 +35,20 @@ export default function MyTrip() {
 
     fetchTrips();
   });
+
+  // Delete trip
+  const deleteTrip = async (tripId) => {
+    try {
+      await fetch(`/api/trips/${tripId}`, {
+        method: "DELETE"
+      });
+
+      // Remove from UI
+      setTrips(prev => prev.filter(t => t._id !== tripId));
+    } catch (err) {
+      console.error("Error deleting trip: ", err);
+    }
+  }
 
   return (
     <div className="my-trips-container">
@@ -57,7 +76,25 @@ export default function MyTrip() {
                   </div>
                 </div>
 
-                <button className="view-button" onClick={() => navigate(`/view-details/${trip._id}`)}>View Details</button>
+                <div className="trip-actions">
+                  <button
+                    className="view-button"
+                    onClick={() => navigate(`/view-details/${trip._id}`)}
+                  >
+                    View Details
+                  </button>
+
+                  <button
+                    className="delete-button"
+                    onClick={() => {
+                    setTripToDelete(trip);
+                    setShowConfirm(true);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+
               </div>
             ))
           ) : (
@@ -69,6 +106,29 @@ export default function MyTrip() {
       <div className="my-trips-footer">
         <button className="create-button" onClick={() => navigate('/create-trip')}>Create New Trip +</button>
       </div>
+
+      {/* Confirmation Popup */}
+      {showConfirm && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center" }} >
+          <div style={{ background: "white", padding: "20px", borderRadius: "8px", width: "300px", textAlign: "center" }} >
+            <h3>Confirm Delete</h3>
+            <p>Delete “{tripToDelete?.name}”?</p>
+
+            <button style={{ background: "#e63946", color: "white", padding: "10px", border: "none", borderRadius: "6px", marginRight: "10px", cursor: "pointer" }} onClick={async () => {
+                await deleteTrip(tripToDelete._id);
+                setShowConfirm(false);
+              }}
+            >
+              Confirm
+            </button>
+
+            <button style={{ padding: "10px", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer" }} onClick={() => setShowConfirm(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
