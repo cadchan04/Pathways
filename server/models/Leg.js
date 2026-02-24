@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { locationSchema } = require('./Location');
+const { segmentSchema } = require('./Segment');
 
 const legSchema = new mongoose.Schema({
   transportationMode: { type: String, required: true },
@@ -7,6 +8,7 @@ const legSchema = new mongoose.Schema({
   destination: { type: locationSchema, required: true },
   departAt: { type: Date, required: true },
   arriveAt: { type: Date, required: true },
+  segments: [{ type: segmentSchema, default: [] }], // Only used for transports with multiple segments (e.g., flights with layovers)
   cost: { type: Number, required: true },
   duration: { type: Number, required: true }, // duration in minutes
   distance: { type: Number, required: true },

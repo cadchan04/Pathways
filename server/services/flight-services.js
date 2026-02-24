@@ -4,7 +4,7 @@ const { DateTime } = require('luxon');
 async function searchFlightsCity(origin, destination, departDate) {
     const cleanOrigin = origin.split(",")[0].trim();
     const cleanDestination = destination.split(",")[0].trim();
-    console.log('Searching flights from', cleanOrigin, 'to', cleanDestination, 'on', departDate);
+   // console.log('Searching flights from', cleanOrigin, 'to', cleanDestination, 'on', departDate);
 
     const suggestionsOrigin = await getLocations(cleanOrigin);
     const suggestionsDest = await getLocations(cleanDestination);
@@ -77,6 +77,28 @@ async function searchFlightsCity(origin, destination, departDate) {
                     },
                     departAt: departDate,
                     arriveAt: arriveDate,
+                    segments: offer.slices[0].segments.map(seg => ({
+                        origin: {
+                            name: seg.origin.iata_code,
+                            address: seg.origin.city_name,
+                            coordinates: {
+                                lat: seg.origin.latitude || 0,
+                                lng: seg.origin.longitude || 0
+                            }
+                        },
+                        destination: {
+                            name: seg.destination.iata_code,
+                            address: seg.destination.city_name,
+                            coordinates: {
+                                lat: seg.destination.latitude || 0,
+                                lng: seg.destination.longitude || 0
+                            }
+                        },
+                        departAt: DateTime.fromISO(seg.departing_at, { zone: seg.origin.time_zone }).toUTC().toISO(),
+                        arriveAt: DateTime.fromISO(seg.arriving_at, { zone: seg.destination.time_zone }).toUTC().toISO(),
+                        duration: convertDurationToMinutes(seg.duration),
+                        provider: seg.operating_carrier.name
+                    })),
                     cost: parseFloat(offer.total_amount),
                     duration: convertDurationToMinutes(offer.slices[0].duration),
                     distance: 0, 
