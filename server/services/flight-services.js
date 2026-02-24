@@ -4,11 +4,8 @@ const { DateTime } = require('luxon');
 async function searchFlightsCity(origin, destination, departDate) {
     const cleanOrigin = origin.split(",")[0].trim();
     const cleanDestination = destination.split(",")[0].trim();
-<<<<<<< HEAD
+
    // console.log('Searching flights from', cleanOrigin, 'to', cleanDestination, 'on', departDate);
-=======
-    console.log('Searching flights from', cleanOrigin, 'to', cleanDestination, 'on', departDate);
->>>>>>> 279b846 (add flight route suggestions through api)
 
     const suggestionsOrigin = await getLocations(cleanOrigin);
     const suggestionsDest = await getLocations(cleanDestination);
