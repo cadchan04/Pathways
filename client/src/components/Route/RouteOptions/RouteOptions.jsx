@@ -121,14 +121,16 @@ export default function RouteOptions() {
                     }
                     // Otherwise, just show the mode once
                     return leg.transportationMode;
-                  })
-                  .join(" → ")}
+                  }).join(" → ")}
               </h2>
-              {
-                route.legs.some(leg => leg.segments && leg.segments.length > 1) && (
-                  <h3>{route.legs.flatMap(leg => leg.segments).map(segment => segment.origin.name).join(' → ')}</h3>
-                )
-              }
+              { (() => {
+                //show segments if they exist
+                const allSegments = route.legs.flatMap(leg => leg.segments || []);
+                if (allSegments.length < 2) return null;
+                const stops = allSegments.map(seg => seg.origin.name).join(" → ");
+                const finalDestination = allSegments[allSegments.length - 1].destination.name;
+                return <h3>{`${stops} → ${finalDestination}`}</h3>
+              })()}
               <p>Provider: {route.legs.map(leg => leg.provider).join(', ')}</p>
               <p>{formatTimeRange(route.departAt, route.arriveAt)}</p>
               <p>Distance: {route.totalDistance} miles</p>
