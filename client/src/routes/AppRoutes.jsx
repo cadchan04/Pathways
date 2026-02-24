@@ -9,6 +9,7 @@ import CreateTrip from "../components/Trip/CreateTrip"
 import TripDetails from "../components/Trip/TripDetails"
 import CreateRoute from "../components/Route/CreateRoute/CreateRoute"
 import RouteOptions from "../components/Route/RouteOptions/RouteOptions"
+import RouteDetails from "../components/Route/RouteDetails/RouteDetails.jsx";
 
 export default function AppRoutes() {
   return (
@@ -28,6 +29,7 @@ export default function AppRoutes() {
       <Route path="/view-details/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
       <Route path="/create-route" element={<ProtectedRoute><CreateRoute /></ProtectedRoute>} />
       <Route path="/route-options" element={<ProtectedRoute><RouteOptions /></ProtectedRoute>} />
+      <Route path="/view-route/:id" element={<ProtectedRoute><RouteDetails /></ProtectedRoute>} />
 
       {/* 404 fallback */}
       <Route path="*" element={<h1>404: Page Not Found</h1>} />
