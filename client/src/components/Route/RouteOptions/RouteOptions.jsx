@@ -42,7 +42,9 @@ export default function RouteOptions() {
         setLoading(true)
         const response = await getRouteSuggestions({
           originId,
+          originName,
           destinationId,
+          destinationName,
           departDate
         })
         setRoutes(response.routes)
@@ -55,7 +57,7 @@ export default function RouteOptions() {
     }
 
     loadSuggestions()
-  }, [departDate, destinationId, originId])
+  }, [departDate, destinationId, destinationName, originId, originName ])
 
 /* ---------- FOR TESTING ADD ROUTE TO TRIP --------------*/
   //trip-id hardcoded for testing add route functions - replace with actual trip/route ID when integrated with choosing a trip to add/creating a new trip
@@ -63,7 +65,7 @@ export default function RouteOptions() {
   const handleAddRoute = async (route) => {
       try {
         const addedRoute = await addRoute("699a444e75d3995896fca38b", { 
-          name: `${originName} to ${destinationName} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
+          name: route.name || `${originName} to ${destinationName} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
           origin: route.origin,
           destination: route.destination,
           departAt: route.departAt,

@@ -13,11 +13,13 @@ export const getSearchLocations = async (query) => {
   return response.data
 }
 
-export const getRouteSuggestions = async ({ originId, destinationId, departDate}) => {
+export const getRouteSuggestions = async ({ originId, originName, destinationId, destinationName, departDate}) => {
   const response = await axios.get(`${API_URL}/api/routes/suggestions`, {
     params: {
       originId,
+      originName,
       destinationId,
+      destinationName,
       departDate
     }
   })

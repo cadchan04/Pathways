@@ -10,7 +10,7 @@ const legSchema = new mongoose.Schema({
   cost: { type: Number, required: true },
   duration: { type: Number, required: true }, // duration in minutes
   distance: { type: Number, required: true },
-  provider: { type: String } // Optional: e.g., airline, bus company, etc.
+  provider: { type: [String] } // Optional: e.g., airline, bus company, etc.
   /*geometry: {
     type: { type: String, enum: ['LineString'], required: true },
     coordinates: { type: [[Number]], required: true } // Array of [lng, lat] pairs

@@ -5,6 +5,7 @@ const {
   validateSuggestionsQuery,
   buildRouteSuggestions
 } = require('../services/mock-routes-service')
+const { searchFlightsCity } = require('../services/flight-services')
 
 const router = express.Router()
 
@@ -64,7 +65,7 @@ router.get('/locations/search', async (req, res) => {
   }
 })
 
-router.get('/suggestions', (req, res) => {
+router.get('/suggestions', async (req, res) => {
   const { originId, destinationId, departDate, originName, destinationName } = req.query
 
   const validationError = validateSuggestionsQuery({
@@ -86,6 +87,13 @@ router.get('/suggestions', (req, res) => {
     originName,
     destinationName
   })
+
+  try {
+    const flights = await searchFlightsCity(originName, destinationName, departDate);
+    routes.push(...flights);
+  } catch (err) {
+    console.error('Error fetching flight suggestions:', err.message)
+  }
 
   return res.json({
     search: {

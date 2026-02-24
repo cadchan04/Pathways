@@ -18,7 +18,7 @@ router.post("/sync", async (req, res) => {
       console.log("New user created with Auth0 ID:", user.auth0Id);
     }
     else {
-      console.log("Existing user with Auth0 ID:", user.auth0Id);
+      //console.log("Existing user with Auth0 ID:", user.auth0Id);
     }
 
     res.json(user);
