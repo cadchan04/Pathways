@@ -7,6 +7,7 @@ const {
 } = require('../services/mock-routes-service')
 const { searchFlightsCity } = require('../services/flight-services')
 const { getTrainRoutes } = require('../services/train-service');
+const { searchFlightsCity } = require('../services/flight-services')
 
 const router = express.Router()
 
