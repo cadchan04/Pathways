@@ -10,6 +10,7 @@ export default function MyTrip() {
   const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { dbUser } = useUser();
 
   // Delete popup state
@@ -19,22 +20,26 @@ export default function MyTrip() {
   // Fetch trips
   useEffect(() => {
     const fetchTrips = async () => {
-      if (!dbUser?._id) return;
+      if (!dbUser?._id) {
+        setLoading(false);
+        return;
+      }
 
       try {
+        setError(null);
         const data = await getTrips(dbUser._id);
-        console.log("Fetched trips:", data);
         setTrips(data);
-
+        console.log("Fetched trips:", data);
       } catch (err) {
-        console.log("Error fetching trips:", err);
+        console.error("Error fetching trips:", err);
+        setError("We couldn't load your trips right now. Please try again later.");
       } finally {
         setLoading(false);
       }
     }
 
     fetchTrips();
-  });
+  }, [dbUser?._id]);
 
   // Delete trip
   const deleteTrip = async (tripId) => {
@@ -57,7 +62,13 @@ export default function MyTrip() {
       </div>
       
       {loading ? (
-        <p>Loading your trips...</p>
+        <div className="loading-state">
+          <p>Loading your trips...</p>
+        </div>
+      ) : error ? (
+        <div className="error-state">
+          <p className="error-message">{error}</p>
+        </div>
       ) : (
         <div className="trips-list">
           {trips.length > 0 ? (
@@ -65,15 +76,13 @@ export default function MyTrip() {
               <div key={trip._id} className="trip-row">
                 <div className="trip-info">
                   <h3>{trip.name}</h3>
-                  <p>{trip.description}</p>
+                  <p>{trip.description || "No description provided."}</p>
                 </div>
 
                 <div className="trip-dates">
-                  <div className="trip-dates">
-                      <span>{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : 'TBD'}</span>
-                      <span> → </span>
-                      <span>{trip.endDate ? new Date(trip.endDate).toLocaleDateString() : 'TBD'}</span>
-                  </div>
+                    <span>{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : 'TBD'}</span>
+                    <span> → </span>
+                    <span>{trip.endDate ? new Date(trip.endDate).toLocaleDateString() : 'TBD'}</span>
                 </div>
 
                 <div className="trip-actions">
@@ -130,5 +139,5 @@ export default function MyTrip() {
         </div>
       )}
     </div>
-  )
+  );
 }
