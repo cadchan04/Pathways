@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { getRouteSuggestions, addRoute } from '../../../services/routeServices'
-import { formatTimeRange } from '../routeUtils'
+// import { formatTimeRange } from '../routeUtils'
 import './RouteOptions.css'
 
 // Sorting options can be added here
@@ -13,12 +13,22 @@ const formatDuration = (minutes) => {
   return `${hours}h ${remainder}m`
 }
 
+const formatTime = (isoString) => {
+    if (!isoString) return "N/A";
+    return new Date(isoString).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
 export default function RouteOptions() {
   const [searchParams] = useSearchParams()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [routes, setRoutes] = useState([])
+
+  const navigate = useNavigate();
   
   // Something like this
   //const [modeFilter, setModeFilter] = useState('All')
@@ -42,9 +52,20 @@ export default function RouteOptions() {
         setLoading(true)
         const response = await getRouteSuggestions({
           originId,
+          originName,
           destinationId,
+          destinationName,
           departDate
         })
+
+        /* uncomment to display routes in sorted order */
+        // const sortedRoutes = [...response.routes].sort((a, b) => {
+        //     const durationA = Number(a.totalDuration) || 0;
+        //     const durationB = Number(b.totalDuration) || 0;
+        //     return durationA - durationB;
+        // });
+        // setRoutes(sortedRoutes);
+
         setRoutes(response.routes)
       } catch (requestError) {
         const message = requestError.response?.data?.error || 'Could not load route suggestions.'
@@ -55,7 +76,7 @@ export default function RouteOptions() {
     }
 
     loadSuggestions()
-  }, [departDate, destinationId, originId])
+  }, [departDate, destinationId, originId, originName, destinationName])
 
 /* ---------- FOR TESTING ADD ROUTE TO TRIP --------------*/
   //trip-id hardcoded for testing add route functions - replace with actual trip/route ID when integrated with choosing a trip to add/creating a new trip
@@ -79,6 +100,11 @@ export default function RouteOptions() {
       }
     }
   /* ---------- DONE --------------*/
+
+  // navigate to route detail page for a specific route
+  const handleViewRoute = async (route) => {
+    navigate(`/view-route/${route}`);
+  }
 
 // Filtering and sorting to be implemented
 /*
@@ -104,19 +130,97 @@ export default function RouteOptions() {
       {/* Change to displayedRoutes when filtering/sorting is implemented */}
       {!loading && !error && routes.length > 0 && (
         <ul className="route-options-list">
-          {routes.map((route) => ( 
-            <li key={route.id} className="route-option-card">
-              <h2>{route.legs.map(leg => leg.transportationMode).join(' → ')}</h2>
-              <p>Provider: {route.legs.map(leg => leg.provider).join(', ')}</p>
-              <p>{formatTimeRange(route.departAt, route.arriveAt)}</p>
-              <p>Distance: {route.totalDistance} miles</p>
-              <p>Duration: {formatDuration(route.totalDuration)}</p>
-              <p>Stops: {route.legs.length - 1}</p>
-              <p>Estimated Cost: ${route.totalCost}</p>
-              <button className="route-option-select-button"
-               onClick={() => handleAddRoute(route)}>Select This Route</button>
-            </li>
-          ))}
+          {routes.map((route, index) => {
+            console.log(`Rendering Route ${index + 1}:`, route);
+
+            return (
+              <li key={route.id} className="route-option-card">
+                {/* Left Column: Mode and Provider */}
+                <div className="route-main-info">
+                  <h2>{route.legs.map(leg => leg.transportationMode).join(' → ')}</h2>
+
+                  <p>
+                    <strong>Provider: </strong> {(() => {
+                      const providers = [...new Set(route.legs.map(leg => leg.provider).filter(Boolean))];
+                      if (providers.length === 0) return "N/A";
+                      if (providers.length === 1) return providers[0];
+                      return `${providers[0]}, ...`;
+                    })()}
+                  </p>
+                </div>
+
+                {/* Middle Column: Visual Route Runway */}
+                <div className="route-visual-path">
+                  {/* <p>{formatTimeRange(route.departAt, route.arriveAt)}</p> */}
+
+                  <div className="time-block">
+                      <strong>{formatTime(route.departAt)}</strong>
+                      <p>{new Date(route.departAt).toLocaleDateString()}</p>
+                      <p className="station-subtext">{route.legs[0]?.origin?.name || "Origin"}</p>
+                  </div>
+
+                  <div className="duration-arrow">
+                    <span>
+                      {(() => {
+                          const totalMinutes = route.totalDuration;
+                          const h = Math.floor(totalMinutes / 60);
+                          const m = totalMinutes % 60;
+                          return `${h > 0 ? h + ' hr ' : ''}${m} min`;
+                      })()}
+                    </span>
+                    <hr />
+                    <span className="stop-count">
+                        {route.legs.length <= 1 ? "Direct" : `${route.legs.length - 1} transfer${route.legs.length > 2 ? 's' : ''}`}
+                    </span>
+                  </div>
+
+                  <div className="time-block" style={{textAlign: "right"}}>
+                    <strong>{formatTime(route.arriveAt)}</strong>
+                    <p style={{textAlign: "right", textWrap: "balance"}}>{new Date(route.arriveAt).toLocaleDateString()}</p>
+                    <p className="station-subtext" style={{textAlign: "right"}}>{route.legs[route.legs.length - 1]?.destination?.name || "Destination"}</p>
+                  </div>
+                </div>
+
+                {/* Right Column: Key Details and Button */}
+                <div className="route-details-column">
+                  <div className="meta-stats">
+                    <p><strong>Distance: {route.totalDistance} miles</strong></p>
+
+                    <p><strong>Duration: {formatDuration(route.totalDuration)}</strong></p>
+
+                    <p>
+                      <strong>
+                        Stops: {(() => {
+                          const transferCount = route.legs.length - 1;
+                          if (transferCount <= 0) return "Direct (Non-stop)";
+                          return `${transferCount} ${transferCount === 1 ? 'Transfer' : 'Transfers'}`;
+                        })()}
+                      </strong>
+                    </p>
+
+                    <p>
+                      <strong>
+                        Estimated Cost: {route.localizedFare
+                        ? route.localizedFare
+                        : (route.totalCost !== undefined && route.totalCost != null
+                          ? `${route.totalCost}`
+                          : "Unknown")}
+                        </strong>
+                    </p>
+                  </div>
+
+                  <button className="route-option-select-button"onClick={() => handleAddRoute(route)}>
+                    Select This Route
+                  </button>
+
+                  <button className="route-option-details-button"onClick={() => handleViewRoute(route)}>
+                    View Route Details
+                  </button>
+
+                </div>
+              </li>
+            );
+        })}
         </ul>
       )}
 
