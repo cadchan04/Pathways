@@ -12,7 +12,6 @@ const routesRoute = require('./routes/routes-route.js');
 const legRoute = require('./routes/leg-routes.js');
 const userRoute = require('./routes/user-routes.js');
 const tripRoute = require('./routes/trip-routes.js');
-const trainRoute = require('./routes/train-routes.js');
 
 const app = express();
 
@@ -48,7 +47,6 @@ app.use('/api/trips/:tripId/routes/:routeId/legs', legRoute); //route leg functi
 app.use('/api/routes', routesRoute);
 app.use('/api/trips', tripRoute); // trip route functions
 app.use('/api/user', userRoute);
-app.use('/api/trains', trainRoute); // train route functions
 
 mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })
   .then(() => console.log('MongoDB connected'))

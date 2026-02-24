@@ -13,9 +13,6 @@ const Navbar = () => {
       <div className="navbar-right">
         <ul className="nav-links">
           <li>
-            <Link to="/train-routes">TrainsTEST</Link>
-          </li>
-          <li>
             <Link to="/create-route">Route</Link>
           </li>
           <li>

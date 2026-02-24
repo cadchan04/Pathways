@@ -6,6 +6,7 @@ const {
   buildRouteSuggestions
 } = require('../services/mock-routes-service')
 const { searchFlightsCity } = require('../services/flight-services')
+const { getTrainRoutes } = require('../services/train-service');
 
 const router = express.Router()
 
@@ -80,13 +81,27 @@ router.get('/suggestions', async (req, res) => {
     return res.status(400).json({ error: validationError })
   }
 
-  const routes = buildRouteSuggestions({
+  const routes = buildRouteSuggestions({ 
     originId,
     destinationId,
     departDate,
     originName,
     destinationName
-  })
+  });
+
+  try {
+    // get train routes
+    const trainRoutes = await getTrainRoutes({ originName, destinationName, departDate });
+
+    /* Return combined list */
+    routes.push(...trainRoutes);
+    // return res.json({ routes: [...trainRoutes, ...mockRoutes] }); // alternatively, can also combine and return
+
+  } catch (err) {
+    console.error("Integration Error:", err.message);
+    const mockRoutes = buildRouteSuggestions({ originId, destinationId, departDate, originName, destinationName });
+    return res.json({ routes: mockRoutes });
+  }
 
   try {
     const flights = await searchFlightsCity(originName, destinationName, departDate);
@@ -107,4 +122,4 @@ router.get('/suggestions', async (req, res) => {
   })
 })
 
-module.exports = router
+module.exports = router;

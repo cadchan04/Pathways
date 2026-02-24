@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { getRouteSuggestions, addRoute } from '../../../services/routeServices'
-import { formatTimeRange } from '../routeUtils'
+// import { formatTimeRange } from '../routeUtils'
 import './RouteOptions.css'
 
 // Sorting options can be added here
@@ -13,12 +13,22 @@ const formatDuration = (minutes) => {
   return `${hours}h ${remainder}m`
 }
 
+const formatTime = (isoString) => {
+    if (!isoString) return "N/A";
+    return new Date(isoString).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
+
 export default function RouteOptions() {
   const [searchParams] = useSearchParams()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [routes, setRoutes] = useState([])
+
+  const navigate = useNavigate();
   
   // Something like this
   //const [modeFilter, setModeFilter] = useState('All')
@@ -47,6 +57,15 @@ export default function RouteOptions() {
           destinationName,
           departDate
         })
+
+        /* uncomment to display routes in sorted order */
+        // const sortedRoutes = [...response.routes].sort((a, b) => {
+        //     const durationA = Number(a.totalDuration) || 0;
+        //     const durationB = Number(b.totalDuration) || 0;
+        //     return durationA - durationB;
+        // });
+        // setRoutes(sortedRoutes);
+
         setRoutes(response.routes)
       } catch (requestError) {
         const message = requestError.response?.data?.error || 'Could not load route suggestions.'
@@ -83,6 +102,11 @@ export default function RouteOptions() {
       }
     }
   /* ---------- DONE --------------*/
+
+  // navigate to route detail page for a specific route
+  const handleViewRoute = async (route) => {
+    navigate(`/view-route/${route}`);
+  }
 
 // Filtering and sorting to be implemented
 /*
