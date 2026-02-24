@@ -93,10 +93,10 @@
 
 .time-block {
   min-width: 120px;
-  text-align: center;
+  text-align: left;
 }
 
-.time-block-right, .time-block-right {
+.time-block-right {
   min-width: 120px;
   text-align: right;
 }
