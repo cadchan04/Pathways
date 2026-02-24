@@ -39,7 +39,7 @@ export default function CreateTrip() {
             
             if (savedTrip) {
                 console.log("Trip saved to MongoDB vai service");
-                navigate('/my-trips');
+                navigate(`/view-details/${savedTrip._id}`); 
             }
 
         } catch (err) {
