@@ -1,5 +1,5 @@
 .route-details-page {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 2rem auto;
     padding: 0 1rem;
     font-family: 'Inter', sans-serif;
@@ -31,7 +31,7 @@
 .leg-detail-card {
     border: 1px solid #e0e0e0;
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: 2.5rem;
     margin-bottom: 1.5rem;
     background: white;
 }
@@ -39,25 +39,61 @@
 .leg-path-visual {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     margin-top: 1.5rem;
+    width: 100%;
+   
+    /* The Scroll Magic */
+    overflow-x: auto;      /* Adds a scrollbar only when content overflows */
+    white-space: nowrap;   /* Prevents the browser from forcing nodes to wrap to new lines */
+    padding-bottom: 1rem;  /* Space for the scrollbar so it doesn't touch your text */
+    
+    /* Custom Scrollbar for a cleaner look */
+    scrollbar-width: thin; /* For Firefox */
 }
 
 .path-node {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 0 1rem; /* Creates 16px of space on both sides of the text */
+    justify-content: flex-start;
+    height: auto;
+    min-height: 60px;
+    max-width: 150px; /* Prevents long names from crowding the center */
+    /* padding: 0 1rem;*/ /* Creates 16px of space on both sides of the text */ 
 }
 
-.path-node:last-of-type {
+.transfer-label {
+    font-size: 0.6rem;
+    color: #e67e22; /* A subtle orange or distinct color */
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.path-node:first-of-type .path-address,
+.path-node:first-of-type .path-time {
+    text-align: left;   
+}
+
+.path-node:last-of-type .path-address,
+.path-node:last-of-type .path-time {
     text-align: right;
-    align-items: flex-end; /* Keeps the station/address aligned to the right */
 }
 
 .path-time {
     font-size: 1.25rem;
     font-weight: 700;
+    text-align: center;
+}
+
+.transfer-time {
+    font-size: 0.80rem;
+    margin-top: 4px;
+    font-weight: 700;
+    text-align: center;
 }
 
 .path-station {
@@ -73,16 +109,18 @@
     font-size: 0.85rem;
     color: #777;
     line-height: 1.4;
-    max-width: 250px;
+    /* max-width: 250px; */
+    text-align: center;
 }
 
 .path-connector {
-    flex: 0 0 180px; /* Increased from 150px to stretch the line slightly */
+    flex: 1; /* Increased from 150px to stretch the line slightly */
     display: flex;
     flex-direction: column;
     align-items: center;
     padding-top: 0.5rem;
-    margin: 0 1.5rem; /* Forces the line to stay away from the station names */
+    margin: 0 1.5rem; 
+    text-align: center;
 }
 
 .connector-line {
@@ -96,4 +134,28 @@
 .path-duration, .path-distance {
     font-size: 0.75rem;
     color: #666;
+}
+
+.leg-cost {
+    font-size: 0.9rem;
+    color: #666; 
+    font-weight: 600;
+    margin-top: 0.5rem;
+    text-align: right;
+}
+
+.leg-duration {
+    font-size: 0.9rem;
+    color: #666; 
+    font-weight: 600;
+    margin-top: 0.5rem;
+    text-align: right;
+}
+
+.leg-distance {
+    font-size: 0.9rem;
+    color: #666; 
+    font-weight: 600;
+    margin-top: 0.5rem;
+    text-align: right;
 }
