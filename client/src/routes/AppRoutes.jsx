@@ -26,10 +26,10 @@ export default function AppRoutes() {
       <Route path="/my-trips" element={<ProtectedRoute><MyTrip /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
       <Route path="/create-trip" element={<ProtectedRoute><CreateTrip /></ProtectedRoute>} />
-      <Route path="/view-details/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
+      <Route path="/view-trip-details/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
       <Route path="/create-route" element={<ProtectedRoute><CreateRoute /></ProtectedRoute>} />
       <Route path="/route-options" element={<ProtectedRoute><RouteOptions /></ProtectedRoute>} />
-      <Route path="/view-route/:id" element={<ProtectedRoute><RouteDetails /></ProtectedRoute>} />
+      <Route path="/view-route-details" element={<ProtectedRoute><RouteDetails /></ProtectedRoute>} />
 
       {/* 404 fallback */}
       <Route path="*" element={<h1>404: Page Not Found</h1>} />

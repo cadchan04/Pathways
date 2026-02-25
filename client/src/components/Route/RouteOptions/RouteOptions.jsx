@@ -83,29 +83,32 @@ export default function RouteOptions() {
   // also hardcoding route details for testing - replace with actual route details from route suggestions when integrated with choosing a route to add
   const handleAddRoute = async (route) => {
       try {
-        const addedRoute = await addRoute("699a444e75d3995896fca38b", { 
-          name: route.name || `${route.origin.name} to ${route.destination.name} route`,
+        const addedRoute = await addRoute("699e49f041dab8b4fa897e65", { 
+          name: `${originName} to ${destinationName} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
           origin: route.origin,
           destination: route.destination,
           departAt: route.departAt,
           arriveAt: route.arriveAt,
-          totalCost: route.totalCost,
-          totalDuration: route.totalDuration,
-          totalDistance: route.totalDistance,
+          // totalCost: route.totalCost,
+          // totalDuration: route.totalDuration,
+          // totalDistance: route.totalDistance,
           createdAt: new Date().toISOString(),
           editedAt: new Date().toISOString(),
+          totalDuration: Number(route.totalDuration),
+          totalDistance: Number(route.totalDistance),
+          totalCost: Number(route.totalCost),
           legs: route.legs
         })
-        //console.log("Added Route:", addedRoute)
+        console.log("Added Route:", addedRoute)
       } catch (err) {
-        console.error(err)
+        console.error("Validation Error Details:", err.response?.data)
       }
     }
   /* ---------- DONE --------------*/
 
   // navigate to route detail page for a specific route
   const handleViewRoute = async (route) => {
-    navigate(`/view-route/${route}`);
+    navigate('/view-route-details', { state: {selectedRoute: route } });
   }
 
 // Filtering and sorting to be implemented

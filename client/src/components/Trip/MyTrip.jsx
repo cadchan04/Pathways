@@ -88,7 +88,7 @@ export default function MyTrip() {
                 <div className="trip-actions">
                   <button
                     className="view-button"
-                    onClick={() => navigate(`/view-details/${trip._id}`)}
+                    onClick={() => navigate(`/view-trip-details/${trip._id}`)}
                   >
                     View Details
                   </button>
