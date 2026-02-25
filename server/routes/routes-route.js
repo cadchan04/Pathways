@@ -93,22 +93,18 @@ router.get('/suggestions', async (req, res) => {
   try {
     // get train routes
     const trainRoutes = await getTrainRoutes({ originName, destinationName, departDate });
+    // get flight routes
+    const flights = await searchFlightsCity(originName, destinationName, departDate);
 
     /* Return combined list */
     routes.push(...trainRoutes);
+    routes.push(...flights);
     // return res.json({ routes: [...trainRoutes, ...mockRoutes] }); // alternatively, can also combine and return
 
   } catch (err) {
     console.error("Integration Error:", err.message);
     const mockRoutes = buildRouteSuggestions({ originId, destinationId, departDate, originName, destinationName });
     return res.json({ routes: mockRoutes });
-  }
-
-  try {
-    const flights = await searchFlightsCity(originName, destinationName, departDate);
-    routes.push(...flights);
-  } catch (err) {
-    console.error('Error fetching flight suggestions:', err.message)
   }
 
   return res.json({

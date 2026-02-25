@@ -132,39 +132,129 @@ export default function RouteOptions() {
       {/* Change to displayedRoutes when filtering/sorting is implemented */}
       {!loading && !error && routes.length > 0 && (
         <ul className="route-options-list">
-          {routes.map((route) => ( 
-            <li key={route.id} className="route-option-card">
-             <h2>
-                {route.legs
-                  .map((leg) => {
-                    // If there are segments, repeat the mode N times
-                    if (leg.segments && leg.segments.length > 1) {
-                      return Array(leg.segments.length)
-                        .fill(leg.transportationMode)
-                        .join(" → ");
-                    }
-                    // Otherwise, just show the mode once
-                    return leg.transportationMode;
-                  }).join(" → ")}
-              </h2>
-              { (() => {
-                //show segments if they exist
-                const allSegments = route.legs.flatMap(leg => leg.segments || []);
-                if (allSegments.length < 2) return null;
-                const stops = allSegments.map(seg => seg.origin.name).join(" → ");
-                const finalDestination = allSegments[allSegments.length - 1].destination.name;
-                return <h3>{`${stops} → ${finalDestination}`}</h3>
-              })()}
-              <p>Provider: {route.legs.map(leg => leg.provider).join(', ')}</p>
-              <p>{formatTimeRange(route.departAt, route.arriveAt)}</p>
-              <p>Distance: {route.totalDistance} miles</p>
-              <p>Duration: {formatDuration(route.totalDuration)}</p>
-              <p>Stops: {route.legs.length - 1}</p>
-              <p>Estimated Cost: ${route.totalCost}</p>
-              <button className="route-option-select-button"
-               onClick={() => handleAddRoute(route)}>Select This Route</button>
-            </li>
-          ))}
+          {routes.map((route, index) => {
+            console.log(`Rendering Route ${index + 1}:`, route);
+
+            return (
+              <li key={route.id} className="route-option-card">
+                {/* Left Column: Mode and Provider */}
+                <div className="route-main-info">
+                  <h2>
+                    {route.legs.map((leg) => {
+                        // If there are segments, repeat the mode N times
+                        if (leg.segments && leg.segments.length > 1) {
+                          return Array(leg.segments.length)
+                            .fill(leg.transportationMode)
+                            .join(" → ");
+                        }
+                        // Otherwise, just show the mode once
+                        return leg.transportationMode;
+                      }).join(" → ")}
+                  </h2>
+
+                  <p>
+                    <strong>Provider: </strong> {(() => {
+                      const providers = [...new Set(route.legs.map(leg => leg.provider).filter(Boolean))];
+                      if (providers.length === 0) return "N/A";
+                      if (providers.length === 1) return providers[0];
+                      return `${providers[0]}, ...`;
+                    })()}
+                  </p>
+                </div>
+
+                {/* Middle Column: Visual Route Runway */}
+                <div className="route-visual-path">
+                  {/* <p>{formatTimeRange(route.departAt, route.arriveAt)}</p> */}
+
+                  <div className="time-block">
+                      <strong>{formatTime(route.departAt)}</strong>
+                      <p>{new Date(route.departAt).toLocaleDateString()}</p>
+                      <p className="station-subtext">{route.legs[0]?.origin?.name || "Origin"}</p>
+                  </div>
+
+                  <div className="duration-arrow">
+                    <span>
+                      {(() => {
+                          const totalMinutes = route.totalDuration;
+                          const h = Math.floor(totalMinutes / 60);
+                          const m = totalMinutes % 60;
+                          return `${h > 0 ? h + ' hr ' : ''}${m} min`;
+                      })()}
+                    </span>
+                    <hr />
+                    <span className="stop-count">
+                       {(() => {
+                        // Add segment counts and leg counts if available, otherwise fallback to leg count for stop count
+                        var stopCount = -1; // Start at -1 to not count the first leg as a stop
+                        for (let leg of route.legs) {
+                          if (leg.segments && leg.segments.length > 0) {
+                            stopCount += leg.segments.length;
+                          } else {
+                            stopCount += 1; // If no segments, each leg is a direct connection (1 stop)
+                          }
+                        }
+                        if (stopCount <= 0) return "Direct (Non-stop)";
+                        return `${stopCount} ${stopCount === 1 ? 'Stop' : 'Stops'}`;
+                      })()}
+                    </span>
+                  </div>
+
+                  <div className="time-block" style={{textAlign: "right"}}>
+                    <strong>{formatTime(route.arriveAt)}</strong>
+                    <p style={{textAlign: "right", textWrap: "balance"}}>{new Date(route.arriveAt).toLocaleDateString()}</p>
+                    <p className="station-subtext" style={{textAlign: "right"}}>{route.legs[route.legs.length - 1]?.destination?.name || "Destination"}</p>
+                  </div>
+                </div>
+
+                {/* Right Column: Key Details and Button */}
+                <div className="route-details-column">
+                  <div className="meta-stats">
+                    <p><strong>Distance: {route.totalDistance} miles</strong></p>
+
+                    <p><strong>Duration: {formatDuration(route.totalDuration)}</strong></p>
+
+                    <p>
+                      <strong>
+                        Stops: {(() => {
+                          
+                        // Add segment counts and leg counts if available, otherwise fallback to leg count for stop count
+                        var stopCount = -1; // Start at -1 to not count the first leg as a stop
+                        for (let leg of route.legs) {
+                          if (leg.segments && leg.segments.length > 0) {
+                            stopCount += leg.segments.length;
+                          } else {
+                            stopCount += 1; // If no segments, each leg is a direct connection (1 stop)
+                          }
+                        }
+                        if (stopCount <= 0) return "Direct (Non-stop)";
+                        return `${stopCount} ${stopCount === 1 ? 'Transfer' : 'Transfers'}`;
+                        })()}
+                      </strong>
+                    </p>
+
+                    <p>
+                      <strong>
+                        Estimated Cost: {"$" + (route.localizedFare
+                        ? route.localizedFare
+                        : (route.totalCost !== undefined && route.totalCost != null
+                          ? `${route.totalCost}`
+                          : "Unknown"))}
+                        </strong>
+                    </p>
+                  </div>
+
+                  <button className="route-option-select-button"onClick={() => handleAddRoute(route)}>
+                    Select This Route
+                  </button>
+
+                  <button className="route-option-details-button"onClick={() => handleViewRoute(route)}>
+                    View Route Details
+                  </button>
+
+                </div>
+              </li>
+            );
+        })}
         </ul>
       )}
 
