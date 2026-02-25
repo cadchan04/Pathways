@@ -70,15 +70,6 @@ export default function RouteOptions() {
         })
 
         setRoutes(sortedRoutes)
-        /* uncomment to display routes in sorted order */
-        // const sortedRoutes = [...response.routes].sort((a, b) => {
-        //     const durationA = Number(a.totalDuration) || 0;
-        //     const durationB = Number(b.totalDuration) || 0;
-        //     return durationA - durationB;
-        // });
-        const displayRoutes = sortedRoutes.slice(0, 20); // limit to top 5 routes
-        console.log("Sorted Routes:", displayRoutes);
-        setRoutes(displayRoutes);
 
         //setRoutes(response.routes)
       } catch (requestError) {
