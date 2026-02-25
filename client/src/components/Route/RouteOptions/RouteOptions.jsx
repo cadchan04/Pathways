@@ -47,6 +47,7 @@ export default function RouteOptions() {
       return
     }
 
+    // TODO: memoize or cache suggestions for view route details to route options to avoid unnecessary API calls
     const loadSuggestions = async () => {
       try {
         setLoading(true)
@@ -58,15 +59,17 @@ export default function RouteOptions() {
           departDate
         })
 
-        /* uncomment to display routes in sorted order */
-        // const sortedRoutes = [...response.routes].sort((a, b) => {
-        //     const durationA = Number(a.totalDuration) || 0;
-        //     const durationB = Number(b.totalDuration) || 0;
-        //     return durationA - durationB;
-        // });
-        // setRoutes(sortedRoutes);
+        const sortedRoutes = [...(response.routes || [])].sort((a, b) => {
+          const durationA = Number(a.totalDuration) || 0
+          const durationB = Number(b.totalDuration) || 0
+          if (durationA !== durationB) return durationA - durationB
 
-        setRoutes(response.routes)
+          const costA = Number(a.totalCost) || 0
+          const costB = Number(b.totalCost) || 0
+          return costA - costB
+        })
+
+        setRoutes(sortedRoutes)
       } catch (requestError) {
         const message = requestError.response?.data?.error || 'Could not load route suggestions.'
         setError(message)
