@@ -76,7 +76,7 @@ export default function RouteOptions() {
     }
 
     loadSuggestions()
-  }, [departDate, destinationId, destinationName, originId, originName ])
+  }, [departDate, destinationId, originId, originName, destinationName])
 
 /* ---------- FOR TESTING ADD ROUTE TO TRIP --------------*/
   //trip-id hardcoded for testing add route functions - replace with actual trip/route ID when integrated with choosing a trip to add/creating a new trip
