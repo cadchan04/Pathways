@@ -164,12 +164,9 @@ export default function RouteOptions() {
 
                   <p>
                     <strong>Provider: </strong> {(() => {
-                      const providers = [...new Set(route.legs.flatMap(leg => leg.provider))];
-                      if (providers.length === 0) return "N/A";
-                      if (providers.length === 1) return providers[0];
-                      if (providers.length === 2) return providers.map(p => p).join(", ");
-                      if (providers.length > 2) return `${providers[0]}, ... , ${providers[providers.length - 1]}`;
-                    })()}
+                                const providers = route.legs.flatMap(leg => leg.provider);
+                                return providers.length > 2 ? `${providers[0]}, ... , ${providers[providers.length - 1]}` : providers.join(", ");
+                            })()}
                   </p>
                 </div>
 
