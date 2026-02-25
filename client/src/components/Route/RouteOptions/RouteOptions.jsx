@@ -10,7 +10,7 @@ import './RouteOptions.css'
 const formatDuration = (minutes) => {
   const hours = Math.floor(minutes / 60)
   const remainder = minutes % 60
-  return `${hours}h ${remainder}m`
+  return hours > 0 ? `${hours}h ${remainder}m` : `${remainder}m`
 }
 
 const formatTime = (isoString) => {
@@ -58,7 +58,7 @@ export default function RouteOptions() {
           destinationName,
           departDate
         })
-
+        
         const sortedRoutes = [...(response.routes || [])].sort((a, b) => {
           const durationA = Number(a.totalDuration) || 0
           const durationB = Number(b.totalDuration) || 0
@@ -70,6 +70,17 @@ export default function RouteOptions() {
         })
 
         setRoutes(sortedRoutes)
+        /* uncomment to display routes in sorted order */
+        // const sortedRoutes = [...response.routes].sort((a, b) => {
+        //     const durationA = Number(a.totalDuration) || 0;
+        //     const durationB = Number(b.totalDuration) || 0;
+        //     return durationA - durationB;
+        // });
+        const displayRoutes = sortedRoutes.slice(0, 20); // limit to top 5 routes
+        console.log("Sorted Routes:", displayRoutes);
+        setRoutes(displayRoutes);
+
+        //setRoutes(response.routes)
       } catch (requestError) {
         const message = requestError.response?.data?.error || 'Could not load route suggestions.'
         setError(message)
@@ -148,22 +159,25 @@ export default function RouteOptions() {
                   <h2>
                     {route.legs.map((leg) => {
                         // If there are segments, repeat the mode N times
-                        if (leg.segments && leg.segments.length > 1) {
+                        if (leg.segments && leg.segments.length === 2) {
                           return Array(leg.segments.length)
                             .fill(leg.transportationMode)
                             .join(" → ");
+                        } else if (leg.segments && leg.segments.length > 2) {
+                          return `${leg.transportationMode} → ... → ${leg.transportationMode}`;
                         }
                         // Otherwise, just show the mode once
                         return leg.transportationMode;
-                      }).join(" → ")}
+                      })}
                   </h2>
 
                   <p>
                     <strong>Provider: </strong> {(() => {
-                      const providers = [...new Set(route.legs.map(leg => leg.provider).filter(Boolean))];
+                      const providers = [...new Set(route.legs.flatMap(leg => leg.provider))];
                       if (providers.length === 0) return "N/A";
                       if (providers.length === 1) return providers[0];
-                      return `${providers[0]}, ...`;
+                      if (providers.length === 2) return providers.map(p => p).join(", ");
+                      if (providers.length > 2) return `${providers[0]}, ... , ${providers[providers.length - 1]}`;
                     })()}
                   </p>
                 </div>
@@ -240,11 +254,11 @@ export default function RouteOptions() {
 
                     <p>
                       <strong>
-                        Estimated Cost: {"$" + (route.localizedFare
+                        {(route.localizedFare
                         ? route.localizedFare
                         : (route.totalCost !== undefined && route.totalCost != null
-                          ? `${route.totalCost}`
-                          : "Unknown"))}
+                          ? `Estimated Cost: $${route.totalCost}`
+                          : "Fare Not Available"))}
                         </strong>
                     </p>
                   </div>

@@ -1,18 +1,10 @@
-const express = require('express')
 const axios = require('axios')
 
-const textToNum = (text) => {
-    const numeric = text 
-        ? parseFloat(text.replace(/[^0-9.-]+/g, "")) 
-        : 0;
-    return numeric;
-}
-
-// helper function to call train routes api and return train routes data
-const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
+// helper function to call bus routes api and return bus routes data
+const getBusRoutes = async ({ originName, destinationName, departDate }) => {
     try {
-        // get real train routes from Google Routes API
-        const trainResponse = await axios.post(
+        // get real bus routes from Google Routes API
+        const busResponse = await axios.post(
             'https://routes.googleapis.com/directions/v2:computeRoutes',
             {
                 origin: { address: originName },
@@ -20,7 +12,7 @@ const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
                 travelMode: "TRANSIT",
                 computeAlternativeRoutes: true,
                 transitPreferences : {
-                    allowedTravelModes: ["TRAIN"] // filter for train only
+                    allowedTravelModes: ["BUS"] // filter for bus only
                 },
                 departureTime: new Date(departDate).toISOString()
             },
@@ -28,29 +20,23 @@ const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Goog-Api-Key': process.env.GOOGLE_ROUTES_API_KEY,
-                    'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.travelAdvisory.transitFare,routes.localizedValues.transitFare,routes.legs.steps.transitDetails.stopDetails,routes.legs.steps.transitDetails.transitLine,routes.legs.steps.staticDuration,routes.legs.steps.distanceMeters'
+                    'X-Goog-FieldMask': 'routes.duration,routes.travelAdvisory.transitFare,routes.localizedValues.transitFare,routes.legs.steps.transitDetails.stopDetails,routes.legs.steps.transitDetails.transitLine'
                 }
             }
         );
 
-        return (trainResponse.data.routes || []).map((route, index) => {
+        return (busResponse.data.routes || []).map((route, index) => {
             // extract all transit steps from first leg
             const transitSteps = route.legs?.[0]?.steps?.filter(s => s.transitDetails) || [];
-
-            if (transitSteps.length === 0) return null;
 
             // map google steps to our Leg model structure
             const mappedSegments = transitSteps.map(step => {
                 const details = step.transitDetails;
-                const stepDurationSeconds = parseInt(step.staticDuration?.replace('s', '') || 0);
+                const durationSeconds = parseInt(route.duration.replace('s', ''));
                 const depStr = details.stopDetails.departureTime;
                 const arrStr = details.stopDetails.arrivalTime;
-                const stepDistanceMiles = step.distanceMeters 
-                    ? parseFloat((step.distanceMeters * 0.000621371).toFixed(1)) 
-                    : 0;
 
                 return {
-                    provider: details.transitLine?.name || 'Amtrak',
                     origin: {
                         name: details.stopDetails.departureStop.name,
                         address: originName.split(",")[0].trim(),
@@ -69,36 +55,34 @@ const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
                     },
                     departAt: depStr ? new Date(depStr) : new Date(),
                     arriveAt: arrStr ? new Date(arrStr) : new Date(),
-                    duration: Math.round(stepDurationSeconds / 60),
-                    distance: stepDistanceMiles // TODO: additional google field masks
+                    duration: Math.round(durationSeconds / 60),
+                    provider: details.transitLine?.agencies?.[0]?.name ?? 'Local Route',
                 };
-            }).filter(Boolean); // remove null entries from final array
-
-            const totalMiles = mappedLegs.reduce((sum, leg) => sum + leg.distance, 0);
+            });
 
             return {
-                id: `train_${index}`,
+                id: `bus_${index}`,
                 isRealData: true,
-                name: `${originName.split(",")[0].trim()} to ${destinationName.split(",")[0].trim()} train route`,
+                name: `${originName.split(",")[0].trim()} to ${destinationName.split(",")[0].trim()} bus route`,
                 origin: mappedSegments[0].origin,
                 destination: mappedSegments[mappedSegments.length - 1].destination,
                 departAt: mappedSegments[0].departAt,
                 arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
                 legs: [{
-                    transportationMode: "Train",
+                    transportationMode: 'Bus',
+                    provider: mappedSegments.map(seg => seg.provider),
                     origin: mappedSegments[0].origin,
                     destination: mappedSegments[mappedSegments.length - 1].destination,
                     departAt: mappedSegments[0].departAt,
                     arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
                     segments: mappedSegments,
                     duration: mappedSegments.reduce((sum, seg) => sum + seg.duration, 0),
-                    cost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000),
-                    distance: mappedSegments.reduce((sum, seg) => sum + seg.distance, 0),
-                    provider: mappedSegments.map(s => s.provider)
-                 }],
-                totalCost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000),
+                    cost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000), // TODO: google doesn't provide cost per leg
+                    distance: 0 // TODO: calculate
+                }],
+                totalCost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000), // using localizedValues.transitFare
                 totalDuration: Math.round(parseInt(route.duration.replace('s', '')) / 60),
-                totalDistance: parseFloat(totalMiles.toFixed(1)) // TODO: calculate
+                totalDistance: 0 // TODO: calculate
             };
         });
     } catch (err) {
@@ -107,4 +91,4 @@ const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
     }
 }
 
-module.exports = { getTrainRoutes };
+module.exports = { getBusRoutes };
