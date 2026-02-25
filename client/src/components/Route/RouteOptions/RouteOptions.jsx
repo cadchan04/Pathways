@@ -97,8 +97,8 @@ export default function RouteOptions() {
   // also hardcoding route details for testing - replace with actual route details from route suggestions when integrated with choosing a route to add
   const handleAddRoute = async (route) => {
       try {
-        const addedRoute = await addRoute("699e49f041dab8b4fa897e65", { 
-          name: `${originName} to ${destinationName} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
+        const addedRoute = await addRoute("699a444e75d3995896fca38b", { 
+          name: `${originName.split(",")[0].trim()} to ${destinationName.split(",")[0].trim()} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
           origin: route.origin,
           destination: route.destination,
           departAt: route.departAt,

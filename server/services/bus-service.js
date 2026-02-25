@@ -20,7 +20,7 @@ const getBusRoutes = async ({ originName, destinationName, departDate }) => {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Goog-Api-Key': process.env.GOOGLE_ROUTES_API_KEY,
-                    'X-Goog-FieldMask': 'routes.duration,routes.travelAdvisory.transitFare,routes.localizedValues.transitFare,routes.legs.steps.transitDetails.stopDetails,routes.legs.steps.transitDetails.transitLine'
+                    'X-Goog-FieldMask': 'routes.duration,routes.travelAdvisory.transitFare,routes.localizedValues.transitFare,routes.legs.steps.transitDetails.stopDetails,routes.legs.steps.transitDetails.transitLine,routes.legs.steps.staticDuration,routes.legs.steps.distanceMeters'
                 }
             }
         );
@@ -32,9 +32,10 @@ const getBusRoutes = async ({ originName, destinationName, departDate }) => {
             // map google steps to our Leg model structure
             const mappedSegments = transitSteps.map(step => {
                 const details = step.transitDetails;
-                const durationSeconds = parseInt(route.duration.replace('s', ''));
                 const depStr = details.stopDetails.departureTime;
                 const arrStr = details.stopDetails.arrivalTime;
+                const stepDistanceMiles = step.distanceMeters ? parseFloat((step.distanceMeters * 0.000621371).toFixed(1)) : 0;
+                const stepDurationSeconds = parseInt(step.staticDuration?.replace('s', '') || 0);
 
                 return {
                     origin: {
@@ -55,7 +56,8 @@ const getBusRoutes = async ({ originName, destinationName, departDate }) => {
                     },
                     departAt: depStr ? new Date(depStr) : new Date(),
                     arriveAt: arrStr ? new Date(arrStr) : new Date(),
-                    duration: Math.round(durationSeconds / 60),
+                    duration: Math.round(stepDurationSeconds / 60),
+                    distance: stepDistanceMiles,
                     provider: details.transitLine?.agencies?.[0]?.name ?? 'Local Route',
                 };
             });
@@ -78,11 +80,11 @@ const getBusRoutes = async ({ originName, destinationName, departDate }) => {
                     segments: mappedSegments,
                     duration: mappedSegments.reduce((sum, seg) => sum + seg.duration, 0),
                     cost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000), // TODO: google doesn't provide cost per leg
-                    distance: 0 // TODO: calculate
+                    distance: mappedSegments.reduce((sum, seg) => sum + seg.distance, 0)
                 }],
                 totalCost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000), // using localizedValues.transitFare
                 totalDuration: Math.round(parseInt(route.duration.replace('s', '')) / 60),
-                totalDistance: 0 // TODO: calculate
+                totalDistance: parseFloat(mappedSegments.reduce((sum, seg) => sum + seg.distance, 0).toFixed(1)) // TODO: calculate
             };
         });
     } catch (err) {

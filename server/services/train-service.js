@@ -74,7 +74,7 @@ const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
                 };
             }).filter(Boolean); // remove null entries from final array
 
-            const totalMiles = mappedLegs.reduce((sum, leg) => sum + leg.distance, 0);
+            const totalMiles = mappedSegments.reduce((sum, leg) => sum + leg.distance, 0);
 
             return {
                 id: `train_${index}`,

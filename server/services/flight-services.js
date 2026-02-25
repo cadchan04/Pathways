@@ -42,6 +42,7 @@ async function searchFlightsCity(origin, destination, departDate) {
 
             return {
                 id: `flight_${index}`,
+                isRealData: true,
                 name: `${cleanOrigin} to ${cleanDestination} flight`,
                 origin: {
                     name: firstSegment.origin.iata_code,
