@@ -7,6 +7,7 @@ const segmentSchema = new mongoose.Schema({
   departAt: { type: Date, required: true },
   arriveAt: { type: Date, required: true },
   duration: { type: Number, required: true }, // duration in minutes
+  distance: { type: Number, default: 0 },
   provider: { type: String } // Optional: e.g., airline, bus company, etc.
 }, { _id: false });
 
