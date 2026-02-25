@@ -84,17 +84,19 @@ export default function RouteOptions() {
   const handleAddRoute = async (route) => {
       try {
         const addedRoute = await addRoute("699a444e75d3995896fca38b", { 
-          name: `${originName} to ${destinationName} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
+          name: route.name || `${route.origin.name} to ${route.destination.name} route`,
           origin: route.origin,
           destination: route.destination,
           departAt: route.departAt,
           arriveAt: route.arriveAt,
+          totalCost: route.totalCost,
           totalDuration: route.totalDuration,
           totalDistance: route.totalDistance,
-          totalCost: route.totalCost,
+          createdAt: new Date().toISOString(),
+          editedAt: new Date().toISOString(),
           legs: route.legs
         })
-        console.log("Added Route:", addedRoute)
+        //console.log("Added Route:", addedRoute)
       } catch (err) {
         console.error(err)
       }
@@ -137,7 +139,18 @@ export default function RouteOptions() {
               <li key={route.id} className="route-option-card">
                 {/* Left Column: Mode and Provider */}
                 <div className="route-main-info">
-                  <h2>{route.legs.map(leg => leg.transportationMode).join(' → ')}</h2>
+                  <h2>
+                    {route.legs.map((leg) => {
+                        // If there are segments, repeat the mode N times
+                        if (leg.segments && leg.segments.length > 1) {
+                          return Array(leg.segments.length)
+                            .fill(leg.transportationMode)
+                            .join(" → ");
+                        }
+                        // Otherwise, just show the mode once
+                        return leg.transportationMode;
+                      }).join(" → ")}
+                  </h2>
 
                   <p>
                     <strong>Provider: </strong> {(() => {
@@ -170,7 +183,19 @@ export default function RouteOptions() {
                     </span>
                     <hr />
                     <span className="stop-count">
-                        {route.legs.length <= 1 ? "Direct" : `${route.legs.length - 1} transfer${route.legs.length > 2 ? 's' : ''}`}
+                       {(() => {
+                        // Add segment counts and leg counts if available, otherwise fallback to leg count for stop count
+                        var stopCount = -1; // Start at -1 to not count the first leg as a stop
+                        for (let leg of route.legs) {
+                          if (leg.segments && leg.segments.length > 0) {
+                            stopCount += leg.segments.length;
+                          } else {
+                            stopCount += 1; // If no segments, each leg is a direct connection (1 stop)
+                          }
+                        }
+                        if (stopCount <= 0) return "Direct (Non-stop)";
+                        return `${stopCount} ${stopCount === 1 ? 'Stop' : 'Stops'}`;
+                      })()}
                     </span>
                   </div>
 
@@ -191,20 +216,29 @@ export default function RouteOptions() {
                     <p>
                       <strong>
                         Stops: {(() => {
-                          const transferCount = route.legs.length - 1;
-                          if (transferCount <= 0) return "Direct (Non-stop)";
-                          return `${transferCount} ${transferCount === 1 ? 'Transfer' : 'Transfers'}`;
+                          
+                        // Add segment counts and leg counts if available, otherwise fallback to leg count for stop count
+                        var stopCount = -1; // Start at -1 to not count the first leg as a stop
+                        for (let leg of route.legs) {
+                          if (leg.segments && leg.segments.length > 0) {
+                            stopCount += leg.segments.length;
+                          } else {
+                            stopCount += 1; // If no segments, each leg is a direct connection (1 stop)
+                          }
+                        }
+                        if (stopCount <= 0) return "Direct (Non-stop)";
+                        return `${stopCount} ${stopCount === 1 ? 'Transfer' : 'Transfers'}`;
                         })()}
                       </strong>
                     </p>
 
                     <p>
                       <strong>
-                        Estimated Cost: {route.localizedFare
+                        Estimated Cost: {"$" + (route.localizedFare
                         ? route.localizedFare
                         : (route.totalCost !== undefined && route.totalCost != null
                           ? `${route.totalCost}`
-                          : "Unknown")}
+                          : "Unknown"))}
                         </strong>
                     </p>
                   </div>
