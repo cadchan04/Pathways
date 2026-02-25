@@ -136,23 +136,12 @@ export default function RouteDetails() {
                                     </div>
                                 </>
                             )}
-                            {/* <div className="path-node">
-                                <span className="path-time">{formatTime(leg.departAt)}</span>
-                                <span className="path-address">{leg.origin.address}</span>
-                            </div>
-
-                            <div className="path-connector">
-                                <span className="path-duration">{formatDuration(leg.duration)}</span>
-                                <div className="connector-line"></div>
-                                <span className="path-distance">{leg.distance} mi</span>
-                            </div>
-
-                            <div className="path-node">
-                                <span className="path-time">{formatTime(leg.arriveAt)}</span>
-                                <span className="path-address">{leg.destination.address}</span>
-                            </div> */}
                         </div>
+                        <div className='leg-cost'> Cost: {leg.cost ? `$${leg.cost}` : 'Unknown'} </div>
+                        <div className='leg-distance'> Distance: {leg.distance} mi </div>
+                        <div className='leg-duration'> Duration: {formatDuration(leg.duration)} </div>
                     </div>
+                    
                 ))}
             </div>
 
