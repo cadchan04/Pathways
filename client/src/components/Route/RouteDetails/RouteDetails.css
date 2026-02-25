@@ -45,7 +45,6 @@
    
     /* The Scroll Magic */
     overflow-x: auto;      /* Adds a scrollbar only when content overflows */
-    white-space: nowrap;   /* Prevents the browser from forcing nodes to wrap to new lines */
     padding-bottom: 1rem;  /* Space for the scrollbar so it doesn't touch your text */
     
     /* Custom Scrollbar for a cleaner look */
@@ -59,6 +58,7 @@
     justify-content: flex-start;
     height: auto;
     min-height: 60px;
+    min-width: 140px;
     max-width: 150px; /* Prevents long names from crowding the center */
     /* padding: 0 1rem;*/ /* Creates 16px of space on both sides of the text */ 
 }
