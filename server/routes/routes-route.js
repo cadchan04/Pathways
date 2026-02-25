@@ -3,10 +3,11 @@ const axios = require('axios')
 const {
   searchLocations,
   validateSuggestionsQuery,
-  buildRouteSuggestions
+  //buildRouteSuggestions
 } = require('../services/mock-routes-service')
 const { searchFlightsCity } = require('../services/flight-services')
 const { getTrainRoutes } = require('../services/train-service');
+const { getDrivingRoutes } = require('../services/driving-service')
 
 const router = express.Router()
 
@@ -80,30 +81,29 @@ router.get('/suggestions', async (req, res) => {
   if (validationError) {
     return res.status(400).json({ error: validationError })
   }
-
-  const routes = buildRouteSuggestions({ 
-    originId,
-    destinationId,
-    departDate,
-    originName,
-    destinationName
-  });
+  
+  const routes = []
 
   try {
+    // get personal driving routes
+    const drivingRoutes = await getDrivingRoutes({ originName, destinationName, departDate })
     // get train routes
     const trainRoutes = await getTrainRoutes({ originName, destinationName, departDate });
     // get flight routes
     const flights = await searchFlightsCity(originName, destinationName, departDate);
 
     /* Return combined list */
-    routes.push(...trainRoutes);
-    routes.push(...flights);
+    routes.push(...drivingRoutes)
+    routes.push(...trainRoutes)
+    routes.push(...flights)
     // return res.json({ routes: [...trainRoutes, ...mockRoutes] }); // alternatively, can also combine and return
 
   } catch (err) {
-    console.error("Integration Error:", err.message);
-    const mockRoutes = buildRouteSuggestions({ originId, destinationId, departDate, originName, destinationName });
-    return res.json({ routes: mockRoutes });
+    console.error("Integration Error:", err.message)
+    return res.status(502).json({
+      error: 'Route providers are currently unavailable. Please try again later.',
+      routes: []
+    })
   }
 
   return res.json({
