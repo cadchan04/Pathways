@@ -43,4 +43,21 @@ router.get("/:auth0Id", async (req, res) => {
   }
 });
 
+router.put("/:auth0Id", async (req, res) => {
+  try {
+    const { name, notificationEnabled } = req.body;
+
+    const user = await User.findOneAndUpdate(
+      { auth0Id: req.params.auth0Id },
+      { name, notificationEnabled },
+      { new: true }
+    );
+
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;

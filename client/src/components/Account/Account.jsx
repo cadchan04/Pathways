@@ -1,60 +1,65 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import './Profile.css'
 
 function Account() {
   const { user, logout } = useAuth0();
-  const [notificationPreference, setNotificationPreference] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [dbUser, setDbUser] = useState(null);
 
   useEffect(() => {
+    if (!user?.sub) return;
+
     const fetchUser = async () => {
-      try {
-        const res = await fetch(`http://localhost:8080/api/user/${user.sub}`);
-        const data = await res.json();
-        setNotificationPreference(data.notificationEnabled);
-      } catch (err) {
-        console.error(err);
-      }
+      const res = await fetch(`http://localhost:8080/api/user/${user.sub}`);
+      const data = await res.json();
+      setDbUser(data);
     };
 
     fetchUser();
-  }, [user]);
+  }, [user, location.state]);
 
   return (
-    <div>
-        <h2>Account</h2>
-        {/* <p>You can change your account settings here. ⚙️</p> */}
-        <div>
-          <p><strong>Name:</strong> {user?.name}</p>
-          <p><strong>Email:</strong> {user?.email}</p>
-          <p>
-            <strong>Notifications:</strong>{' '}
-            {notificationPreference ? 'On' : 'Off'}
-          </p>
+    <section className="profile-page">
+      <h1>Profile</h1>
+      <p>View your account details.</p>
+
+      <div className="profile-card">
+        <div className="profile-field">
+          <label><strong>Name</strong></label>
+          <p>{dbUser?.name}</p>
         </div>
 
-        <button onClick={() =>
-          logout({
-            logoutParams: { returnTo: window.location.origin }
-          })
-        }
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "200px",
-          padding: "12px",
-          backgroundColor: "#348ea8", /* navbar color */
-          color: "white",
-          border: "none",
-          borderRadius: "6px",
-          fontSize: "16px",
-          cursor: "pointer"
-        }}
-      >
-        Log Out
-      </button>
-    </div>
+        <div className="profile-field">
+          <label><strong>Email</strong></label>
+          <p>{dbUser?.email}</p>
+        </div>
+
+        <div className="profile-field">
+          <label><strong>Notifications</strong></label>
+          <p>{dbUser?.notificationEnabled ? 'On' : 'Off'}</p>
+        </div>
+      </div>
+
+      <div className="profile-actions">
+        <button onClick={() => navigate('/edit-profile')}>
+          Edit Profile
+        </button>
+
+        <button
+          className="logout-button"
+          onClick={() =>
+            logout({
+              logoutParams: { returnTo: window.location.origin }
+            })
+          }
+        >
+          Log Out
+        </button>
+      </div>
+    </section>
   )
 }
 export default Account
