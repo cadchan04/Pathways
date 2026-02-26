@@ -10,7 +10,7 @@ import './RouteOptions.css'
 const formatDuration = (minutes) => {
   const hours = Math.floor(minutes / 60)
   const remainder = minutes % 60
-  return `${hours}h ${remainder}m`
+  return hours > 0 ? `${hours}h ${remainder}m` : `${remainder}m`
 }
 
 const formatTime = (isoString) => {
@@ -58,7 +58,7 @@ export default function RouteOptions() {
           destinationName,
           departDate
         })
-
+        
         const sortedRoutes = [...(response.routes || [])].sort((a, b) => {
           const durationA = Number(a.totalDuration) || 0
           const durationB = Number(b.totalDuration) || 0
@@ -70,6 +70,8 @@ export default function RouteOptions() {
         })
 
         setRoutes(sortedRoutes)
+
+        //setRoutes(response.routes)
       } catch (requestError) {
         const message = requestError.response?.data?.error || 'Could not load route suggestions.'
         setError(message)
@@ -86,8 +88,8 @@ export default function RouteOptions() {
   // also hardcoding route details for testing - replace with actual route details from route suggestions when integrated with choosing a route to add
   const handleAddRoute = async (route) => {
       try {
-        const addedRoute = await addRoute("699e49f041dab8b4fa897e65", { 
-          name: `${originName} to ${destinationName} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
+        const addedRoute = await addRoute("699a444e75d3995896fca38b", { 
+          name: `${originName.split(",")[0].trim()} to ${destinationName.split(",")[0].trim()} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
           origin: route.origin,
           destination: route.destination,
           departAt: route.departAt,
@@ -148,23 +150,23 @@ export default function RouteOptions() {
                   <h2>
                     {route.legs.map((leg) => {
                         // If there are segments, repeat the mode N times
-                        if (leg.segments && leg.segments.length > 1) {
+                        if (leg.segments && leg.segments.length === 2) {
                           return Array(leg.segments.length)
                             .fill(leg.transportationMode)
                             .join(" → ");
+                        } else if (leg.segments && leg.segments.length > 2) {
+                          return `${leg.transportationMode} → ... → ${leg.transportationMode}`;
                         }
                         // Otherwise, just show the mode once
                         return leg.transportationMode;
-                      }).join(" → ")}
+                      })}
                   </h2>
 
                   <p>
                     <strong>Provider: </strong> {(() => {
-                      const providers = [...new Set(route.legs.map(leg => leg.provider).filter(Boolean))];
-                      if (providers.length === 0) return "N/A";
-                      if (providers.length === 1) return providers[0];
-                      return `${providers[0]}, ...`;
-                    })()}
+                                const providers = route.legs.flatMap(leg => leg.provider);
+                                return providers.length > 2 ? `${providers[0]}, ... , ${providers[providers.length - 1]}` : providers.join(", ");
+                            })()}
                   </p>
                 </div>
 
@@ -240,11 +242,11 @@ export default function RouteOptions() {
 
                     <p>
                       <strong>
-                        Estimated Cost: {"$" + (route.localizedFare
+                        {(route.localizedFare
                         ? route.localizedFare
                         : (route.totalCost !== undefined && route.totalCost != null
-                          ? `${route.totalCost}`
-                          : "Unknown"))}
+                          ? `Estimated Cost: $${route.totalCost}`
+                          : "Fare Not Available"))}
                         </strong>
                     </p>
                   </div>

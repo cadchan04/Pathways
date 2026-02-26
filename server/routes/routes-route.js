@@ -95,12 +95,15 @@ router.get('/suggestions', async (req, res) => {
     const trainRoutes = await getTrainRoutes({ originName, destinationName, departDate });
     // get flight routes
     const flights = await searchFlightsCity(originName, destinationName, departDate);
+    // get bus routes
+    const busRoutes = await getBusRoutes({ originName, destinationName, departDate });
 
     /* Return combined list */
     routes.push(...drivingRoutes)
     routes.push(...rideshareRoutes)
     routes.push(...trainRoutes)
     routes.push(...flights)
+    routes.push(...busRoutes);
     // return res.json({ routes: [...trainRoutes, ...mockRoutes] }); // alternatively, can also combine and return
 
   } catch (err) {

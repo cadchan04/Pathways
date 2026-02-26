@@ -1,0 +1,75 @@
+.profile-page {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.profile-page h1 {
+  margin-bottom: 0.4rem;
+}
+
+.profile-card,
+.profile-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.profile-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.profile-actions button {
+  padding: 0.55rem 1rem;
+  font-size: 0.95rem;
+  width: fit-content;
+  min-width: 180px;
+}
+
+.profile-field select {
+  padding: 0.55rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: white;
+}
+
+.profile-field input[type="text"] {
+  padding: 0.55rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.profile-actions {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.profile-actions button,
+.profile-form button {
+  padding: 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: #4fa3b7;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.profile-actions button:hover,
+.profile-form button:hover {
+  opacity: 0.9;
+}
+
+.logout-button {
+  background: #777;
+}
+
+.profile-success {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #2e7d32;
+}

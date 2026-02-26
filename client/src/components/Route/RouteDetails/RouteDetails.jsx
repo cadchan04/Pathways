@@ -1,4 +1,5 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom';
+import React from 'react';
 
 import './RouteDetails.css';
 
@@ -22,11 +23,21 @@ export default function RouteDetails() {
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
 
-        const hoursPart = hours > 0 ? `${hours} hr ` : "";
-        const minutesPart = minutes > 0 ? `${minutes} min` : "";
+        const hoursPart = hours > 0 ? `${hours}h ` : "";
+        const minutesPart = minutes > 0 ? `${minutes}m` : "";
         
         return (hoursPart + minutesPart).trim();
     };
+
+    const layoverTime = (segment1, segment2) => {
+        if (!segment1 || !segment2) return 0;
+
+        const arrivalTime1 = new Date(segment1.arriveAt);
+        const departureTime2 = new Date(segment2.departAt);
+
+        const layoverMinutes = (departureTime2 - arrivalTime1) / (1000 * 60);
+        return layoverMinutes > 0 ? layoverMinutes.toFixed(0) : 0;
+    }
 
 
     if (!route) {
@@ -59,27 +70,78 @@ export default function RouteDetails() {
                     <div key={index} className="leg-detail-card">
                         <div className="leg-header">
                             <h3>Leg {index + 1}: {leg.transportationMode}</h3>
-                            <span className="leg-provider">{leg.provider}</span>
+                            <span>Provider: </span> {(() => {
+                                const providers = route.legs.flatMap(leg => leg.provider);
+                                return providers.length > 0 ? providers.join(" → ") : "N/A";
+                            })()}
                         </div>
 
                         <div className="leg-path-visual">
-                            <div className="path-node">
-                                <span className="path-time">{formatTime(leg.departAt)}</span>
-                                <span className="path-address">{leg.origin.address}</span>
-                            </div>
+                            {leg.segments && leg.segments.length > 0 ? (
+                                // MULTI-SEGMENT
+                                leg.segments.map((seg, index) => {
+                                    const prevSegment = index > 0 ? leg.segments[index - 1] : null;
+                                    const transferMinutes = prevSegment ? layoverTime(prevSegment, seg) : null;
+                                    return (
+                                        <React.Fragment key={`seg-node-${index}`}>
+                                            <div className="path-node">
+                                                {/* If this is a transfer segment (not the first segment and has a layover), show transfer label and both times */}
+                                                {transferMinutes !== null && (
+                                                    <>
+                                                        <span className="transfer-label">
+                                                            {transferMinutes} transfer
+                                                        </span>
+                                                        <span className="transfer-time">{formatTime(seg.arriveAt)} / {formatTime(seg.departAt)}</span>
+                                                        <span className="path-address">{seg.origin.name}</span>
+                                                    </>
+                                                )}
+                                                {transferMinutes === null && (
+                                                    <>
+                                                        <span className="path-time">{formatTime(seg.departAt)}</span>
+                                                        <span className="path-address">{seg.origin.name}</span>
+                                                    </>
+                                                )}
+                                            </div>
 
-                            <div className="path-connector">
-                                <span className="path-duration">{formatDuration(leg.duration)}</span>
-                                <div className="connector-line"></div>
-                                <span className="path-distance">{leg.distance} mi</span>
-                            </div>
+                                        <div className="path-connector">
+                                            <span className="path-duration">{formatDuration(seg.duration)}</span>
+                                            <div className="connector-line"></div>
+                                        </div>
 
-                            <div className="path-node">
-                                <span className="path-time">{formatTime(leg.arriveAt)}</span>
-                                <span className="path-address">{leg.destination.address}</span>
-                            </div>
+                                        {index === leg.segments.length - 1 && (
+                                            <div className="path-node">
+                                                <span className="path-time">{formatTime(seg.arriveAt)}</span>
+                                                <span className="path-address">{seg.destination.name}</span>
+                                            </div>
+                                        )}
+                                    </React.Fragment>
+                                )})
+                            ) : (
+                                // FALLBACK: SINGLE LEG (No Segments)
+                                <>
+                                    <div className="path-node">
+                                        <span className="path-time">{formatTime(leg.departAt)}</span>
+                                        <span className="path-address">{leg.origin.address}</span>
+                                    </div>
+
+                                    <div className="path-connector">
+                                        <span className="path-duration">{formatDuration(leg.duration)}</span>
+                                        <div className="connector-line"></div>
+                                        <span className="path-distance">{leg.distance} mi</span>
+                                    </div>
+
+                                    <div className="path-node">
+                                        <span className="path-time">{formatTime(leg.arriveAt)}</span>
+                                        <span className="path-address">{leg.destination.address}</span>
+                                    </div>
+                                </>
+                            )}
                         </div>
+                        <div className='leg-cost'> Cost: {leg.cost ? `$${leg.cost}` : 'Unknown'} </div>
+                        <div className='leg-distance'> Distance: {leg.distance} mi </div>
+                        <div className='leg-duration'> Duration: {formatDuration(leg.duration)} </div>
                     </div>
+                    
                 ))}
             </div>
 
