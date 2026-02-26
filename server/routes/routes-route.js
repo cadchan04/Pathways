@@ -8,6 +8,8 @@ const {
 const { searchFlightsCity } = require('../services/flight-services')
 const { getTrainRoutes } = require('../services/train-service');
 const { getDrivingRoutes } = require('../services/driving-service')
+const { getBusRoutes } = require('../services/bus-service');
+const { getEstimatedRideshareRoutes } = require('../services/rideshare-estimate-service')
 
 const router = express.Router()
 
@@ -87,6 +89,8 @@ router.get('/suggestions', async (req, res) => {
   try {
     // get personal driving routes
     const drivingRoutes = await getDrivingRoutes({ originName, destinationName, departDate })
+    // build estimated rideshare routes from driving metrics
+    const rideshareRoutes = getEstimatedRideshareRoutes({ drivingRoutes })
     // get train routes
     const trainRoutes = await getTrainRoutes({ originName, destinationName, departDate });
     // get flight routes
@@ -94,6 +98,7 @@ router.get('/suggestions', async (req, res) => {
 
     /* Return combined list */
     routes.push(...drivingRoutes)
+    routes.push(...rideshareRoutes)
     routes.push(...trainRoutes)
     routes.push(...flights)
     // return res.json({ routes: [...trainRoutes, ...mockRoutes] }); // alternatively, can also combine and return
