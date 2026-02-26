@@ -1,8 +1,12 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth0 } from '@auth0/auth0-react';
 import './Navbar.css';
 
 const Navbar = () => {
+  const navigate = useNavigate();
+  const { logout } = useAuth0();
+  
   return (
     <nav className="navbar">
       <div className="navbar-left">
@@ -18,9 +22,27 @@ const Navbar = () => {
           <li>
             <Link to="/my-trips">My Trips</Link>
           </li>
-          <li>
-            <Link to="/account">Account</Link>
-          </li>
+        <li className="account-wrapper">
+          <span className="account-link">
+            Account
+          </span>
+
+          <div className="account-dropdown">
+            <button onClick={() => navigate('/account')}>
+              Profile
+            </button>
+
+            <button
+              onClick={() =>
+                logout({
+                  logoutParams: { returnTo: window.location.origin }
+                })
+              }
+            >
+              Log Out
+            </button>
+          </div>
+        </li>
         </ul>
       </div>
     </nav>

@@ -6,6 +6,10 @@ const UserSchema = new mongoose.Schema({
   email: { type: String },
   name: { type: String },
   picture: { type: String },
+  notificationEnabled: {
+    type: Boolean,
+    default: true
+  },
   createdAt: { type: Date, default: Date.now }
 });
 

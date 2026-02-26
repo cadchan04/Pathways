@@ -48,3 +48,75 @@
 .navbar-right .nav-links li a:hover {
   text-decoration: underline;
 }
+
+.account-link {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.account-link:hover {
+  text-decoration: underline;
+}
+
+.account-wrapper {
+  position: relative;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: 130%;
+  right: 0;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 0.4rem 0;
+  min-width: 160px;
+
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: all 0.18s ease;
+
+  z-index: 2000;
+}
+
+.account-wrapper:hover .account-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.account-dropdown button {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0.65rem 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.account-dropdown button:hover {
+  background: #e6f4f8;
+  color: #348ea8;
+}
+
+.account-dropdown::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 18px;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  transform: rotate(45deg);
+  box-shadow: -2px -2px 5px rgba(0,0,0,0.05);
+}
