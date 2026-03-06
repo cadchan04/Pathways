@@ -79,7 +79,7 @@
     border-left: 6px solid #3fa8c6; /* accent bar */
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between;
     align-items: center;
     transition: transform 0.2s ease;
 }
@@ -102,4 +102,22 @@
 .route-info p {
     margin: 0;
     color: #666;
+}
+
+.delete-button {
+    width: auto;
+    align-self: auto;
+    padding: 8px 24px;
+    background-color: #e63946;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.delete-button:hover {
+    background-color: #c5303b;
 }
