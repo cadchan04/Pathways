@@ -70,18 +70,32 @@ const getBusRoutes = async ({ originName, destinationName, departDate }) => {
                 destination: mappedSegments[mappedSegments.length - 1].destination,
                 departAt: mappedSegments[0].departAt,
                 arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
-                legs: [{
+                // legs: [{
+                //     transportationMode: 'Bus',
+                //     provider: mappedSegments.map(seg => seg.provider),
+                //     origin: mappedSegments[0].origin,
+                //     destination: mappedSegments[mappedSegments.length - 1].destination,
+                //     departAt: mappedSegments[0].departAt,
+                //     arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
+                //     segments: mappedSegments,
+                //     duration: mappedSegments.reduce((sum, seg) => sum + seg.duration, 0),
+                //     cost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000), // TODO: google doesn't provide cost per leg
+                //     distance: mappedSegments.reduce((sum, seg) => sum + seg.distance, 0)
+                // }],
+                legs: mappedSegments.map(seg => ({
                     transportationMode: 'Bus',
-                    provider: mappedSegments.map(seg => seg.provider),
-                    origin: mappedSegments[0].origin,
-                    destination: mappedSegments[mappedSegments.length - 1].destination,
-                    departAt: mappedSegments[0].departAt,
-                    arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
-                    segments: mappedSegments,
-                    duration: mappedSegments.reduce((sum, seg) => sum + seg.duration, 0),
-                    cost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000), // TODO: google doesn't provide cost per leg
-                    distance: mappedSegments.reduce((sum, seg) => sum + seg.distance, 0)
-                }],
+                    provider: seg.provider,
+                    origin: seg.origin,
+                    destination: seg.destination,
+                    departAt: seg.departAt,
+                    arriveAt: seg.arriveAt,
+                    duration: seg.duration,
+                    distance: seg.distance,
+                    cost: (
+                        Number(route.travelAdvisory?.transitFare?.units || 0) +
+                        Number((route.travelAdvisory?.transitFare?.nanos || 0) / 1000000000)
+                    ) / mappedSegments.length
+                })),
                 totalCost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000), // using localizedValues.transitFare
                 totalDuration: Math.round(parseInt(route.duration.replace('s', '')) / 60),
                 totalDistance: parseFloat(mappedSegments.reduce((sum, seg) => sum + seg.distance, 0).toFixed(1)) // TODO: calculate

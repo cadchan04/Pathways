@@ -13,7 +13,7 @@ export const getSearchLocations = async (query) => {
   return response.data
 }
 
-export const getRouteSuggestions = async ({ originId, originName, destinationId, destinationName, departDate}) => {
+export const getRouteSuggestions = async ({ originId, originName, destinationId, destinationName, departDate }) => {
   const response = await axios.get(`${API_URL}/api/routes/suggestions`, {
     params: {
       originId,
@@ -28,32 +28,49 @@ export const getRouteSuggestions = async ({ originId, originName, destinationId,
 }
 
 export const testApiCall = () => {
-    return axios.get(`${API_URL}/api-test`)
-        .then(res => res.data)
-        .catch(err => console.error(err))
+  return axios.get(`${API_URL}/api-test`)
+    .then(res => res.data)
+    .catch(err => console.error(err))
 }
 
 export const addRoute = async (tripId, routeData) => {
-    console.log("Adding route with data:", routeData)
-    return await axios.post(`${API_URL}/api/trips/${tripId}/routes/`, routeData)
-        .then(res => res.data)
-        .catch(err => console.error(err))
+  console.log("Adding route with data:", routeData)
+  return await axios.post(`${API_URL}/api/trips/${tripId}/routes/`, routeData)
+    .then(res => res.data)
+    .catch(err => console.error(err))
 }
 
 export const getRoutes = async (tripId) => {
-    return await axios.get(`${API_URL}/api/trips/${tripId}/routes/`)
-        .then(res => res.data)
-        .catch(err => console.error(err))
+  return await axios.get(`${API_URL}/api/trips/${tripId}/routes/`)
+    .then(res => res.data)
+    .catch(err => console.error(err))
 }
 
 export const getLegs = async (tripId, routeId) => {
-    return await axios.get(`${API_URL}/api/trips/${tripId}/routes/${routeId}/legs/`)
-        .then(res => res.data)
-        .catch(err => console.error(err))
+  return await axios.get(`${API_URL}/api/trips/${tripId}/routes/${routeId}/legs/`)
+    .then(res => res.data)
+    .catch(err => console.error(err))
 }
 
 export const updateLeg = async (tripId, routeId, legId, legData) => {
-    return await axios.patch(`${API_URL}/api/trips/${tripId}/routes/${routeId}/legs/${legId}`, legData)
-        .then(res => res.data)
-        .catch(err => console.error(err))
+  return await axios.patch(`${API_URL}/api/trips/${tripId}/routes/${routeId}/legs/${legId}`, legData)
+    .then(res => res.data)
+    .catch(err => console.error(err))
+}
+
+export const getMultiModalRoutes = async ({ origin, destination, date }) => {
+  try {
+
+    const response = await axios.post(`${API_URL}/api/routes/multimodal`, {
+      origin,
+      destination,
+      date
+    })
+
+    return response.data
+
+  } catch (err) {
+    console.error("Error fetching multimodal routes:", err)
+    return []
+  }
 }

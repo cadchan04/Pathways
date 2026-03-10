@@ -2,8 +2,8 @@ const express = require('express')
 const axios = require('axios')
 
 const textToNum = (text) => {
-    const numeric = text 
-        ? parseFloat(text.replace(/[^0-9.-]+/g, "")) 
+    const numeric = text
+        ? parseFloat(text.replace(/[^0-9.-]+/g, ""))
         : 0;
     return numeric;
 }
@@ -19,7 +19,7 @@ const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
                 destination: { address: destinationName },
                 travelMode: "TRANSIT",
                 computeAlternativeRoutes: true,
-                transitPreferences : {
+                transitPreferences: {
                     allowedTravelModes: ["TRAIN"] // filter for train only
                 },
                 departureTime: new Date(departDate).toISOString()
@@ -40,28 +40,37 @@ const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
             if (transitSteps.length === 0) return null;
 
             // map google steps to our Leg model structure
+            const cityFromStopName = (stopName) => {
+                if (!stopName) return "";
+                const s = String(stopName).trim();
+                const beforeDash = s.split(/\s*[-–]\s*/)[0].trim();
+                return (beforeDash || s.split(/\s+/)[0] || "").trim();
+            };
+
             const mappedSegments = transitSteps.map(step => {
                 const details = step.transitDetails;
                 const stepDurationSeconds = parseInt(step.staticDuration?.replace('s', '') || 0);
                 const depStr = details.stopDetails.departureTime;
                 const arrStr = details.stopDetails.arrivalTime;
-                const stepDistanceMiles = step.distanceMeters 
-                    ? parseFloat((step.distanceMeters * 0.000621371).toFixed(1)) 
+                const stepDistanceMiles = step.distanceMeters
+                    ? parseFloat((step.distanceMeters * 0.000621371).toFixed(1))
                     : 0;
+                const depStopName = details.stopDetails.departureStop?.name || "";
+                const arrStopName = details.stopDetails.arrivalStop?.name || "";
 
                 return {
                     provider: details.transitLine?.name || 'Amtrak',
                     origin: {
-                        name: details.stopDetails.departureStop.name,
-                        address: originName.split(",")[0].trim(),
+                        name: depStopName,
+                        address: cityFromStopName(depStopName) || originName.split(",")[0].trim(),
                         coordinates: {
                             lat: details.stopDetails.departureStop.location.latLng.latitude,
                             lng: details.stopDetails.departureStop.location.latLng.longitude
                         }
                     },
                     destination: {
-                        name: details.stopDetails.arrivalStop.name,
-                        address: destinationName.split(",")[0].trim(),
+                        name: arrStopName,
+                        address: cityFromStopName(arrStopName) || destinationName.split(",")[0].trim(),
                         coordinates: {
                             lat: details.stopDetails.arrivalStop.location.latLng.latitude,
                             lng: details.stopDetails.arrivalStop.location.latLng.longitude
@@ -84,18 +93,32 @@ const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
                 destination: mappedSegments[mappedSegments.length - 1].destination,
                 departAt: mappedSegments[0].departAt,
                 arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
-                legs: [{
+                // legs: [{
+                //     transportationMode: "Train",
+                //     origin: mappedSegments[0].origin,
+                //     destination: mappedSegments[mappedSegments.length - 1].destination,
+                //     departAt: mappedSegments[0].departAt,
+                //     arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
+                //     segments: mappedSegments,
+                //     duration: mappedSegments.reduce((sum, seg) => sum + seg.duration, 0),
+                //     cost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000),
+                //     distance: mappedSegments.reduce((sum, seg) => sum + seg.distance, 0),
+                //     provider: mappedSegments.map(s => s.provider)
+                //  }],
+                legs: mappedSegments.map(seg => ({
                     transportationMode: "Train",
-                    origin: mappedSegments[0].origin,
-                    destination: mappedSegments[mappedSegments.length - 1].destination,
-                    departAt: mappedSegments[0].departAt,
-                    arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
-                    segments: mappedSegments,
-                    duration: mappedSegments.reduce((sum, seg) => sum + seg.duration, 0),
-                    cost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000),
-                    distance: mappedSegments.reduce((sum, seg) => sum + seg.distance, 0),
-                    provider: mappedSegments.map(s => s.provider)
-                 }],
+                    provider: seg.provider,
+                    origin: seg.origin,
+                    destination: seg.destination,
+                    departAt: seg.departAt,
+                    arriveAt: seg.arriveAt,
+                    duration: seg.duration,
+                    distance: seg.distance,
+                    cost: (
+                        Number(route.travelAdvisory?.transitFare?.units || 0) +
+                        Number((route.travelAdvisory?.transitFare?.nanos || 0) / 1000000000)
+                    ) / mappedSegments.length
+                })),
                 totalCost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000),
                 totalDuration: Math.round(parseInt(route.duration.replace('s', '')) / 60),
                 totalDistance: parseFloat(totalMiles.toFixed(1)) // TODO: calculate

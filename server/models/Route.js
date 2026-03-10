@@ -9,7 +9,7 @@ const routeSchema = new mongoose.Schema({
   departAt: { type: Date, required: true },
   arriveAt: { type: Date, required: true },
   legs: [{ type: legSchema, required: true }],
-  totalCost: { type: Number, defaiult: null },
+  totalCost: { type: Number, default: null },
   totalDuration: { type: Number, required: true }, // duration in minutes
   totalDistance: { type: Number, required: true },
   createdAt: { type: Date, default: Date.now },

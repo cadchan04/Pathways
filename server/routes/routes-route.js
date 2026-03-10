@@ -9,6 +9,7 @@ const { searchFlightsCity } = require('../services/flight-services')
 const { getTrainRoutes } = require('../services/train-service');
 const { getDrivingRoutes } = require('../services/driving-service')
 const { getBusRoutes } = require('../services/bus-service');
+const { multiModalRoutes } = require("../services/multi-modal-service")
 
 const router = express.Router()
 
@@ -82,7 +83,7 @@ router.get('/suggestions', async (req, res) => {
   if (validationError) {
     return res.status(400).json({ error: validationError })
   }
-  
+
   const routes = []
 
   try {
@@ -120,6 +121,32 @@ router.get('/suggestions', async (req, res) => {
     },
     routes
   })
+})
+
+router.post("/multimodal", async (req, res) => {
+
+  try {
+
+    const { origin, destination, date } = req.body
+
+    const routes = await multiModalRoutes(
+      origin,
+      destination,
+      date
+    )
+
+    res.json(routes)
+
+  } catch (err) {
+
+    console.error(err)
+
+    res.status(500).json({
+      error: "Failed to generate routes"
+    })
+
+  }
+
 })
 
 module.exports = router;
