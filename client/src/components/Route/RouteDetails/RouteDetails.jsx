@@ -71,7 +71,9 @@ export default function RouteDetails() {
                         <div className="leg-header">
                             <h3>Leg {index + 1}: {leg.transportationMode}</h3>
                             <span>Provider: </span> {(() => {
-                                const providers = route.legs.flatMap(leg => leg.provider);
+                                const providers = Array.isArray(leg.provider)
+                                  ? leg.provider
+                                  : (leg.provider ? [leg.provider] : []);
                                 return providers.length > 0 ? providers.join(" → ") : "N/A";
                             })()}
                         </div>
@@ -121,7 +123,7 @@ export default function RouteDetails() {
                                 <>
                                     <div className="path-node">
                                         <span className="path-time">{formatTime(leg.departAt)}</span>
-                                        <span className="path-address">{leg.origin.address}</span>
+                                        <span className="path-address">{leg.origin.name}</span>
                                     </div>
 
                                     <div className="path-connector">
@@ -132,7 +134,7 @@ export default function RouteDetails() {
 
                                     <div className="path-node">
                                         <span className="path-time">{formatTime(leg.arriveAt)}</span>
-                                        <span className="path-address">{leg.destination.address}</span>
+                                        <span className="path-address">{leg.destination.name}</span>
                                     </div>
                                 </>
                             )}
