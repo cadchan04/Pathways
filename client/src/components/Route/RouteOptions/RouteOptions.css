@@ -2,10 +2,18 @@
   max-width: 1200px;
   margin: 0 auto;
   text-align: left;
+  position: relative;
 }
 
 .route-options-header h1 {
   margin-bottom: 0.4rem;
+}
+
+.route-options-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
 }
 
 .route-options-controls {
@@ -176,4 +184,49 @@
 .route-options-back-link {
   display: inline-block;
   margin-top: 1rem;
+}
+
+.weather-box {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  width: 180px;
+  text-align: center;
+}
+
+.weather-destination {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.weather-main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.weather-icon {
+  font-size: 1.8rem;
+}
+
+.weather-temp {
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+.weather-date {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 4px;
+}
+
+.weather-precip {
+  font-size: 0.8rem;
+  color: #444;
+  margin-top: 2px;
 }

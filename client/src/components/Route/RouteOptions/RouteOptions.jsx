@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { getRouteSuggestions, addRoute } from '../../../services/routeServices'
 // import { formatTimeRange } from '../routeUtils'
 import './RouteOptions.css'
+import { getWeatherForecast } from '../../../services/weatherServices';
+
 
 // Sorting options can be added here
 // const sortOptions = [] 
@@ -21,12 +23,34 @@ const formatTime = (isoString) => {
     });
 };
 
+function getWeatherDescription(code) {
+  const map = {
+    0: { text: "Clear", icon: "☀️" },
+    1: { text: "Mostly Clear", icon: "🌤️" },
+    2: { text: "Partly Cloudy", icon: "⛅" },
+    3: { text: "Overcast", icon: "☁️" },
+    45: { text: "Fog", icon: "🌫️" },
+    48: { text: "Fog", icon: "🌫️" },
+    51: { text: "Light Drizzle", icon: "🌦️" },
+    61: { text: "Light Rain", icon: "🌧️" },
+    71: { text: "Snow", icon: "❄️" },
+    80: { text: "Rain Showers", icon: "🌧️" },
+    95: { text: "Thunderstorm", icon: "⛈️" }
+  };
+
+  return map[code] || { text: "Unknown", icon: "❓" };
+}
+
 export default function RouteOptions() {
   const [searchParams] = useSearchParams()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [routes, setRoutes] = useState([])
+  const [weather, setWeather] = useState(null);
+  const [weatherError, setWeatherError] = useState('');
+  const desc = weather ? getWeatherDescription(weather.weatherCode) : null;
+
 
   const navigate = useNavigate();
   
@@ -116,6 +140,36 @@ export default function RouteOptions() {
     navigate('/view-route-details', { state: {selectedRoute: route } });
   }
 
+  // Weather
+  useEffect(() => {
+    if (!routes.length || !departDate) return;
+  
+    const destination = routes[0].destination || routes[0].legs[routes[0].legs.length - 1].destination;
+  
+    const lat = destination?.coordinates?.lat;
+    const lon = destination?.coordinates?.lng;
+  
+    console.log("Weather coords:", lat, lon);
+  
+    if (!lat || !lon) {
+      setWeatherError("Weather unavailable");
+      return;
+    }
+  
+    const loadWeather = async () => {
+      try {
+        const forecast = await getWeatherForecast(lat, lon, departDate);
+        setWeather(forecast);
+      } catch (err) {
+        console.error("Weather error:", err);
+        setWeatherError("Weather unavailable");
+      }
+    };
+  
+    loadWeather();
+  }, [routes, departDate]);
+  
+  
 // Filtering and sorting to be implemented
 /*
   const availableModes = useMemo()
@@ -124,12 +178,42 @@ export default function RouteOptions() {
 
   return (
     <section className="route-options-page">
-      <header className="route-options-header">
-        <h1>Route Suggestions</h1>
-        <p>
-          {originName} to {destinationName} on {departDate}
+<header className="route-options-header">
+  <div className="header-left">
+    <h1>Route Suggestions</h1>
+    <p>{originName} to {destinationName} on {departDate}</p>
+  </div>
+
+  <div className="header-right">
+    {weather && weather.weatherCode !== undefined && (
+      <div className="weather-box">
+        <p className="weather-destination">
+          {destinationName.split(",").slice(0, 2).join(",")}
         </p>
-      </header>
+
+        <div className="weather-main">
+          <span className="weather-icon">{desc.icon}</span>
+          <span className="weather-temp">{weather.highTemp}°F</span>
+        </div>
+
+        <p className="weather-precip">{weather.precipitation}% chance of rain</p>
+
+        <p className="weather-date">
+          {new Date(departDate + "T00:00").toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric"
+        })}
+        </p>
+      </div>
+    )}
+
+    {weatherError && (
+      <div className="weather-box">
+        <p>{weatherError}</p>
+      </div>
+    )}
+  </div>
+</header>
 
       {/* Implement filter and sorting */}
       
