@@ -193,14 +193,16 @@ export default function RouteOptions() {
 
         <div className="weather-main">
           <span className="weather-icon">{desc.icon}</span>
-          <span className="weather-temp">{weather.temperature}°F</span>
+          <span className="weather-temp">{weather.highTemp}°F</span>
         </div>
 
+        <p className="weather-precip">{weather.precipitation}% chance of rain</p>
+
         <p className="weather-date">
-          {new Date(departDate).toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric"
-          })}
+          {new Date(departDate + "T00:00").toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric"
+        })}
         </p>
       </div>
     )}
