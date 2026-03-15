@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getTripById } from '../../services/tripServices';
+import { deleteRoute } from '../../services/routeServices';
 
 import './TripDetails.css';
 
@@ -10,6 +11,10 @@ export default function TripDetails() {
     const navigate = useNavigate();
     const [trip, setTrip] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    // Delete confirmation state
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [routeToDelete, setRouteToDelete] = useState(null);
 
     useEffect(() => {
         const fetchTripDetails = async () => {
@@ -81,6 +86,15 @@ export default function TripDetails() {
                                             {route.origin?.name || "Unknown Origin"} to {route.destination?.name || "Unknown Destination"}
                                         </p>
                                     </div>
+                                    <button
+                                        className="delete-button"
+                                        onClick={async () => {
+                                            setRouteToDelete(route);
+                                            setShowConfirm(true);
+                                        }}
+                                    >
+                                        Delete Route
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -89,6 +103,31 @@ export default function TripDetails() {
                     <p>No routes added to this trip yet.</p>
                 )}
             </div>
+            
+            {/* Confirmation Popup */}
+            {showConfirm && (
+                <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center" }} >
+                <div style={{ background: "white", padding: "20px", borderRadius: "8px", width: "300px", textAlign: "center" }} >
+                    <h3>Confirm Delete</h3>
+                    <p>Delete “{routeToDelete?.name}”?</p>
+
+                    <button style={{ background: "#e63946", color: "white", padding: "10px", border: "none", borderRadius: "6px", marginRight: "10px", cursor: "pointer" }} onClick={async () => {
+                        await deleteRoute(trip._id, routeToDelete._id);
+                        const updatedTrip = await getTripById(trip._id);
+                        setTrip(updatedTrip);
+                        setShowConfirm(false);
+                    }}
+                    >
+                    Confirm
+                    </button>
+
+                    <button style={{ padding: "10px", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer" }} onClick={() => setShowConfirm(false)}
+                    >
+                    Cancel
+                    </button>
+                </div>
+                </div>
+            )}
         </div>
     )
 }

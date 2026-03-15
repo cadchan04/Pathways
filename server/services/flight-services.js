@@ -30,9 +30,11 @@ async function searchFlightsCity(origin, destination, departDate) {
             });
 
         // If we want to get rid of the "fake" offers from api that are there for safety, we can filter them out like this:
-        const realOffers = response.data.data.offers.filter(
+        const noSafties = response.data.data.offers.filter(
             offer => offer.owner.iata_code !== 'ZZ'
         );
+
+        const realOffers = filterCheapestPerFlight(noSafties);
 
         return realOffers.map((offer, index) => {
             const segments = offer.slices[0].segments;
@@ -167,5 +169,20 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const miles = km * 0.621371; // Convert to miles
     return parseFloat(miles.toFixed(1)); // Round to 1 decimal place
 };
+
+// Take only the cheapest offer for each unique flight (The api will return multiple offers with different prices based on baggage, status, etc.)
+const filterCheapestPerFlight = (offers) => {
+    const cheapestOffers = {};
+  
+    offers.forEach(offer => {
+        const routeKey = offer.slices[0].segments.map(seg => `${seg.operating_carrier.name}${seg.operating_carrier_flight_number}`).join('-'); //create key based on info of flight
+  
+        if (!cheapestOffers[routeKey] || parseFloat(offer.total_amount) < parseFloat(cheapestOffers[routeKey].total_amount)) {
+            cheapestOffers[routeKey] = offer;
+        }
+    });
+  
+    return Object.values(cheapestOffers);
+}
 
 module.exports = { searchFlightsCity };

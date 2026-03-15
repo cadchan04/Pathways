@@ -91,7 +91,7 @@ export default function RouteDetails() {
                                                 {transferMinutes !== null && (
                                                     <>
                                                         <span className="transfer-label">
-                                                            {transferMinutes} transfer
+                                                            {formatDuration(transferMinutes)} transfer
                                                         </span>
                                                         <span className="transfer-time">{formatTime(seg.arriveAt)} / {formatTime(seg.departAt)}</span>
                                                         <span className="path-address">{seg.origin.name}</span>

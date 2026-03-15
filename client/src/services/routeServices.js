@@ -46,6 +46,13 @@ export const getRoutes = async (tripId) => {
     .catch(err => console.error(err))
 }
 
+// delete a route from a trip
+export const deleteRoute = async (tripId, routeId) => {
+    return await axios.delete(`${API_URL}/api/trips/${tripId}/routes/${routeId}/`)
+        .then(res => res.data)
+        .catch(err => console.error(err))
+}
+
 export const getLegs = async (tripId, routeId) => {
   return await axios.get(`${API_URL}/api/trips/${tripId}/routes/${routeId}/legs/`)
     .then(res => res.data)
