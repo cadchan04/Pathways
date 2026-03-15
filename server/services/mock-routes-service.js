@@ -190,5 +190,6 @@ module.exports = {
   validateSuggestionsQuery,
   buildRouteSuggestions,
   isValidDateString,
-  getTodayDateString
+  getTodayDateString,
+  resolveLocation
 }

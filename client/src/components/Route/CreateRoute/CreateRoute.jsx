@@ -152,8 +152,14 @@ export default function CreateRoute() {
     const query = new URLSearchParams({
       originId: origin.id,
       originName: origin.name,
+      originLat: origin.coordinates.lat,
+      originLng: origin.coordinates.lng,
+
       destinationId: destination.id,
       destinationName: destination.name,
+      destinationLat: destination.coordinates.lat,
+      destinationLng: destination.coordinates.lng,
+
       departDate
     })
 
