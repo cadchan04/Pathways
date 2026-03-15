@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { getRouteSuggestions, addRoute, getMultiModalRoutes } from '../../../services/routeServices'
-// import { formatTimeRange } from '../routeUtils'
 import './RouteOptions.css'
 
-// Sorting options can be added here
-// const sortOptions = [] 
 
 const formatDuration = (minutes) => {
   const hours = Math.floor(minutes / 60)
@@ -53,18 +50,9 @@ export default function RouteOptions() {
       return
     }
 
-    // TODO: memoize or cache suggestions for view route details to route options to avoid unnecessary API calls
     const loadSuggestions = async () => {
       try {
         setLoading(true)
-        // const response = await getRouteSuggestions({
-        //   originId,
-        //   originName,
-        //   destinationId,
-        //   destinationName,
-        //   departDate
-        // })
-
         const response = await getMultiModalRoutes({
           origin: {
             name: originName,
@@ -102,7 +90,6 @@ export default function RouteOptions() {
 
         setRoutes(sortedRoutes)
 
-        //setRoutes(response.routes)
       } catch (requestError) {
         const message = requestError.response?.data?.error || 'Could not load route suggestions.'
         setError(message)
@@ -114,9 +101,6 @@ export default function RouteOptions() {
     loadSuggestions()
   }, [departDate, destinationId, originId, originName, destinationName])
 
-  /* ---------- FOR TESTING ADD ROUTE TO TRIP --------------*/
-  //trip-id hardcoded for testing add route functions - replace with actual trip/route ID when integrated with choosing a trip to add/creating a new trip
-  // also hardcoding route details for testing - replace with actual route details from route suggestions when integrated with choosing a route to add
   const handleAddRoute = async (route) => {
     try {
       const addedRoute = await addRoute("699a444e75d3995896fca38b", {
@@ -125,9 +109,6 @@ export default function RouteOptions() {
         destination: route.destination,
         departAt: route.departAt,
         arriveAt: route.arriveAt,
-        // totalCost: route.totalCost,
-        // totalDuration: route.totalDuration,
-        // totalDistance: route.totalDistance,
         createdAt: new Date().toISOString(),
         editedAt: new Date().toISOString(),
         totalDuration: Number(route.totalDuration),
@@ -140,7 +121,6 @@ export default function RouteOptions() {
       console.error("Validation Error Details:", err.response?.data)
     }
   }
-  /* ---------- DONE --------------*/
 
   // navigate to route detail page for a specific route
   const handleViewRoute = async (route) => {

@@ -93,18 +93,6 @@ const getTrainRoutes = async ({ originName, destinationName, departDate }) => {
                 destination: mappedSegments[mappedSegments.length - 1].destination,
                 departAt: mappedSegments[0].departAt,
                 arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
-                // legs: [{
-                //     transportationMode: "Train",
-                //     origin: mappedSegments[0].origin,
-                //     destination: mappedSegments[mappedSegments.length - 1].destination,
-                //     departAt: mappedSegments[0].departAt,
-                //     arriveAt: mappedSegments[mappedSegments.length - 1].arriveAt,
-                //     segments: mappedSegments,
-                //     duration: mappedSegments.reduce((sum, seg) => sum + seg.duration, 0),
-                //     cost: Number(route.travelAdvisory?.transitFare?.units) + Number(route.travelAdvisory?.transitFare?.nanos / 1000000000),
-                //     distance: mappedSegments.reduce((sum, seg) => sum + seg.distance, 0),
-                //     provider: mappedSegments.map(s => s.provider)
-                //  }],
                 legs: mappedSegments.map(seg => ({
                     transportationMode: "Train",
                     provider: seg.provider,

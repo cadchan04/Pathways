@@ -150,11 +150,6 @@ export default function CreateRoute() {
     setErrors({})
 
     const query = new URLSearchParams({
-      // originId: origin.id,
-      // originName: origin.name,
-      // destinationId: destination.id,
-      // destinationName: destination.name,
-      // departDate
       originId: origin.id,
       originName: origin.name,
       originLat: origin.coordinates.lat,

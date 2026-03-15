@@ -105,17 +105,45 @@ const PROXIMITY_SNAP_MILES = 3.5;
 const ORIGIN_DEST_RADIUS_MILES = 75;
 const MAX_DRIVING_MINUTES = 4 * 60;
 
+const MIN_BUFFER_BEFORE_FLIGHT_MINUTES = 90;
+
+const US_HUBS = [
+    { name: "Atlanta", coordinates: { lat: 33.6407, lng: -84.4277 }, address: "Atlanta, GA" },
+    { name: "Boston", coordinates: { lat: 42.3656, lng: -71.0096 }, address: "Boston, MA" },
+    { name: "Charlotte", coordinates: { lat: 35.2144, lng: -80.9473 }, address: "Charlotte, NC" },
+    { name: "Chicago", coordinates: { lat: 41.9742, lng: -87.9073 }, address: "Chicago, IL" },
+    { name: "Dallas", coordinates: { lat: 32.8968, lng: -97.038 }, address: "Dallas, TX" },
+    { name: "Denver", coordinates: { lat: 39.8617, lng: -104.6731 }, address: "Denver, CO" },
+    { name: "Detroit", coordinates: { lat: 42.2124, lng: -83.3534 }, address: "Detroit, MI" },
+    { name: "Houston", coordinates: { lat: 29.9902, lng: -95.3368 }, address: "Houston, TX" },
+    { name: "Indianapolis", coordinates: { lat: 39.7684, lng: -86.1581 }, address: "Indianapolis, IN" },
+    { name: "Las Vegas", coordinates: { lat: 36.084, lng: -115.1537 }, address: "Las Vegas, NV" },
+    { name: "Los Angeles", coordinates: { lat: 33.9425, lng: -118.4081 }, address: "Los Angeles, CA" },
+    { name: "Miami", coordinates: { lat: 25.7959, lng: -80.287 }, address: "Miami, FL" },
+    { name: "Minneapolis", coordinates: { lat: 44.882, lng: -93.2218 }, address: "Minneapolis, MN" },
+    { name: "Newark", coordinates: { lat: 40.6895, lng: -74.1745 }, address: "Newark, NJ" },
+    { name: "Orlando", coordinates: { lat: 28.4312, lng: -81.3081 }, address: "Orlando, FL" },
+    { name: "Phoenix", coordinates: { lat: 33.4341, lng: -112.008 }, address: "Phoenix, AZ" },
+    { name: "San Francisco", coordinates: { lat: 37.6213, lng: -122.379 }, address: "San Francisco, CA" },
+    { name: "Seattle", coordinates: { lat: 47.4502, lng: -122.3088 }, address: "Seattle, WA" },
+    { name: "Washington", coordinates: { lat: 38.8512, lng: -77.0402 }, address: "Washington, DC" }
+];
+
+const FETCH_HUB_NAMES = ["Atlanta", "Chicago", "Dallas", "Denver", "Los Angeles", "Newark"];
+
 const TRANSFER_BUFFER_MINUTES = {
     "Flight->Train": 60,
     "Flight->Bus": 60,
     "Train->Train": 30,
     "Train->Bus": 30,
+    "Train->Flight": MIN_BUFFER_BEFORE_FLIGHT_MINUTES,
     "Bus->Train": 30,
     "Bus->Bus": 30,
-    "Driving->Flight": 45,
+    "Bus->Flight": MIN_BUFFER_BEFORE_FLIGHT_MINUTES,
+    "Driving->Flight": Math.max(45, MIN_BUFFER_BEFORE_FLIGHT_MINUTES),
     "Driving->Train": 45,
     "Driving->Bus": 45,
-    "Rideshare->Flight": 45,
+    "Rideshare->Flight": Math.max(45, MIN_BUFFER_BEFORE_FLIGHT_MINUTES),
     "Rideshare->Train": 45,
     "Rideshare->Bus": 45
 };
@@ -123,41 +151,173 @@ const TRANSFER_BUFFER_MINUTES = {
 function getTransferBufferMs(prevMode, nextMode) {
     if (!prevMode || !nextMode) return 0;
     const key = `${prevMode}->${nextMode}`;
-    const minutes = TRANSFER_BUFFER_MINUTES[key];
-    return (minutes ?? 30) * 60 * 1000;
+    let minutes = TRANSFER_BUFFER_MINUTES[key] ?? 30;
+    if (nextMode === "Flight" && prevMode !== "Flight") {
+        minutes = Math.max(minutes, MIN_BUFFER_BEFORE_FLIGHT_MINUTES);
+    }
+    return minutes * 60 * 1000;
 }
 
 function computeDynamicHubs(legPool, origin, destination, maxHubs = 8) {
     const counts = new Map();
-  
+
     for (const leg of legPool) {
-      const from = getHubKey(leg.origin);
-      const to = getHubKey(leg.destination);
-      if (from && from !== getHubKey(origin) && from !== getHubKey(destination)) {
-        counts.set(from, (counts.get(from) || 0) + 1);
-      }
-      if (to && to !== getHubKey(origin) && to !== getHubKey(destination)) {
-        counts.set(to, (counts.get(to) || 0) + 1);
-      }
+        const from = getHubKey(leg.origin);
+        const to = getHubKey(leg.destination);
+        if (from && from !== getHubKey(origin) && from !== getHubKey(destination)) {
+            counts.set(from, (counts.get(from) || 0) + 1);
+        }
+        if (to && to !== getHubKey(origin) && to !== getHubKey(destination)) {
+            counts.set(to, (counts.get(to) || 0) + 1);
+        }
     }
-  
+
     return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])       // most-used cities first
-      .slice(0, maxHubs)                 // cap how many hubs we consider
-      .map(([city]) => city);            // just return the city names
-  }
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, maxHubs)
+        .map(([city]) => city);
+}
+
+function isSamePlaceByName(locA, locB) {
+    const nameA = (locA?.name ?? "").toString().trim().toLowerCase();
+    const nameB = (locB?.name ?? "").toString().trim().toLowerCase();
+    if (nameA === "" || nameB === "") return false;
+    return nameA === nameB;
+}
+
+/** If a leg's destination name is not the same as the next leg's origin name, insert a rideshare/driving leg between them. */
+async function fillTransferGaps(routes, date) {
+    const out = [];
+    for (const route of routes) {
+        const legs = route.legs || [];
+        if (legs.length <= 1) {
+            out.push(route);
+            continue;
+        }
+        const newLegs = [];
+        for (let i = 0; i < legs.length; i++) {
+            newLegs.push(legs[i]);
+            if (i === legs.length - 1) break;
+            const prev = legs[i];
+            const next = legs[i + 1];
+            if (isSamePlaceByName(prev.destination, next.origin)) continue;
+            if (next.transportationMode === "Driving") continue;
+
+            const MIN_RIDESHARE_DISTANCE_MILES = 1;
+            let distMiles = 0;
+            if (prev.destination?.coordinates && next.origin?.coordinates) {
+                distMiles = haversine(prev.destination.coordinates, next.origin.coordinates);
+            }
+            if (distMiles < MIN_RIDESHARE_DISTANCE_MILES) continue;
+
+            const fromName = (prev.destination?.name || prev.destination?.address || "").toString().trim();
+            const toName = (next.origin?.name || next.origin?.address || "").toString().trim();
+            const prevArrive = new Date(prev.arriveAt).getTime();
+            const departDateStr = new Date(prevArrive).toISOString().split("T")[0];
+
+            let driveLeg = null;
+            try {
+                const drivingRoutes = await drivingService.getDrivingRoutes({
+                    originName: fromName,
+                    destinationName: toName,
+                    departDate: departDateStr
+                });
+                const firstDrive = drivingRoutes[0]?.legs?.[0];
+                const legDistance = firstDrive?.distance ?? distMiles;
+                if (firstDrive && (firstDrive.duration || 0) <= MAX_DRIVING_MINUTES && legDistance >= MIN_RIDESHARE_DISTANCE_MILES) {
+                    const durationMin = firstDrive.duration || 0;
+                    const arriveAt = new Date(prevArrive + durationMin * 60000).toISOString();
+                    driveLeg = {
+                        transportationMode: "Rideshare",
+                        provider: "Rideshare",
+                        origin: prev.destination,
+                        destination: next.origin,
+                        departAt: new Date(prevArrive).toISOString(),
+                        arriveAt,
+                        duration: durationMin,
+                        distance: legDistance,
+                        cost: firstDrive.cost || 0
+                    };
+                }
+            } catch (_) { }
+            if (!driveLeg && prev.destination?.coordinates && next.origin?.coordinates && distMiles >= MIN_RIDESHARE_DISTANCE_MILES) {
+                const durationMin = Math.min(MAX_DRIVING_MINUTES, Math.round(distMiles / 0.5) + 15);
+                const arriveAt = new Date(prevArrive + durationMin * 60000).toISOString();
+                driveLeg = {
+                    transportationMode: "Rideshare",
+                    provider: "Rideshare",
+                    origin: prev.destination,
+                    destination: next.origin,
+                    departAt: new Date(prevArrive).toISOString(),
+                    arriveAt,
+                    duration: durationMin,
+                    distance: Math.round(distMiles * 10) / 10,
+                    cost: Math.round(distMiles * 0.5)
+                };
+            }
+            if (driveLeg) newLegs.push(driveLeg);
+        }
+
+        const first = newLegs[0];
+        const last = newLegs[newLegs.length - 1];
+        const totalDurationMinutes = Math.round(
+            (new Date(last.arriveAt).getTime() - new Date(first.departAt).getTime()) / 60000
+        );
+        const totalDistance = newLegs.reduce((s, l) => s + (l.distance || 0), 0);
+        const totalCost = newLegs.reduce((s, l) => s + (l.cost || 0), 0);
+        const modeSequence = newLegs.map(l => l.transportationMode).join("->");
+
+        out.push({
+            ...route,
+            legs: newLegs,
+            totalDuration: totalDurationMinutes,
+            totalDistance,
+            totalCost,
+            arriveAt: last.arriveAt,
+            modeSequence
+        });
+    }
+    return out;
+}
+
+/** Return a single route object for direct driving origin → destination, or null. */
+async function getDirectDrivingRoute(origin, destination, date) {
+    const dateStr = typeof date === "string" ? date.split("T")[0] : new Date(date).toISOString().split("T")[0];
+    try {
+        const routes = await drivingService.getDrivingRoutes({
+            originName: origin?.name || origin?.address,
+            destinationName: destination?.name || destination?.address,
+            departDate: dateStr
+        });
+        const r = routes[0];
+        if (!r?.legs?.length) return null;
+        const first = r.legs[0];
+        const last = r.legs[r.legs.length - 1];
+        return {
+            origin: r.origin || first.origin,
+            destination: r.destination || last.destination,
+            legs: r.legs,
+            totalCost: r.totalCost || 0,
+            totalDuration: r.totalDuration || 0,
+            totalDistance: r.totalDistance || 0,
+            departAt: first.departAt,
+            arriveAt: last.arriveAt,
+            modeSequence: "Driving",
+            signature: `Driving-${first.departAt}-${last.arriveAt}`
+        };
+    } catch (_) {
+        return null;
+    }
+}
 
 async function multiModalRoutes(origin, destination, date) {
-    console.log("\n========== EXECUTING STRATEGIC MULTIMODAL ENGINE ==========");
+    // console.log("\nmultimodalRoutes");
 
     if (primaryCity(origin?.name) === primaryCity(destination?.name)) {
-        console.log("[Data] Origin and destination are same city – skipping to avoid invalid fetches");
         return [];
     }
 
-    // Seed hubs we always consider as potential waypoints; we’ll later
-    // supplement this with dynamic hubs computed from real legs.
-    const waypointSeeds = ["Atlanta", "Chicago", "Charlotte", "Orlando", "Miami"];
+    const waypointSeeds = FETCH_HUB_NAMES;
     const fetchTasks = [];
     const seenQueries = new Set();
 
@@ -179,12 +339,22 @@ async function multiModalRoutes(origin, destination, date) {
         addQuery(hub, destination.name);
     });
 
-    const results = await Promise.allSettled(fetchTasks);
+    const FETCH_BATCH_SIZE = 1;
+    const FETCH_BATCH_DELAY_MS = 2000;
+    const results = [];
+    for (let i = 0; i < fetchTasks.length; i += FETCH_BATCH_SIZE) {
+        const batch = fetchTasks.slice(i, i + FETCH_BATCH_SIZE);
+        const batchResults = await Promise.allSettled(batch);
+        results.push(...batchResults);
+        if (i + FETCH_BATCH_SIZE < fetchTasks.length) {
+            await new Promise(r => setTimeout(r, FETCH_BATCH_DELAY_MS));
+        }
+    }
     const legPool = results
         .filter(r => r.status === 'fulfilled')
         .flatMap(r => r.value);
 
-    console.log(`[Data] Total Legs in Pool: ${legPool.length}`);
+    // console.log(`Total Legs in Pool: ${legPool.length}`);
 
     await enrichLegPoolWithCityAddresses(legPool);
 
@@ -192,15 +362,13 @@ async function multiModalRoutes(origin, destination, date) {
         const mode = leg.transportationMode || "Unknown";
         m[mode] = (m[mode] || 0) + 1;
         return m;
-      }, {});
-      console.log("[Debug] Leg counts by mode:", byMode);
+    }, {});
+    // console.log("Leg counts by mode:", byMode);
 
     const hubs = addMajorHubs(extractHubsByAddress(legPool));
 
-    // After legPool is built & enriched, compute dynamic hubs for debugging
-    // and future tuning (not yet used for additional provider queries).
     const dynamicHubs = computeDynamicHubs(legPool, origin, destination);
-    console.log("[Debug] dynamic hub cities:", dynamicHubs);
+    // console.log("dynamic hub cities:", dynamicHubs);
 
     const [firstMile, lastMile] = await Promise.all([
         createTargetedDrivingEdges(origin, hubs, date, "origin"),
@@ -208,18 +376,25 @@ async function multiModalRoutes(origin, destination, date) {
     ]);
 
     const allEdges = [...legPool, ...firstMile, ...lastMile];
-    console.log(`[Graph] Build Complete. Total Edges: ${allEdges.length}`);
+    // console.log(`Build Complete. Total Edges: ${allEdges.length}`);
 
     const edgeModes = allEdges.reduce((m, leg) => {
         const mode = leg.transportationMode || "Unknown";
         m[mode] = (m[mode] || 0) + 1;
         return m;
     }, {});
-    console.log("[Debug] Edge counts by mode:", edgeModes);
+    // console.log("Edge counts by mode:", edgeModes);
 
     const paths = findPathsAStar(allEdges, origin, destination, date);
 
-    return formatAndRank(paths, origin, destination);
+    let routes = formatAndRank(paths, origin, destination);
+
+    routes = await fillTransferGaps(routes, date);
+
+    const drivingOnly = await getDirectDrivingRoute(origin, destination, date);
+    if (drivingOnly) routes = [drivingOnly, ...routes];
+
+    return routes;
 }
 
 function findPathsAStar(edges, origin, destination, date) {
@@ -311,20 +486,17 @@ function findPathsAStar(edges, origin, destination, date) {
         }
     }
 
-    console.log("[Debug] A* finalPaths:", finalPaths.length);
+    // console.log("A* finalPaths:", finalPaths.length);
     const pathModeSignatures = finalPaths.slice(0, 10).map(p =>
         (p.legs || []).map(l => l.transportationMode).join("->")
     );
-    console.log("[Debug] Sample path mode sequences:", pathModeSignatures);
 
-    // Extra debug: full distribution of mode sequences,
-    // and a small detailed dump of the first few multimodal paths.
     const modeSeqCounts = finalPaths.reduce((acc, p) => {
         const seq = (p.legs || []).map(l => l.transportationMode).join("->") || "EMPTY";
         acc[seq] = (acc[seq] || 0) + 1;
         return acc;
     }, {});
-    console.log("[Debug] A* mode sequence counts:", modeSeqCounts);
+    // console.log("A* mode sequence counts:", modeSeqCounts);
 
     const multiModalSamples = finalPaths
         .filter(p => {
@@ -342,9 +514,6 @@ function findPathsAStar(edges, origin, destination, date) {
                 arriveAt: l.arriveAt
             }))
         }));
-    if (multiModalSamples.length > 0) {
-        console.log("[Debug] A* multimodal sample paths:", JSON.stringify(multiModalSamples, null, 2));
-    }
 
     return finalPaths;
 }
@@ -359,16 +528,11 @@ async function fetchLegPool(from, to, date) {
 
         const flights = (f.status === 'fulfilled' ? f.value : []) || [];
         const trains = (t.status === 'fulfilled' ? t.value : []) || [];
-        const buses  = (b.status === 'fulfilled' ? b.value : []) || [];
+        const buses = (b.status === 'fulfilled' ? b.value : []) || [];
 
         const flightLegs = flights.flatMap(x => x.legs || []);
-        const trainLegs  = trains.flatMap(x => x.legs || []);
-        const busLegs    = buses.flatMap(x => x.legs || []);
-
-        console.log("[Debug][fetchLegPool] Query:", { from, to, date });
-        console.log("[Debug][fetchLegPool] Flights routes:", flights.length, "legs:", flightLegs.length);
-        console.log("[Debug][fetchLegPool] Trains routes:", trains.length, "legs:", trainLegs.length);
-        console.log("[Debug][fetchLegPool] Buses routes:", buses.length, "legs:", busLegs.length);
+        const trainLegs = trains.flatMap(x => x.legs || []);
+        const busLegs = buses.flatMap(x => x.legs || []);
 
         const sample = (arr) => (arr[0] ? {
             mode: arr[0].transportationMode,
@@ -377,10 +541,6 @@ async function fetchLegPool(from, to, date) {
             departAt: arr[0].departAt,
             arriveAt: arr[0].arriveAt
         } : null);
-
-        console.log("[Debug][fetchLegPool] Sample flight leg:", sample(flightLegs));
-        console.log("[Debug][fetchLegPool] Sample train leg:", sample(trainLegs));
-        console.log("[Debug][fetchLegPool] Sample bus leg:", sample(busLegs));
 
         return [...flightLegs, ...trainLegs, ...busLegs];
     } catch (e) { return []; }
@@ -475,130 +635,64 @@ function extractHubsByAddress(legs) {
 }
 
 function addMajorHubs(hubs) {
-    const major = [
-        { name: "Chicago O'Hare Airport", coordinates: { lat: 41.9742, lng: -87.9073 }, address: "Chicago, IL" },
-        { name: "Atlanta Hartsfield-Jackson Airport", coordinates: { lat: 33.6407, lng: -84.4277 }, address: "Atlanta, GA" }
-    ];
-    major.forEach(h => { if (!hubs.find(x => x.name === h.name)) hubs.push(h); });
+    const byName = new Set(hubs.map(h => (h?.name || "").toLowerCase()));
+    for (const h of US_HUBS) {
+        if (!h?.name || byName.has(h.name.toLowerCase())) continue;
+        hubs.push(h);
+        byName.add(h.name.toLowerCase());
+    }
     return hubs;
 }
 
-// function formatAndRank(paths, origin, destination) {
-//     const deduped = Array.from(
-//         paths
-//         .filter(res => res.legs && res.legs.length > 0)
-//         .map(res => {
-//             const first = res.legs[0];
-//             const last = res.legs[res.legs.length - 1];
-//             const modeSeq = res.legs.map(l => l.transportationMode).join("->");
-
-//             const departAt = first.departAt;
-//             const arriveAt = last.arriveAt;
-//             const totalDurationMinutes = Math.round(
-//                 (new Date(arriveAt).getTime() - new Date(departAt).getTime()) / 60000
-//             );
-
-//             const totalDistance = res.totalDistance || res.legs.reduce(
-//                 (sum, leg) => sum + (leg.distance || 0),
-//                 0
-//             );
-
-//             const signature = `${modeSeq}-${departAt}-${arriveAt}`;
-
-//             const base = {
-//                 origin,
-//                 destination,
-//                 legs: res.legs,
-//                 totalCost: res.totalCost,
-//                 totalDuration: totalDurationMinutes,
-//                 totalDistance,
-//                 departAt,
-//                 arriveAt,
-//                 modeSequence: modeSeq,
-//                 signature
-//             };
-
-//             return { ...base, score: computeRouteScore(base) };
-//         })
-//         .reduce((acc, route) => {
-//             const existing = acc.get(route.signature);
-//             if (!existing || route.score < existing.score) acc.set(route.signature, route);
-//             return acc;
-//         }, new Map())
-//         .values()
-//     );
-
-//     console.log("[Debug] deduped routes:", deduped.length);
-
-//     return deduped
-//         .filter(r => {
-//             const first = r.legs[0];
-//             const last = r.legs[r.legs.length - 1];
-//             if (!first?.origin || !last?.destination) return false;
-//             if (!origin?.coordinates || !destination?.coordinates) return true;
-//             if (!first.origin.coordinates || !last.destination.coordinates) return true;
-//             const distFromOrigin = haversine(origin.coordinates, first.origin.coordinates);
-//             const distToDest = haversine(destination.coordinates, last.destination.coordinates);
-//             return distFromOrigin <= ORIGIN_DEST_RADIUS_MILES && distToDest <= ORIGIN_DEST_RADIUS_MILES;
-//         })
-//         .filter(r => !(r.legs || []).some(l => l.transportationMode === "Driving" && (l.duration || 0) > MAX_DRIVING_MINUTES))
-//         .sort((a, b) => a.score - b.score)
-//         .slice(0, 40);
-// }
-
 function formatAndRank(paths, origin, destination) {
     const mapped = paths
-      .filter(res => res.legs && res.legs.length > 0)
-      .map(res => {
-                    const first = res.legs[0];
-                    const last = res.legs[res.legs.length - 1];
-                    const modeSeq = res.legs.map(l => l.transportationMode).join("->");
-        
-                    const departAt = first.departAt;
-                    const arriveAt = last.arriveAt;
-                    const totalDurationMinutes = Math.round(
-                        (new Date(arriveAt).getTime() - new Date(departAt).getTime()) / 60000
-                    );
-        
-                    const totalDistance = res.totalDistance || res.legs.reduce(
-                        (sum, leg) => sum + (leg.distance || 0),
-                        0
-                    );
-        
-                    const signature = `${modeSeq}-${departAt}-${arriveAt}`;
-        
-                    const base = {
-                        origin,
-                        destination,
-                        legs: res.legs,
-                        totalCost: res.totalCost,
-                        totalDuration: totalDurationMinutes,
-                        totalDistance,
-                        departAt,
-                        arriveAt,
-                        modeSequence: modeSeq,
-                        signature
-                    };
-        
-                    return { ...base, score: computeRouteScore(base) };
-                });
+        .filter(res => res.legs && res.legs.length > 0)
+        .map(res => {
+            const first = res.legs[0];
+            const last = res.legs[res.legs.length - 1];
+            const modeSeq = res.legs.map(l => l.transportationMode).join("->");
 
-                // Right after the .map(res => { ... }) block in formatAndRank
-const modeSeqCounts = mapped.reduce((acc, r) => {
-    acc[r.modeSequence] = (acc[r.modeSequence] || 0) + 1;
-    return acc;
-  }, {});
-  console.log("[Debug] formatAndRank modeSequence counts:", modeSeqCounts);
-  
-  const signatureCounts = mapped.reduce((acc, r) => {
-    acc[r.signature] = (acc[r.signature] || 0) + 1;
-    return acc;
-  }, {});
-  console.log("[Debug] formatAndRank signature count (unique):", Object.keys(signatureCounts).length);
-  
-    // add the two logs above here
-  
-    // Dedupe by signature: same schedule = one route (no duplicate cards).
+            const departAt = first.departAt;
+            const arriveAt = last.arriveAt;
+            const totalDurationMinutes = Math.round(
+                (new Date(arriveAt).getTime() - new Date(departAt).getTime()) / 60000
+            );
+
+            const totalDistance = res.totalDistance || res.legs.reduce(
+                (sum, leg) => sum + (leg.distance || 0),
+                0
+            );
+
+            const signature = `${modeSeq}-${departAt}-${arriveAt}`;
+
+            const base = {
+                origin,
+                destination,
+                legs: res.legs,
+                totalCost: res.totalCost,
+                totalDuration: totalDurationMinutes,
+                totalDistance,
+                departAt,
+                arriveAt,
+                modeSequence: modeSeq,
+                signature
+            };
+
+            return { ...base, score: computeRouteScore(base) };
+        });
+
+    const modeSeqCounts = mapped.reduce((acc, r) => {
+        acc[r.modeSequence] = (acc[r.modeSequence] || 0) + 1;
+        return acc;
+    }, {});
+    // console.log("formatAndRank modeSequence counts:", modeSeqCounts);
+
+    const signatureCounts = mapped.reduce((acc, r) => {
+        acc[r.signature] = (acc[r.signature] || 0) + 1;
+        return acc;
+    }, {});
+    // console.log("formatAndRank signature count (unique):", Object.keys(signatureCounts).length);
+
     const bySignature = mapped.reduce((acc, route) => {
         const existing = acc.get(route.signature);
         if (!existing || route.score < existing.score) acc.set(route.signature, route);
@@ -620,7 +714,6 @@ const modeSeqCounts = mapped.reduce((acc, r) => {
         .filter(r => !(r.legs || []).some(l => l.transportationMode === "Driving" && (l.duration || 0) > MAX_DRIVING_MINUTES))
         .sort((a, b) => a.score - b.score);
 
-    // Show more routes: up to MAX_PER_MODE_SEQUENCE per mode shape, then sort by score and cap total.
     const MAX_PER_MODE_SEQUENCE = 4;
     const MAX_TOTAL_ROUTES = 50;
     const byModeSeq = new Map();
@@ -634,7 +727,7 @@ const modeSeqCounts = mapped.reduce((acc, r) => {
         .slice(0, MAX_TOTAL_ROUTES);
 
     return diversified;
-  }
+}
 
 function computeRouteScore(route) {
     const cost = Number(route.totalCost) || 0;

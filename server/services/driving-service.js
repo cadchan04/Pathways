@@ -1,6 +1,16 @@
 const axios = require('axios')
 
 const MILES_PER_METER = 0.000621371
+const MAX_ROUTING_DISTANCE_METERS = 10_000_000
+
+function haversineMeters(a, b) {
+  if (!a?.lat || !b?.lat || !Number.isFinite(a.lat) || !Number.isFinite(b.lat)) return Infinity
+  const R = 6371000
+  const dLat = (b.lat - a.lat) * Math.PI / 180
+  const dLon = (b.lng - a.lng) * Math.PI / 180
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
+}
 
 const round = (value, places = 1) => {
   const factor = 10 ** places
@@ -34,7 +44,7 @@ const geocodeLocation = async (name, apiKey) => {
       limit: 1,
       apiKey
     },
-    timeout: 5000
+    timeout: 12000
   })
 
   return normalizeGeoapifyGeocode(response.data?.results?.[0], name)
@@ -101,6 +111,9 @@ const getDrivingRoutes = async ({ originName, destinationName, departDate }) => 
 
     if (!origin || !destination) return []
 
+    const distMeters = haversineMeters(origin.coordinates, destination.coordinates)
+    if (distMeters > MAX_ROUTING_DISTANCE_METERS) return []
+
     const response = await axios.get('https://api.geoapify.com/v1/routing', {
       params: {
         waypoints: `${origin.coordinates.lat},${origin.coordinates.lng}|${destination.coordinates.lat},${destination.coordinates.lng}`,
@@ -108,7 +121,7 @@ const getDrivingRoutes = async ({ originName, destinationName, departDate }) => 
         format: 'json',
         apiKey
       },
-      timeout: 8000
+      timeout: 12000
     })
 
     const route = response.data?.results?.[0] || response.data?.features?.[0]?.properties
