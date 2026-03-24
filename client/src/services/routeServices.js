@@ -34,10 +34,8 @@ export const testApiCall = () => {
 }
 
 export const addRoute = async (tripId, routeData) => {
-  console.log("Adding route with data:", routeData)
-  return await axios.post(`${API_URL}/api/trips/${tripId}/routes/`, routeData)
-    .then(res => res.data)
-    .catch(err => console.error(err))
+  const response = await axios.post(`${API_URL}/api/trips/${tripId}/routes/`, routeData)
+  return response.data
 }
 
 export const getRoutes = async (tripId) => {
