@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getTripById } from '../../services/tripServices';
+import { getTripById, duplicateTrip } from '../../services/tripServices';
 import { deleteRoute } from '../../services/routeServices';
 
 import './TripDetails.css';
@@ -15,6 +15,10 @@ export default function TripDetails() {
     // Delete confirmation state
     const [showConfirm, setShowConfirm] = useState(false);
     const [routeToDelete, setRouteToDelete] = useState(null);
+
+    // Duplicate trip state
+    const [duplicating, setDuplicating] = useState(false);
+    const [duplicateError, setDuplicateError] = useState(null);
 
     useEffect(() => {
         const fetchTripDetails = async () => {
@@ -57,11 +61,105 @@ export default function TripDetails() {
     return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
+    const formatTime = (dateObj) => {
+        const dateString = dateObj?.$date || dateObj;
+        if (!dateString) return "N/A";
+        return new Date(dateString).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const formatShortUsLocation = (value) => {
+        const raw = String(value || '').trim();
+        if (!raw) return 'Unknown';
+        const parts = raw.split(',').map((p) => p.trim()).filter(Boolean);
+        const hasUS = parts.some((p) =>
+            /^(united states|united states of america|usa|us)$/i.test(p)
+        );
+        if (hasUS) {
+            const city = parts[0] || 'Unknown';
+            const state = parts[1] || '';
+            return state ? `${city}, ${state}, USA` : `${city}, USA`;
+        }
+        if (parts.length >= 2) return `${parts[0]}, ${parts[1]}`;
+        return parts[0];
+    };
+
+    const getRouteTitle = (route) => {
+        const from = formatShortUsLocation(route?.origin?.address || route?.origin?.name);
+        const to = formatShortUsLocation(route?.destination?.address || route?.destination?.name);
+        return `${from} to ${to}`;
+    };
+
+    const getRouteMetaLine = (route) => {
+        const legs = Array.isArray(route?.legs) ? route.legs : [];
+        if (legs.length === 0) return "No leg details";
+
+        const modes = legs
+            .map((leg) => leg?.transportationMode)
+            .filter(Boolean)
+            .map((mode) => {
+                const lower = String(mode).toLowerCase();
+                return lower.charAt(0).toUpperCase() + lower.slice(1);
+            });
+
+        const uniqueModes = modes.filter((mode, index) => index === 0 || mode !== modes[index - 1]);
+        const modeText = uniqueModes.join(" → ");
+
+        // start at -1 to not count first departure as stop
+        let stopCount = -1;
+        for (const leg of legs) {
+            if (Array.isArray(leg?.segments) && leg.segments.length > 0) {
+                stopCount += leg.segments.length;
+            } else {
+                stopCount += 1;
+            }
+        }
+
+        const stopsText = stopCount <= 0
+            ? "Direct"
+            : `${stopCount} ${stopCount === 1 ? "Stop" : "Stops"}`;
+
+        return `${modeText} • ${stopsText}`;
+    };
+
+    const getRouteTimeLine = (route) => {
+        const start = formatTime(route?.departAt);
+        const end = formatTime(route?.arriveAt);
+        return `${start} to ${end}`;
+    };
+
+    const handleDuplicateTrip = async () => {
+        setDuplicateError(null);
+        setDuplicating(true);
+        try {
+            await duplicateTrip(trip._id);
+            navigate('/my-trips');
+        } catch (err) {
+            setDuplicateError("We couldn't duplicate this trip. Please try again.");
+            setDuplicating(false);
+        }
+    };
+
     return (
         <div className="details-container">
-            <button className="back-button" onClick={() => navigate('/my-trips')}>← Back to My Trips</button>
-            
+            <div className="trip-top-actions">
+                <button type="button" className="back-button" onClick={() => navigate('/my-trips')}>
+                    ← Back to My Trips
+                </button>
+                <button
+                    type="button"
+                    className="duplicate-trip-button"
+                    onClick={handleDuplicateTrip}
+                    disabled={duplicating}
+                >
+                    {duplicating ? 'Duplicating…' : 'Duplicate Trip'}
+                </button>
+            </div>
+
             <div className="details-header">
+                {duplicateError && <p className="duplicate-error">{duplicateError}</p>}
                 <h1>{trip.name}</h1>
                 <p className="trip-desc">{trip.description}</p>
                 <div className="trip-dates">{new Date(trip.startDate).toLocaleDateString()} - {new Date(trip.endDate).toLocaleDateString()}</div>
@@ -81,20 +179,35 @@ export default function TripDetails() {
                                 {/* route card on the right */}
                                 <div className="route-card">
                                     <div className="route-info">
-                                        <h3>{route.name}</h3>
-                                        <p>
-                                            {route.origin?.name || "Unknown Origin"} to {route.destination?.name || "Unknown Destination"}
-                                        </p>
+                                        <h3>{getRouteTitle(route)}</h3>
+                                        <p>{getRouteMetaLine(route)}</p>
+                                        <p>{getRouteTimeLine(route)}</p>
                                     </div>
-                                    <button
-                                        className="delete-button"
-                                        onClick={async () => {
-                                            setRouteToDelete(route);
-                                            setShowConfirm(true);
-                                        }}
-                                    >
-                                        Delete Route
-                                    </button>
+                                    <div className="route-actions">
+                                        <button
+                                            className="view-details-button"
+                                            onClick={() =>
+                                                navigate('/view-route-details', {
+                                                    state: {
+                                                        selectedRoute: route,
+                                                        fromTripDetails: true,
+                                                        tripId: trip._id
+                                                    }
+                                                })
+                                            }
+                                        >
+                                            View Details
+                                        </button>
+                                        <button
+                                            className="delete-button"
+                                            onClick={async () => {
+                                                setRouteToDelete(route);
+                                                setShowConfirm(true);
+                                            }}
+                                        >
+                                            Delete Route
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))}

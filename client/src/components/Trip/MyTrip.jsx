@@ -1,13 +1,14 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getTrips } from '../../services/tripServices';
+import { getTrips, duplicateTrip } from '../../services/tripServices';
 import { useUser } from '../../../context/UserContext';
 
 import './MyTrip.css';
 
 export default function MyTrip() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,6 +17,8 @@ export default function MyTrip() {
   // Delete popup state
   const [showConfirm, setShowConfirm] = useState(false);
   const [tripToDelete, setTripToDelete] = useState(null);
+
+  const [duplicatingId, setDuplicatingId] = useState(null);
 
   // Fetch trips
   useEffect(() => {
@@ -26,6 +29,7 @@ export default function MyTrip() {
       }
 
       try {
+        setLoading(true);
         setError(null);
         const data = await getTrips(dbUser._id);
         setTrips(data);
@@ -39,7 +43,22 @@ export default function MyTrip() {
     }
 
     fetchTrips();
-  }, [dbUser?._id]);
+  }, [dbUser?._id, location.key]);
+
+  const handleDuplicateTrip = async (trip) => {
+    const id =
+      typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
+    setDuplicatingId(id);
+    try {
+      await duplicateTrip(id);
+      const data = await getTrips(dbUser._id);
+      setTrips(data);
+    } catch (err) {
+      console.error('Error duplicating trip:', err);
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
 
   // Delete trip
   const deleteTrip = async (tripId) => {
@@ -72,40 +91,54 @@ export default function MyTrip() {
       ) : (
         <div className="trips-list">
           {trips.length > 0 ? (
-            trips.map((trip) => (
-              <div key={trip._id} className="trip-row">
-                <div className="trip-info">
-                  <h3>{trip.name}</h3>
-                  <p>{trip.description || "No description provided."}</p>
-                </div>
+            trips.map((trip) => {
+              const tripIdStr =
+                typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
+              return (
+                <div key={tripIdStr} className="trip-row">
+                  <div className="trip-info">
+                    <h3>{trip.name}</h3>
+                    <p>{trip.description || "No description provided."}</p>
+                  </div>
 
-                <div className="trip-dates">
+                  <div className="trip-dates">
                     <span>{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : 'TBD'}</span>
                     <span> → </span>
                     <span>{trip.endDate ? new Date(trip.endDate).toLocaleDateString() : 'TBD'}</span>
+                  </div>
+
+                  <div className="trip-actions">
+                    <button
+                      type="button"
+                      className="view-button"
+                      onClick={() => navigate(`/view-trip-details/${tripIdStr}`)}
+                    >
+                      View Details
+                    </button>
+
+                    <button
+                      type="button"
+                      className="duplicate-trip-button"
+                      disabled={duplicatingId !== null}
+                      onClick={() => handleDuplicateTrip(trip)}
+                    >
+                      {duplicatingId === tripIdStr ? 'Duplicating…' : 'Duplicate'}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="delete-button"
+                      onClick={() => {
+                        setTripToDelete(trip);
+                        setShowConfirm(true);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-
-                <div className="trip-actions">
-                  <button
-                    className="view-button"
-                    onClick={() => navigate(`/view-trip-details/${trip._id}`)}
-                  >
-                    View Details
-                  </button>
-
-                  <button
-                    className="delete-button"
-                    onClick={() => {
-                    setTripToDelete(trip);
-                    setShowConfirm(true);
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-
-              </div>
-            ))
+              );
+            })
           ) : (
             <p>You haven't created any trips yet. Start planning your next adventure!</p>
           )}

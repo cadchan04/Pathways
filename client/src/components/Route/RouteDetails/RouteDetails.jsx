@@ -1,13 +1,127 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { addRoute } from '../../../services/routeServices';
+import { getTrips } from '../../../services/tripServices';
+import { useUser } from '../../../../context/UserContext';
 
 import './RouteDetails.css';
 
 export default function RouteDetails() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { dbUser } = useUser();
+    const [showAddRouteModal, setShowAddRouteModal] = useState(false);
+    const [modalStep, setModalStep] = useState('choose-action');
+    const [trips, setTrips] = useState([]);
+    const [loadingTrips, setLoadingTrips] = useState(false);
+    const [tripsError, setTripsError] = useState('');
+    const [submitError, setSubmitError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const route = location.state?.selectedRoute;
+    const fromTripDetails = Boolean(location.state?.fromTripDetails);
+    const tripIdFromState = location.state?.tripId;
+
+    useEffect(() => {
+        if (!showAddRouteModal || modalStep !== 'choose-trip') return;
+        if (!dbUser?._id) {
+            setTrips([]);
+            setTripsError('Your profile is still loading. Please try again.');
+            return;
+        }
+
+        let cancelled = false;
+        const loadTrips = async () => {
+            setLoadingTrips(true);
+            setTripsError('');
+            try {
+                const data = await getTrips(dbUser._id);
+                if (!cancelled) {
+                    setTrips(data || []);
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    console.error('Error loading trips:', err);
+                    setTripsError('Could not load your trips right now. Please try again.');
+                }
+            } finally {
+                if (!cancelled) setLoadingTrips(false);
+            }
+        };
+
+        loadTrips();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [showAddRouteModal, modalStep, dbUser?._id]);
+
+    const locationFromName = (locationData = {}, fallback = 'Unknown') => {
+        const rawAddress = locationData?.address || locationData?.name || fallback;
+        const parts = String(rawAddress).split(',').map((p) => p.trim()).filter(Boolean);
+        const hasUS = parts.some((p) => /^(united states|united states of america|usa|us)$/i.test(p));
+        let shortName = parts[0] || fallback;
+        if (hasUS) {
+            shortName = parts[1] ? `${parts[0]}, ${parts[1]}, USA` : `${parts[0]}, USA`;
+        } else if (parts.length >= 2) {
+            shortName = `${parts[0]}, ${parts[1]}`;
+        }
+
+        return {
+            ...locationData,
+            name: shortName,
+            address: rawAddress
+        };
+    };
+
+    const routePayload = () => ({
+        name: `${locationFromName(route.origin, 'Route Origin').name} to ${locationFromName(route.destination, 'Route Destination').name}`,
+        origin: locationFromName(route.origin, 'Route Origin'),
+        destination: locationFromName(route.destination, 'Route Destination'),
+        departAt: route.departAt,
+        arriveAt: route.arriveAt,
+        totalDuration: Number(route.totalDuration),
+        totalDistance: Number(route.totalDistance),
+        totalCost: route.totalCost !== undefined && route.totalCost !== null ? Number(route.totalCost) : null,
+        legs: (route.legs || []).map((leg) => ({
+            ...leg,
+            origin: locationFromName(leg.origin, 'Leg Origin'),
+            destination: locationFromName(leg.destination, 'Leg Destination'),
+            segments: (leg.segments || []).map((segment) => ({
+                ...segment,
+                origin: locationFromName(segment.origin, 'Segment Origin'),
+                destination: locationFromName(segment.destination, 'Segment Destination')
+            }))
+        }))
+    });
+
+    const closeModal = () => {
+        if (isSubmitting) return;
+        setShowAddRouteModal(false);
+        setModalStep('choose-action');
+        setTripsError('');
+        setSubmitError('');
+    };
+
+    const handleAddToTrip = async (tripId) => {
+        setIsSubmitting(true);
+        setSubmitError('');
+        try {
+            await addRoute(tripId, routePayload());
+            closeModal();
+            navigate(`/view-trip-details/${tripId}`);
+        } catch (err) {
+            console.error('Error adding route to trip:', err);
+            setSubmitError(err?.response?.data?.error || 'Could not add route. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCreateNewTrip = () => {
+        closeModal();
+        navigate('/create-trip', { state: { pendingRoute: route } });
+    };
 
     const formatTime = (isoString) => {
         if (!isoString) return "N/A";
@@ -148,10 +262,116 @@ export default function RouteDetails() {
             </div>
 
             <div className="route-details-footer">
-                <button className="back-button" onClick={() => navigate(-1)}>
-                    ← Back to Suggestions
+                <button
+                    className="back-button"
+                    onClick={() => {
+                        if (fromTripDetails) {
+                            navigate(tripIdFromState ? `/view-trip-details/${tripIdFromState}` : '/my-trips');
+                            return;
+                        }
+                        navigate(-1);
+                    }}
+                >
+                    {fromTripDetails ? '← Back to Trip' : '← Back to Suggestions'}
                 </button>
+                {!fromTripDetails && (
+                    <button
+                        className="add-route-button"
+                        onClick={() => {
+                            setShowAddRouteModal(true);
+                            setModalStep('choose-action');
+                            setTripsError('');
+                            setSubmitError('');
+                        }}
+                    >
+                        Add Route
+                    </button>
+                )}
             </div>
+
+            {showAddRouteModal && (
+                <div className="route-modal-overlay" onClick={closeModal}>
+                    <div className="route-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <h3>Add route to trip</h3>
+
+                        {modalStep === 'choose-action' && (
+                            <>
+                                <p className="route-modal-lead">
+                                    Choose whether you want to add this route to an existing trip or create a new one.
+                                </p>
+                                <div className="route-modal-actions">
+                                    <button
+                                        className="route-modal-primary"
+                                        onClick={() => setModalStep('choose-trip')}
+                                    >
+                                        Add to existing trip
+                                    </button>
+                                    <button
+                                        className="route-modal-primary"
+                                        onClick={handleCreateNewTrip}
+                                    >
+                                        Create new trip
+                                    </button>
+                                    <button className="route-modal-secondary" onClick={closeModal}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {modalStep === 'choose-trip' && (
+                            <>
+                                <button
+                                    className="route-modal-back"
+                                    onClick={() => {
+                                        if (isSubmitting) return;
+                                        setModalStep('choose-action');
+                                        setSubmitError('');
+                                    }}
+                                >
+                                    ← Back
+                                </button>
+                                <p className="route-modal-lead">Select one of your trips:</p>
+
+                                {loadingTrips && <p>Loading trips...</p>}
+                                {tripsError && <p className="route-modal-error">{tripsError}</p>}
+                                {!loadingTrips && !tripsError && trips.length === 0 && (
+                                    <p>You do not have any trips yet. Create a new trip first.</p>
+                                )}
+
+                                {!loadingTrips && trips.length > 0 && (
+                                    <ul className="route-modal-trip-list">
+                                        {trips.map((trip) => (
+                                            <li key={trip._id}>
+                                                <button
+                                                    className="route-modal-trip-row"
+                                                    onClick={() => handleAddToTrip(trip._id)}
+                                                    disabled={isSubmitting}
+                                                >
+                                                    <span>{trip.name}</span>
+                                                    <small>
+                                                        {(trip.startDate ? new Date(trip.startDate).toLocaleDateString() : 'TBD')}
+                                                        {' -> '}
+                                                        {(trip.endDate ? new Date(trip.endDate).toLocaleDateString() : 'TBD')}
+                                                    </small>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+
+                                {submitError && <p className="route-modal-error">{submitError}</p>}
+
+                                <div className="route-modal-actions">
+                                    <button className="route-modal-secondary" onClick={closeModal} disabled={isSubmitting}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

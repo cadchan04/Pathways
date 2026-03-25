@@ -230,3 +230,117 @@
   color: #444;
   margin-top: 2px;
 }
+
+.route-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.route-modal-card {
+  width: min(440px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+.route-modal-card h3 {
+  margin: 0 0 0.75rem;
+}
+
+.route-modal-lead {
+  margin: 0 0 1rem;
+  color: #555;
+}
+
+.route-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.route-modal-primary,
+.route-modal-secondary {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.route-modal-primary {
+  background: #3fa8c6;
+  color: #fff;
+}
+
+.route-modal-primary:hover {
+  background: #348ea8;
+}
+
+.route-modal-secondary {
+  background: #efefef;
+  color: #333;
+}
+
+.route-modal-trip-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.route-modal-trip-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: left;
+  padding: 0.65rem 0.8rem;
+  margin-bottom: 0.45rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fafafa;
+  cursor: pointer;
+  color: #1f2937;
+  appearance: none;
+}
+
+.route-modal-trip-row:hover:enabled {
+  border-color: #3fa8c6;
+  background: #f3fbfe;
+}
+
+.route-modal-trip-row span {
+  color: #111827;
+  font-weight: 700;
+}
+
+.route-modal-trip-row small {
+  color: #666;
+}
+
+.route-modal-trip-row:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.route-modal-back {
+  border: none;
+  background: transparent;
+  color: #3fa8c6;
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+}
+
+.route-modal-error {
+  color: #c0392b;
+}
