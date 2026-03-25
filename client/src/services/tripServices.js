@@ -36,3 +36,14 @@ export const getTripById = async (id) => {
         throw err;
     }
 };
+
+// duplicate an existing trip
+export const duplicateTrip = async (tripId) => {
+    try {
+        const response = await axios.post(`${API_URL}/api/trips/${tripId}/duplicate`);
+        return response.data;
+    } catch (err) {
+        console.error(`Error duplicating trip ${tripId}:`, err);
+        throw err;
+    }
+};

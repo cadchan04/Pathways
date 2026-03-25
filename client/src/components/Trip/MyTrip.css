@@ -77,19 +77,30 @@
     text-align: left;
 }
 
-.view-button {
-    align-self: flex-start;  /* Keeps the button on the left instead of stretching it */
-    width: auto;             /* Button only as wide as its text */
-    margin-top: 10px;
-    padding: 8px 24px;
-    background-color: #f1f3f5;
-    border: none;
-    border-radius: 8px;
+.trip-actions .view-button,
+.trip-actions .duplicate-trip-button,
+.trip-actions .delete-button {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0 1.25rem;
+    margin: 0;
+    line-height: 1.25;
     font-size: 1rem;
     font-weight: 600;
-    color: #495057;
+    border-radius: 8px;
+    border: none;
     cursor: pointer;
     transition: background 0.2s;
+}
+
+.view-button {
+    align-self: flex-start;
+    width: auto;
+    background-color: #f1f3f5;
+    color: #495057;
 }
 
 .view-button:hover {
@@ -124,16 +135,8 @@
 .delete-button {
     align-self: flex-start;
     width: auto;
-    margin-top: 10px;
-    padding: 8px 24px;
     background-color: #e63946;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
     color: white;
-    cursor: pointer;
-    transition: background 0.2s;
 }
 
 .delete-button:hover {
@@ -142,7 +145,26 @@
 
 .trip-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
-    align-items: right;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.trip-actions .duplicate-trip-button {
+    background-color: #e4eef1;
+    color: #3d5f66;
+    border: none;
+    transition: background 0.2s, color 0.2s;
+}
+
+.trip-actions .duplicate-trip-button:hover:not(:disabled) {
+    background-color: #d5e4e9;
+    color: #2c454d;
+}
+
+.duplicate-trip-button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
 }
 
