@@ -7,15 +7,38 @@
     margin-bottom: 8px;
 }
 
+.top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
 .back-button {
-    padding: 12px 24px;
+    padding: 10px 20px;
     background-color: #3fa8c6;
     color: white;
     border: none;
-    border-radius: 12px;
+    border-radius: 8px;
     font-weight: bold;
     cursor: pointer;
     transition: background 0.2s;
+}
+
+.edit-trip-button {
+    padding: 10px 20px;
+    background-color: transparent;
+    color: #3fa8c6;
+    border: 2px solid #3fa8c6;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.edit-trip-button:hover {
+    background-color: #3fa8c6;
+    color: white;
 }
 
 .back-button:hover {
@@ -67,6 +90,22 @@
 .details-header {
     border-bottom: 2px solid #f0f0f0;
     padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.header-stats {
+    display: flex;
+    gap: 30px; /* spread out Dates, Budget, and Cost horizontally */
+    flex-wrap: wrap;
+}
+
+.trip-desc {
+    font-style: italic;
+}
+
+.over-budget {
+    color: #d9534f;
+    font-weight: bold;
 }
 
 .details-content {
@@ -173,16 +212,6 @@
     min-width: 0;
 }
 
-.view-details-button {
-    background-color: #f1f3f5;
-    color: #495057;
-}
-
-.view-details-button:hover {
-    background-color: #e9ecef;
-    color: #212529;
-}
-
 .delete-button {
     background-color: #e63946;
     color: white;
@@ -190,4 +219,20 @@
 
 .delete-button:hover {
     background-color: #c5303b;
+}
+    
+.view-details-button {
+    margin-left: auto;
+    white-space: nowrap;
+    background-color: transparent;
+    color: #3fa8c6;
+    border: 2px solid #3fa8c6;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.view-details-button:hover {
+    background-color: #3fa8c6;
+    color: white;
 }

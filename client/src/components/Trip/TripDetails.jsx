@@ -53,6 +53,11 @@ export default function TripDetails() {
         )
     }
 
+    const calculateTotalCost = (routes) => {
+        return routes.reduce((total, route) => total + (Number(route.totalCost) || 0), 0);
+    };
+    const currentTotal = trip.routes ? calculateTotalCost(trip.routes) : 0;
+
     const formatDate = (dateObj) => {
     const dateString = dateObj?.$date || dateObj; // check if the date is a nested $date object or a direct string
     if (!dateString) return 'MM/DD';
@@ -144,7 +149,7 @@ export default function TripDetails() {
 
     return (
         <div className="details-container">
-            <div className="trip-top-actions">
+            {/* <div className="trip-top-actions">
                 <button type="button" className="back-button" onClick={() => navigate('/my-trips')}>
                     ← Back to My Trips
                 </button>
@@ -156,13 +161,52 @@ export default function TripDetails() {
                 >
                     {duplicating ? 'Duplicating…' : 'Duplicate Trip'}
                 </button>
-            </div>
+            </div> */}
 
-            <div className="details-header">
+            {/* <div className="details-header">
                 {duplicateError && <p className="duplicate-error">{duplicateError}</p>}
                 <h1>{trip.name}</h1>
                 <p className="trip-desc">{trip.description}</p>
                 <div className="trip-dates">{new Date(trip.startDate).toLocaleDateString()} - {new Date(trip.endDate).toLocaleDateString()}</div>
+            </div> */}
+
+            <div className="top-nav">
+                <button
+                    className="back-button"
+                    onClick={() => navigate('/my-trips')}
+                >
+                    ← Back
+                </button>
+
+                <button
+                    className="edit-trip-button"
+                    onClick={() => navigate(`/edit-trip/${id}`)}
+                >
+                    Edit Trip Details
+                </button>
+                <button
+                    type="button"
+                    className="duplicate-trip-button"
+                    onClick={handleDuplicateTrip}
+                    disabled={duplicating}
+                >
+                    {duplicating ? 'Duplicating…' : 'Duplicate Trip'}
+                </button>
+            </div>
+            
+            <div className="details-header">
+                <div className="header-main">
+                    <h1>{trip.name}</h1>
+                </div>
+                
+                <div className="header-stats">
+                    <p className="trip-desc">{trip.description}</p>
+                    <div className="trip-dates"><strong>Dates: </strong>{new Date(trip.startDate).toLocaleDateString()} - {new Date(trip.endDate).toLocaleDateString()}</div>
+                    <div className="trip-budget"><strong>Budget:</strong> ${trip.budget?.toFixed(2) || 'N/A'}</div>
+                    <div className={`trip-cost ${currentTotal > trip.budget ? 'over-budget' : ''}`}>
+                        <strong>Total Cost:</strong> ${currentTotal?.toFixed(2) || 'N/A'} {/* using currentTotal for live updates, but can use trip.totalCost instead */}
+                    </div>
+                </div>
             </div>
 
             <div className="details-content">
@@ -208,6 +252,13 @@ export default function TripDetails() {
                                             Delete Route
                                         </button>
                                     </div>
+
+                                    {/* <button
+                                        className="view-details-button"
+                                        onClick={() => navigate(`/view-route/${route.id}`)}
+                                    >
+                                        View Details
+                                    </button> */}
                                 </div>
                             </div>
                         ))}

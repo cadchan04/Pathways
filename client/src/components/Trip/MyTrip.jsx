@@ -125,7 +125,7 @@ export default function MyTrip() {
                       {duplicatingId === tripIdStr ? 'Duplicating…' : 'Duplicate'}
                     </button>
 
-                    <button
+                    {/* <button
                       type="button"
                       className="delete-button"
                       onClick={() => {
@@ -134,7 +134,7 @@ export default function MyTrip() {
                       }}
                     >
                       Delete
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               );
