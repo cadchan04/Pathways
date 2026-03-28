@@ -122,4 +122,25 @@ router.delete('/:id', async(req, res) => {
     }
 });
 
+// Edit a trip by ID
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updatedTrip = await Trip.findByIdAndUpdate(
+            id,
+            req.body,
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedTrip) {
+            return res.status(404).json({ message: "Trip not found" });
+        }
+
+        res.status(200).json(updatedTrip);
+        
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 module.exports = router;

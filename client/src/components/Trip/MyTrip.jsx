@@ -15,8 +15,8 @@ export default function MyTrip() {
   const { dbUser } = useUser();
 
   // Delete popup state
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [tripToDelete, setTripToDelete] = useState(null);
+  // const [showConfirm, setShowConfirm] = useState(false);
+  // const [tripToDelete, setTripToDelete] = useState(null);
 
   const [duplicatingId, setDuplicatingId] = useState(null);
 
@@ -61,18 +61,18 @@ export default function MyTrip() {
   };
 
   // Delete trip
-  const deleteTrip = async (tripId) => {
-    try {
-      await fetch(`/api/trips/${tripId}`, {
-        method: "DELETE"
-      });
+  // const deleteTrip = async (tripId) => {
+  //   try {
+  //     await fetch(`/api/trips/${tripId}`, {
+  //       method: "DELETE"
+  //     });
 
-      // Remove from UI
-      setTrips(prev => prev.filter(t => t._id !== tripId));
-    } catch (err) {
-      console.error("Error deleting trip: ", err);
-    }
-  }
+  //     // Remove from UI
+  //     setTrips(prev => prev.filter(t => t._id !== tripId));
+  //   } catch (err) {
+  //     console.error("Error deleting trip: ", err);
+  //   }
+  // }
 
   return (
     <div className="my-trips-container">
@@ -150,7 +150,7 @@ export default function MyTrip() {
       </div>
 
       {/* Confirmation Popup */}
-      {showConfirm && (
+      {/* {showConfirm && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center" }} >
           <div style={{ background: "white", padding: "20px", borderRadius: "8px", width: "300px", textAlign: "center" }} >
             <h3>Confirm Delete</h3>
@@ -170,7 +170,7 @@ export default function MyTrip() {
             </button>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

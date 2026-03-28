@@ -227,6 +227,7 @@ export default function TripDetails() {
                                         <p>{getRouteMetaLine(route)}</p>
                                         <p>{getRouteTimeLine(route)}</p>
                                     </div>
+
                                     <div className="route-actions">
                                         <button
                                             className="view-details-button"
@@ -242,6 +243,7 @@ export default function TripDetails() {
                                         >
                                             View Details
                                         </button>
+
                                         <button
                                             className="delete-button"
                                             onClick={async () => {
@@ -252,13 +254,6 @@ export default function TripDetails() {
                                             Delete Route
                                         </button>
                                     </div>
-
-                                    {/* <button
-                                        className="view-details-button"
-                                        onClick={() => navigate(`/view-route/${route.id}`)}
-                                    >
-                                        View Details
-                                    </button> */}
                                 </div>
                             </div>
                         ))}
@@ -268,7 +263,7 @@ export default function TripDetails() {
                 )}
             </div>
             
-            {/* Confirmation Popup */}
+            {/* Delete Route Confirmation Popup */}
             {showConfirm && (
                 <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center" }} >
                 <div style={{ background: "white", padding: "20px", borderRadius: "8px", width: "300px", textAlign: "center" }} >

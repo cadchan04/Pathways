@@ -6,6 +6,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import Callback from "../Callback";
 import Login from "../components/Login/Login.jsx";
 import CreateTrip from "../components/Trip/CreateTrip"
+import EditTrip from "../components/Trip/EditTrip.jsx";
 import TripDetails from "../components/Trip/TripDetails"
 import CreateRoute from "../components/Route/CreateRoute/CreateRoute"
 import RouteOptions from "../components/Route/RouteOptions/RouteOptions"
@@ -27,6 +28,7 @@ export default function AppRoutes() {
       <Route path="/my-trips" element={<ProtectedRoute><MyTrip /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
       <Route path="/create-trip" element={<ProtectedRoute><CreateTrip /></ProtectedRoute>} />
+      <Route path="/edit-trip/:id" element={<ProtectedRoute><EditTrip /></ProtectedRoute>} />
       <Route path="/view-trip-details/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
       <Route path="/create-route" element={<ProtectedRoute><CreateRoute /></ProtectedRoute>} />
       <Route path="/route-options" element={<ProtectedRoute><RouteOptions /></ProtectedRoute>} />
