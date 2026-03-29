@@ -76,9 +76,15 @@
     text-align: left;
 }
 
-.trip-actions .view-button,
-.trip-actions .duplicate-trip-button,
-.trip-actions .delete-button {
+.trip-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.trip-actions .view-button {
     box-sizing: border-box;
     display: inline-flex;
     align-items: center;
@@ -107,12 +113,97 @@
     color: #212529;
 }
 
+.more-options-container {
+    position: relative;
+    display: inline-block;
+}
+
+.three-dots-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #888;
+    padding: 0 10px;
+    transition: color 0.2s;
+}
+
 .my-trips-footer {
     margin-top: 20px;
     display: flex;
     justify-content: center;
     width: 100%;
     
+}
+
+.three-dots-button:hover {
+    background-color: transparent;
+    color: #333;
+}
+
+.options-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10;
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    padding: 5px 0;
+    overflow: hidden;
+}
+
+.options-dropdown button {
+    background: none;
+    border: none;
+    padding: 12px 20px; /* Uniform padding */
+    text-align: left;
+    font-size: 0.95rem;  /* Consistent font size */
+    font-weight: 500;    /* Medium weight looks cleaner in menus */
+    cursor: pointer;
+    width: 100%;
+    color: #495057;      /* Standard dark grey text */
+    transition: background 0.2s;
+    display: block;      /* Ensure it takes up full width */
+}
+
+.options-dropdown button:hover {
+    background-color: #f8f9fa;
+}
+
+.options-dropdown .duplicate-trip-button {
+    background-color: #e4eef1;
+    color: #3d5f66;
+    border: none;
+    transition: background 0.2s, color 0.2s;
+}
+
+.options-dropdown .duplicate-trip-button:hover {
+    background-color: #fff1f2;
+}
+
+.options-dropdown .duplicate-trip-button:hover:not(:disabled) {
+    background-color: #d5e4e9;
+    color: #2c454d;
+}
+
+.duplicate-trip-button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.options-dropdown .delete-trip-button {
+    background-color: #e63946;
+    color: white;
+    border: none;
+    transition: background 0.2s, color 0.2s;
+}
+
+.options-dropdown .delete-trip-button:hover {
+    background-color: #c5303b;
 }
 
 .create-button {
@@ -130,41 +221,3 @@
 .create-button:hover {
     background-color: #348ea8;
 }
-
-.delete-button {
-    align-self: flex-start;
-    width: auto;
-    background-color: #e63946;
-    color: white;
-    max-width: 25%;
-}
-
-.delete-button:hover {
-    background-color: #c5303b;
-}
-
-.trip-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-    justify-content: flex-end;
-}
-
-.trip-actions .duplicate-trip-button {
-    background-color: #e4eef1;
-    color: #3d5f66;
-    border: none;
-    transition: background 0.2s, color 0.2s;
-}
-
-.trip-actions .duplicate-trip-button:hover:not(:disabled) {
-    background-color: #d5e4e9;
-    color: #2c454d;
-}
-
-.duplicate-trip-button:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
-}
-

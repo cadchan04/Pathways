@@ -135,7 +135,7 @@ export default function RouteOptions() {
     }
 
     loadSuggestions()
-  }, [departDate, destinationId, originId, originName, destinationName])
+  }, [departDate, destinationId, originId, originName, destinationName, destinationLat, destinationLng, originLat, originLng])
 
   useEffect(() => {
     if (!showAddRouteModal || modalStep !== 'choose-trip') return

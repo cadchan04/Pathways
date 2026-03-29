@@ -112,6 +112,7 @@ export default function EditTrip() {
         <div className="edit-trip-container">
             <button className="back-cancel-button" onClick={() => navigate(-1)}>← Cancel</button>
             <div className="edit-header">
+                {duplicateError && <p className="duplicate-error">{duplicateError}</p>}
                 <h1>Edit Trip Details</h1>
             </div>
 
@@ -202,6 +203,7 @@ export default function EditTrip() {
                     </div>
                 </div>
             )}
+
         </div>
     )
 };

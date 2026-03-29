@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getTripById, duplicateTrip } from '../../services/tripServices';
+import { getTripById } from '../../services/tripServices';
 import { deleteRoute } from '../../services/routeServices';
 
 import './TripDetails.css';
@@ -12,13 +12,9 @@ export default function TripDetails() {
     const [trip, setTrip] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Delete confirmation state
+    // Delete route confirmation state
     const [showConfirm, setShowConfirm] = useState(false);
     const [routeToDelete, setRouteToDelete] = useState(null);
-
-    // Duplicate trip state
-    const [duplicating, setDuplicating] = useState(false);
-    const [duplicateError, setDuplicateError] = useState(null);
 
     useEffect(() => {
         const fetchTripDetails = async () => {
@@ -135,42 +131,8 @@ export default function TripDetails() {
         return `${start} to ${end}`;
     };
 
-    const handleDuplicateTrip = async () => {
-        setDuplicateError(null);
-        setDuplicating(true);
-        try {
-            await duplicateTrip(trip._id);
-            navigate('/my-trips');
-        } catch (err) {
-            setDuplicateError("We couldn't duplicate this trip. Please try again.");
-            setDuplicating(false);
-            console.log("Error duplicating trip:", err);
-        }
-    };
-
     return (
         <div className="details-container">
-            {/* <div className="trip-top-actions">
-                <button type="button" className="back-button" onClick={() => navigate('/my-trips')}>
-                    ← Back to My Trips
-                </button>
-                <button
-                    type="button"
-                    className="duplicate-trip-button"
-                    onClick={handleDuplicateTrip}
-                    disabled={duplicating}
-                >
-                    {duplicating ? 'Duplicating…' : 'Duplicate Trip'}
-                </button>
-            </div> */}
-
-            {/* <div className="details-header">
-                {duplicateError && <p className="duplicate-error">{duplicateError}</p>}
-                <h1>{trip.name}</h1>
-                <p className="trip-desc">{trip.description}</p>
-                <div className="trip-dates">{new Date(trip.startDate).toLocaleDateString()} - {new Date(trip.endDate).toLocaleDateString()}</div>
-            </div> */}
-
             <div className="top-nav">
                 <button
                     className="back-button"
@@ -185,19 +147,10 @@ export default function TripDetails() {
                 >
                     Edit Trip Details
                 </button>
-                {/* <button
-                    type="button"
-                    className="duplicate-trip-button"
-                    onClick={handleDuplicateTrip}
-                    disabled={duplicating}
-                >
-                    {duplicating ? 'Duplicating…' : 'Duplicate Trip'}
-                </button> */}
             </div>
             
             <div className="details-header">
                 <div className="header-main">
-                    {duplicateError && <p className="duplicate-error">{duplicateError}</p>}
                     <h1>{trip.name}</h1>
                 </div>
                 
