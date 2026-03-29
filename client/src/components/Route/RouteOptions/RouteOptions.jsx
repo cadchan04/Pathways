@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { getRouteSuggestions, addRoute, getMultiModalRoutes } from '../../../services/routeServices'
+import { addRoute, getMultiModalRoutes } from '../../../services/routeServices'
+// import { getRouteSuggestions, addRoute, getMultiModalRoutes } from '../../../services/routeServices'
 import { getTrips } from '../../../services/tripServices'
 import { useUser } from '../../../../context/UserContext'
 import './RouteOptions.css'
@@ -134,7 +135,7 @@ export default function RouteOptions() {
     }
 
     loadSuggestions()
-  }, [departDate, destinationId, originId, originName, destinationName])
+  }, [departDate, destinationId, originId, originName, destinationName, destinationLat, destinationLng, originLat, originLng])
 
   useEffect(() => {
     if (!showAddRouteModal || modalStep !== 'choose-trip') return

@@ -47,3 +47,26 @@ export const duplicateTrip = async (tripId) => {
         throw err;
     }
 };
+
+// update a single trip by ID
+export const updateTrip = async (id, tripData) => {
+    try {
+        console.log("Full URL:", `${API_URL}/api/trips/${id}`);
+        const response = await axios.put(`${API_URL}/api/trips/${id}`, tripData);
+        return response.data;
+    } catch (err) {
+        console.error(`Error updating trip ${id}:`, err);
+        throw err;
+    }
+};
+
+// delete a single trip by ID
+export const deleteTrip = async (id) => {
+    try {
+        const response = await axios.delete(`${API_URL}/api/trips/${id}`);
+        return response.data;
+    } catch (err) {
+        console.error(`Error deleting trip ${id}:`, err);
+        throw err;
+    }
+};
