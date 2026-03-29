@@ -58,6 +58,17 @@ export default function EditTrip() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (formData.startDate && formData.endDate) {
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+        
+        if (end < start) {
+            setError("End date cannot be earlier than the start date.");
+            return;
+        }
+    }
+
         try {
             await updateTrip(id, formData);
 
@@ -141,15 +152,20 @@ export default function EditTrip() {
                     <div className="form-group">
                         <label>Start Date</label>
                         <input 
-                            type="date" name="startDate" 
-                            value={formData.startDate} onChange={handleChange} 
+                            type="date"
+                            name="startDate" 
+                            value={formData.startDate}
+                            onChange={handleChange} 
                         />
                     </div>
                     <div className="form-group">
                         <label>End Date</label>
                         <input 
-                            type="date" name="endDate" 
-                            value={formData.endDate} onChange={handleChange} 
+                            type="date"
+                            name="endDate" 
+                            value={formData.endDate}
+                            min={formData.startDate}
+                            onChange={handleChange} 
                         />
                     </div>
                 </div>
@@ -157,8 +173,11 @@ export default function EditTrip() {
                 <div className="form-group">
                     <label>Budget ($)</label>
                     <input 
-                        type="number" name="budget" 
-                        value={formData.budget} onChange={handleChange} 
+                        type="number"
+                        name="budget" 
+                        value={formData.budget}
+                        min={0}
+                        onChange={handleChange} 
                     />
                 </div>
 

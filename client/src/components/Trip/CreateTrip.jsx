@@ -96,7 +96,7 @@ export default function CreateTrip() {
                 {errors.startDate && <p className="error-message">{errors.startDate}</p>}
                 <input 
                     type="date"
-                    min={today}
+                    min={formData.startDate || today}
                     onChange={(e) => {
                         setFormData({...formData, endDate: e.target.value});
                         setErrors({...errors, endDate: ''});

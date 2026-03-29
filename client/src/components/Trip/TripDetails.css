@@ -239,6 +239,6 @@
 }
 
 .route-actions .delete-route-button:hover {
-    background-color: #c5303b;
-    border-color: #c5303b;
+    background-color: #e63946;
+    color: white;
 }
