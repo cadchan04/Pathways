@@ -1,5 +1,6 @@
 .route-options-page {
-  max-width: 1200px;
+  max-width: 1400px;
+  padding: 0 20px;
   margin: 0 auto;
   text-align: left;
   position: relative;
@@ -16,6 +17,42 @@
   margin-bottom: 20px;
 }
 
+.route-options-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.provider-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid #eee;
+}
+
+.provider-sidebar h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 8px;
+}
+
+.route-options-list {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-bottom: 40px;
+  width: 0;
+}
+
 .route-options-controls {
   display: flex;
   flex-wrap: wrap;
@@ -30,23 +67,16 @@
   border-radius: 6px;
 }
 
-.route-options-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding-bottom: 40px;
-}
-
 .route-option-card {
   display: grid;
-  grid-template-columns: 200px 1fr 200px;
+  grid-template-columns: minmax(150px, 200px) 1fr minmax(180px, 200px);
   align-items: center;
   background: white;
-  padding: 25px 35px;
+  padding: 15px 20px;
   border-radius: 14px;
   border-left: 8px solid #3fa8c6;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  gap: 30px;
+  gap: 15px;
 }
 
 .route-option-card:hover {
@@ -84,6 +114,7 @@
   border-left: 1px solid #eee;
   border-right: 1px solid #eee;
   padding: 0 25px;
+  min-width: 0;
 }
 
 .route-option-select-button,
@@ -343,4 +374,39 @@
 
 .route-modal-error {
   color: #c0392b;
+}
+
+.provider-checklist-scroll {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.checklist-item:hover {
+  color: #3fa8c6;
+}
+
+.checklist-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3fa8c6; /* Matches your brand color */
+}
+
+.checklist-item label {
+  cursor: pointer;
+  font-size: 0.95rem;
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
