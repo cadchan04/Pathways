@@ -116,14 +116,14 @@ export default function MyTrip() {
                       View Details
                     </button>
 
-                    <button
+                    {/* <button
                       type="button"
                       className="duplicate-trip-button"
                       disabled={duplicatingId !== null}
                       onClick={() => handleDuplicateTrip(trip)}
                     >
                       {duplicatingId === tripIdStr ? 'Duplicating…' : 'Duplicate'}
-                    </button>
+                    </button> */}
 
                     {/* <button
                       type="button"

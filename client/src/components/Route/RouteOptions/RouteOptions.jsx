@@ -152,24 +152,6 @@ export default function RouteOptions() {
       try {
         const data = await getTrips(dbUser._id)
         if (!cancelled) setTrips(data || [])
-        // const addedRoute = await addRoute("69c5685e270f3d55c05c26cb", { 
-        // // const addedRoute = await addRoute("699a444e75d3995896fca38b", { // original
-        //   name: `${originName.split(",")[0].trim()} to ${destinationName.split(",")[0].trim()} route`, // future implementation - generate route name based on origin/destination/time or allow user to input custom name
-        //   origin: route.origin,
-        //   destination: route.destination,
-        //   departAt: route.departAt,
-        //   arriveAt: route.arriveAt,
-        //   // totalCost: route.totalCost,
-        //   // totalDuration: route.totalDuration,
-        //   // totalDistance: route.totalDistance,
-        //   createdAt: new Date().toISOString(),
-        //   editedAt: new Date().toISOString(),
-        //   totalDuration: Number(route.totalDuration),
-        //   totalDistance: Number(route.totalDistance),
-        //   totalCost: Number(route.totalCost),
-        //   legs: route.legs
-        // })
-        // console.log("Added Route:", addedRoute)
       } catch (err) {
         if (!cancelled) {
           console.error('Error loading trips:', err)

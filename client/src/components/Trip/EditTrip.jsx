@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getTripById, updateTrip, deleteTrip } from '../../services/tripServices';
+import { getTripById, updateTrip, deleteTrip, duplicateTrip } from '../../services/tripServices';
 
 import './EditTrip.css';
 
@@ -19,8 +19,12 @@ export default function EditTrip() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // delete popup state
+    // Delete popup state
     const [showConfirm, setShowConfirm] = useState(false);
+
+    // Duplicate trip state
+    const [duplicating, setDuplicating] = useState(false);
+    const [duplicateError, setDuplicateError] = useState(null);
 
     // fetch existing trip data
     useEffect(() => {
@@ -61,6 +65,19 @@ export default function EditTrip() {
         } catch (err) {
             console.error("Error in submitting and fetching trip for editing:", err);
             setError("Failed to load trip details. Please try again.");
+        }
+    };
+
+    const handleDuplicateTrip = async () => {
+        setDuplicateError(null);
+        setDuplicating(true);
+        try {
+            await duplicateTrip(id);
+            navigate('/my-trips');
+        } catch (err) {
+            setDuplicateError("We couldn't duplicate this trip. Please try again.");
+            setDuplicating(false);
+            console.log("Error duplicating trip:", err);
         }
     };
 
@@ -149,7 +166,16 @@ export default function EditTrip() {
 
                     <button
                         type="button"
-                        className="delete-button"
+                        className="duplicate-trip-button"
+                        onClick={handleDuplicateTrip}
+                        disabled={duplicating}
+                    >
+                        {duplicating ? 'Duplicating…' : 'Duplicate Trip'}
+                    </button>
+
+                    <button
+                        type="button"
+                        className="delete-trip-button"
                         onClick={() => setShowConfirm(true)}
                         >
                         Delete Trip

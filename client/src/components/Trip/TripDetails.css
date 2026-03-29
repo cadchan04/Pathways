@@ -194,37 +194,31 @@
 }
 
 .route-actions {
-    /* display: grid; */
-    display: flex;
-    /* grid-template-columns: 1fr; */
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, max-content);
     gap: 10px;
-    align-self: center;
-    /* justify-items: stretch; */
-    /* min-width: 140px; */
-    min-width: 150px;
+    align-self: flex-end;
+    justify-items: stretch;
 }
 
 .route-actions .view-details-button,
-.route-actions .delete-button {
+.route-actions .delete-route-button {
     box-sizing: border-box;
-    display: flex;          /* Changed to flex */
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    
     min-height: 2.5rem;
-    width: 100%;            /* Force both to same width of container */
-    padding: 0 15px;        /* Consistent padding */
-    
-    font-size: 0.9rem;
-    font-weight: bold;
+    padding: 0 1.25rem;
+    margin: 0;
+    line-height: 1.25;
+    font-size: 0.8rem;
+    font-weight: 600;
     border-radius: 8px;
+    border: none;
     cursor: pointer;
-    
-    /* CRITICAL FIXES */
-    white-space: nowrap;    /* Prevents text from wrapping/squishing */
-    overflow: visible;      /* Ensures text isn't clipped */
-    flex-shrink: 0;         /* Prevents the button itself from shrinking */
+    transition: background 0.2s, color 0.2s;
+    width: 100%;
+    min-width: 0;
 }
 
 .route-actions .view-details-button {
@@ -238,48 +232,13 @@
     color: white;
 }
 
-.route-actions .delete-button {
+.route-actions .delete-route-button {
     background-color: transparent;
     color: #e63946;
     border: 2px solid #e63946;
 }
 
-.route-actions .delete-button:hover {
+.route-actions .delete-route-button:hover {
     background-color: #c5303b;
     border-color: #c5303b;
 }
-
-/* .view-details-button {
-    background-color: #f1f3f5;
-    color: #495057;
-}
-
-.view-details-button:hover {
-    background-color: #e9ecef;
-    color: #212529;
-}
-
-.delete-button {
-    background-color: #e63946;
-    color: white;
-}
-
-.delete-button:hover {
-    background-color: #c5303b;
-} */
-    
-/* .view-details-button {
-    margin-left: auto;
-    white-space: nowrap;
-    background-color: transparent;
-    color: #3fa8c6;
-    border: 2px solid #3fa8c6;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.view-details-button:hover {
-    background-color: #3fa8c6;
-    color: white;
-} */

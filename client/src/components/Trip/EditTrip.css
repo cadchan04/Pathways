@@ -68,7 +68,7 @@ input, textarea {
     margin-top: 20px;
 }
 
-.save-button, .delete-button {
+.save-button, .delete-trip-button, .duplicate-trip-button {
     width: 100%;
     padding: 14px;
     border: none;
@@ -87,19 +87,40 @@ input, textarea {
     background-color: #348ea8;
 }
 
-.delete-button {
-    background-color: transparent;
-    color: #e63946;
+.duplicate-trip-button:hover:not(:disabled) {
+    background-color: #d5e4e9;
+    color: #2c454d;
+}
+
+.duplicate-trip-button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.duplicate-trip-button:disabled:hover {
+    background-color: #e4eef1;
+    color: #3d5f66;
+}
+
+.duplicate-error {
+    color: #c5303b;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+}
+
+.delete-trip-button {
+    background-color: #e63946;
+    color: white;
     border: 2px solid #e63946;
 }
 
-.delete-button:hover {
+.delete-trip-button:hover {
     background-color: #e63946;
     color: white;
 }
 
 .save-button:active, 
-.delete-button:active {
+.delete-trip-button:active {
     transform: scale(0.98);
 }
 

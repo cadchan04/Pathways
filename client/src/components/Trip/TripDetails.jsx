@@ -144,6 +144,7 @@ export default function TripDetails() {
         } catch (err) {
             setDuplicateError("We couldn't duplicate this trip. Please try again.");
             setDuplicating(false);
+            console.log("Error duplicating trip:", err);
         }
     };
 
@@ -184,18 +185,19 @@ export default function TripDetails() {
                 >
                     Edit Trip Details
                 </button>
-                <button
+                {/* <button
                     type="button"
                     className="duplicate-trip-button"
                     onClick={handleDuplicateTrip}
                     disabled={duplicating}
                 >
                     {duplicating ? 'Duplicating…' : 'Duplicate Trip'}
-                </button>
+                </button> */}
             </div>
             
             <div className="details-header">
                 <div className="header-main">
+                    {duplicateError && <p className="duplicate-error">{duplicateError}</p>}
                     <h1>{trip.name}</h1>
                 </div>
                 
@@ -245,7 +247,7 @@ export default function TripDetails() {
                                         </button>
 
                                         <button
-                                            className="delete-button"
+                                            className="delete-route-button"
                                             onClick={async () => {
                                                 setRouteToDelete(route);
                                                 setShowConfirm(true);
