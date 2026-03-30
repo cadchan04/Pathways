@@ -54,6 +54,12 @@ export default function TripDetails() {
     };
     const currentTotal = trip.routes ? calculateTotalCost(trip.routes) : 0;
 
+    const sortedRoutes = trip.routes ? [...trip.routes].sort((a, b) => {
+        const dateA = new Date(a.departAt?.$date || a.departAt);
+        const dateB = new Date(b.departAt?.$date || b.departAt);
+        return dateA - dateB;
+    }) : [];
+
     const formatDate = (dateObj) => {
     const dateString = dateObj?.$date || dateObj; // check if the date is a nested $date object or a direct string
     if (!dateString) return 'MM/DD';
@@ -166,52 +172,52 @@ export default function TripDetails() {
 
             <div className="details-content">
                 <h2>Routes</h2>
-                {trip.routes && trip.routes.length > 0 ? (
+                {sortedRoutes && sortedRoutes.length > 0 ? (
                     <div className="routes-list">
-                        {trip.routes.map((route, index) => (
-                            <div key={index} className="route-row">
-                                {/* date circle on the left */}
-                                <div className="route-date-circle">
-                                    {formatDate(route.departAt)}
-                                </div>
+                        <div className="routes-list">
+                            {sortedRoutes.map((route, index) => {
+                                const currentDate = formatDate(route.departAt);
+                                const previousDate = index > 0 ? formatDate(sortedRoutes[index - 1].departAt) : null;
+                                const isSameDay = currentDate === previousDate;
 
-                                {/* route card on the right */}
-                                <div className="route-card">
-                                    <div className="route-info">
-                                        <h3>{getRouteTitle(route)}</h3>
-                                        <p>{getRouteMetaLine(route)}</p>
-                                        <p>{getRouteTimeLine(route)}</p>
+                                return (
+                                    <div key={index} className={`route-row ${isSameDay ? 'same-day' : ''}`}>
+                                        <div className="route-date-circle">
+                                            {!isSameDay ? currentDate : ""}
+                                        </div>
+
+                                        <div className="route-card">
+                                            <div className="route-info">
+                                                <h3>{getRouteTitle(route)}</h3>
+                                                <p>{getRouteMetaLine(route)}</p>
+                                                <p>{getRouteTimeLine(route)}</p>
+                                            </div>
+
+                                            <div className="route-actions">
+                                                <button
+                                                    className="view-details-button"
+                                                    onClick={() => navigate('/view-route-details', { 
+                                                        state: { selectedRoute: route, fromTripDetails: true, tripId: trip._id } 
+                                                    })}
+                                                >
+                                                    View Details
+                                                </button>
+
+                                                <button
+                                                    className="delete-route-button"
+                                                    onClick={() => {
+                                                        setRouteToDelete(route);
+                                                        setShowConfirm(true);
+                                                    }}
+                                                >
+                                                    Delete Route
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-
-                                    <div className="route-actions">
-                                        <button
-                                            className="view-details-button"
-                                            onClick={() =>
-                                                navigate('/view-route-details', {
-                                                    state: {
-                                                        selectedRoute: route,
-                                                        fromTripDetails: true,
-                                                        tripId: trip._id
-                                                    }
-                                                })
-                                            }
-                                        >
-                                            View Details
-                                        </button>
-
-                                        <button
-                                            className="delete-route-button"
-                                            onClick={async () => {
-                                                setRouteToDelete(route);
-                                                setShowConfirm(true);
-                                            }}
-                                        >
-                                            Delete Route
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                                );
+                            })}
+                        </div>
                     </div>
                 ) : (
                     <p>No routes added to this trip yet.</p>

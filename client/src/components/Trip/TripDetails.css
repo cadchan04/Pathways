@@ -127,23 +127,37 @@
 }
 
 .routes-list {
+    position: relative;
     width: 100%;
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
 
+.routes-list::before {
+    content: '';
+    position: absolute;
+    left: 35px;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    background-color: #eef2f5;
+    z-index: 0;
+}
+
 .route-row {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 30px;
     width: 100%;
+    z-index: 1;
 }
 
 .route-date-circle {
     min-width: 70px;
     height: 70px;
-    background-color: #3fa8c6aa;
+    background-color: #3fa9c6;
     color: white;
     border-radius: 50%;
     display: flex;
@@ -152,11 +166,24 @@
     font-weight: bold;
     font-size: 1rem;
     box-shadow: 0 4px 10px rgba(63, 168, 198, 0.2);
+    z-index: 2;
+}
+
+.route-row.same-day {
+    margin-top: -10px; /* move same day routes to be closer */
+}
+
+.route-row.same-day .route-date-circle {
+    background-color: #eef2f5; /* light color for the dot */
+    min-width: 20px;           /* make the dot smaller */
+    height: 20px;
+    margin: 0 25px;
+    box-shadow: 0 0 0 4px white;
 }
 
 .route-card {
     flex-grow: 1;
-    padding: 35px 30px;
+    padding: 25px 30px;
     border-radius: 12px;
     border: 1px solid #eef2f5;
     border-left: 6px solid #3fa8c6; /* accent bar */
