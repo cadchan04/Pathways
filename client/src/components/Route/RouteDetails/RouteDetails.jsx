@@ -127,7 +127,8 @@ export default function RouteDetails() {
         if (!isoString) return "N/A";
         return new Date(isoString).toLocaleTimeString([], {
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            hour12: true,
         });
     };
 
@@ -165,6 +166,10 @@ export default function RouteDetails() {
             </div>
 
             <div className="route-summary-banner">
+                <div className="summary-stat">
+                    <strong>Total Travel Time:</strong>
+                    <span>{formatTime(route.departAt) } - {formatTime(route.arriveAt)}</span>
+                </div>
                 <div className="summary-stat">
                     <strong>Total Duration: </strong>
                     <span>{formatDuration(route.totalDuration)}</span>
