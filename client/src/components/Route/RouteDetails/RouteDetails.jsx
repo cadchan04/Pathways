@@ -17,6 +17,8 @@ export default function RouteDetails() {
     const [tripsError, setTripsError] = useState('');
     const [submitError, setSubmitError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [selectedLegs, setSelectedLegs] = useState([]);
 
     const route = location.state?.selectedRoute;
     const fromTripDetails = Boolean(location.state?.fromTripDetails);
@@ -154,6 +156,23 @@ export default function RouteDetails() {
         return layoverMinutes > 0 ? layoverMinutes.toFixed(0) : 0;
     }
 
+    const toggleLegSelection = (legIndex) => {
+        setSelectedLegs((prevSelected) => {
+            if (prevSelected.includes(legIndex)) {
+                return prevSelected.filter((index) => index !== legIndex);
+            } else {
+                return [...prevSelected, legIndex];
+            }
+        });
+    };
+
+    const handleRegenerateRoute = () => {
+        if (selectedLegs.length === 0) {
+            alert('Please select at least one leg to regenerate the route.');
+            return;
+        }
+    }
+
 
     if (!route) {
         return <p>No route selected. Please <Link to="/create-route">search again</Link>.</p>
@@ -163,6 +182,13 @@ export default function RouteDetails() {
         <div className="route-details-page">
             <div className="route-details-header">
                 <h2>Itinerary: {route.name}</h2>
+                <button
+                    className="edit-route-button"
+                    onClick={() => setIsEditing((prev) => !prev)}
+                    disabled={route.legs.length === 0}
+                >
+                    {isEditing ? 'Cancel Edit' : 'Edit Route'}
+                </button>
             </div>
 
             <div className="route-summary-banner">
@@ -186,83 +212,94 @@ export default function RouteDetails() {
 
             <div className="route-details-legs">
                 {route.legs.map((leg, index) => (
-                    <div key={index} className="leg-detail-card">
-                        <div className="leg-header">
-                            <h3>Leg {index + 1}: {leg.transportationMode}</h3>
-                            <span>Provider: </span> {(() => {
-                                const providers = Array.isArray(leg.provider)
-                                  ? leg.provider
-                                  : (leg.provider ? [leg.provider] : []);
-                                return providers.length > 0 ? providers.join(" → ") : "N/A";
-                            })()}
-                        </div>
+                    <div key = {index} className={`leg-edit-wrapper`}>
+                        {isEditing && (
+                            <div className="leg-checkbox-container">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedLegs.includes(index)}
+                                    onChange={() => toggleLegSelection(index)}
+                                />
+                            </div>
+                        )}
 
-                        <div className="leg-path-visual">
-                            {leg.segments && leg.segments.length > 0 ? (
-                                // MULTI-SEGMENT
-                                leg.segments.map((seg, index) => {
-                                    const prevSegment = index > 0 ? leg.segments[index - 1] : null;
-                                    const transferMinutes = prevSegment ? layoverTime(prevSegment, seg) : null;
-                                    return (
-                                        <React.Fragment key={`seg-node-${index}`}>
-                                            <div className="path-node">
-                                                {/* If this is a transfer segment (not the first segment and has a layover), show transfer label and both times */}
-                                                {transferMinutes !== null && (
-                                                    <>
-                                                        <span className="transfer-label">
-                                                            {formatDuration(transferMinutes)} transfer
-                                                        </span>
-                                                        <span className="transfer-time">{formatTime(seg.arriveAt)} / {formatTime(seg.departAt)}</span>
-                                                        <span className="path-address">{seg.origin.name}</span>
-                                                    </>
-                                                )}
-                                                {transferMinutes === null && (
-                                                    <>
-                                                        <span className="path-time">{formatTime(seg.departAt)}</span>
-                                                        <span className="path-address">{seg.origin.name}</span>
-                                                    </>
-                                                )}
+                        <div key={index} className="leg-detail-card">
+                            <div className="leg-header">
+                                <h3>Leg {index + 1}: {leg.transportationMode}</h3>
+                                <span>Provider: </span> {(() => {
+                                    const providers = Array.isArray(leg.provider)
+                                    ? leg.provider
+                                    : (leg.provider ? [leg.provider] : []);
+                                    return providers.length > 0 ? providers.join(" → ") : "N/A";
+                                })()}
+                            </div>
+
+                            <div className="leg-path-visual">
+                                {leg.segments && leg.segments.length > 0 ? (
+                                    // MULTI-SEGMENT
+                                    leg.segments.map((seg, index) => {
+                                        const prevSegment = index > 0 ? leg.segments[index - 1] : null;
+                                        const transferMinutes = prevSegment ? layoverTime(prevSegment, seg) : null;
+                                        return (
+                                            <React.Fragment key={`seg-node-${index}`}>
+                                                <div className="path-node">
+                                                    {/* If this is a transfer segment (not the first segment and has a layover), show transfer label and both times */}
+                                                    {transferMinutes !== null && (
+                                                        <>
+                                                            <span className="transfer-label">
+                                                                {formatDuration(transferMinutes)} transfer
+                                                            </span>
+                                                            <span className="transfer-time">{formatTime(seg.arriveAt)} / {formatTime(seg.departAt)}</span>
+                                                            <span className="path-address">{seg.origin.name}</span>
+                                                        </>
+                                                    )}
+                                                    {transferMinutes === null && (
+                                                        <>
+                                                            <span className="path-time">{formatTime(seg.departAt)}</span>
+                                                            <span className="path-address">{seg.origin.name}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+
+                                            <div className="path-connector">
+                                                <span className="path-duration">{formatDuration(seg.duration)}</span>
+                                                <div className="connector-line"></div>
                                             </div>
 
-                                        <div className="path-connector">
-                                            <span className="path-duration">{formatDuration(seg.duration)}</span>
-                                            <div className="connector-line"></div>
+                                            {index === leg.segments.length - 1 && (
+                                                <div className="path-node">
+                                                    <span className="path-time">{formatTime(seg.arriveAt)}</span>
+                                                    <span className="path-address">{seg.destination.name}</span>
+                                                </div>
+                                            )}
+                                        </React.Fragment>
+                                    )})
+                                ) : (
+                                    // FALLBACK: SINGLE LEG (No Segments)
+                                    <>
+                                        <div className="path-node">
+                                            <span className="path-time">{formatTime(leg.departAt)}</span>
+                                            <span className="path-address">{leg.origin.name}</span>
                                         </div>
 
-                                        {index === leg.segments.length - 1 && (
-                                            <div className="path-node">
-                                                <span className="path-time">{formatTime(seg.arriveAt)}</span>
-                                                <span className="path-address">{seg.destination.name}</span>
-                                            </div>
-                                        )}
-                                    </React.Fragment>
-                                )})
-                            ) : (
-                                // FALLBACK: SINGLE LEG (No Segments)
-                                <>
-                                    <div className="path-node">
-                                        <span className="path-time">{formatTime(leg.departAt)}</span>
-                                        <span className="path-address">{leg.origin.name}</span>
-                                    </div>
+                                        <div className="path-connector">
+                                            <span className="path-duration">{formatDuration(leg.duration)}</span>
+                                            <div className="connector-line"></div>
+                                            <span className="path-distance">{leg.distance} mi</span>
+                                        </div>
 
-                                    <div className="path-connector">
-                                        <span className="path-duration">{formatDuration(leg.duration)}</span>
-                                        <div className="connector-line"></div>
-                                        <span className="path-distance">{leg.distance} mi</span>
-                                    </div>
-
-                                    <div className="path-node">
-                                        <span className="path-time">{formatTime(leg.arriveAt)}</span>
-                                        <span className="path-address">{leg.destination.name}</span>
-                                    </div>
-                                </>
-                            )}
+                                        <div className="path-node">
+                                            <span className="path-time">{formatTime(leg.arriveAt)}</span>
+                                            <span className="path-address">{leg.destination.name}</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                            <div className='leg-cost'> Cost: {leg.cost ? `$${leg.cost}` : 'Unknown'} </div>
+                            <div className='leg-distance'> Distance: {leg.distance} mi </div>
+                            <div className='leg-duration'> Duration: {formatDuration(leg.duration)} </div>
                         </div>
-                        <div className='leg-cost'> Cost: {leg.cost ? `$${leg.cost}` : 'Unknown'} </div>
-                        <div className='leg-distance'> Distance: {leg.distance} mi </div>
-                        <div className='leg-duration'> Duration: {formatDuration(leg.duration)} </div>
                     </div>
-                    
                 ))}
             </div>
 
@@ -279,7 +316,15 @@ export default function RouteDetails() {
                 >
                     {fromTripDetails ? '← Back to Trip' : '← Back to Suggestions'}
                 </button>
-                {!fromTripDetails && (
+                {isEditing ? (
+                    <button
+                        className="regenerate-button"
+                        onClick={handleRegenerateRoute}
+                        disabled={selectedLegs.length === 0}
+                    >
+                        Regenerate Selected Legs
+                    </button>
+                ) : ( !fromTripDetails && (
                     <button
                         className="add-route-button"
                         onClick={() => {
@@ -291,6 +336,7 @@ export default function RouteDetails() {
                     >
                         Add Route
                     </button>
+                    )
                 )}
             </div>
 
