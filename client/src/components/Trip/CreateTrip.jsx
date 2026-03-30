@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createTrip } from '../../services/tripServices';
-import { useUser } from '../../../context/UserContext';
+import { useUser } from '../../../context/useUser';
 import { getTodayDateString, isDateBeforeToday } from '../Route/routeUtils';
 
 import './CreateTrip.css';

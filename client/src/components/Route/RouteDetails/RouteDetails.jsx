@@ -2,7 +2,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import { addRoute } from '../../../services/routeServices';
 import { getTrips } from '../../../services/tripServices';
-import { useUser } from '../../../../context/UserContext';
+import { useUser } from '../../../../context/useUser';
 
 import './RouteDetails.css';
 

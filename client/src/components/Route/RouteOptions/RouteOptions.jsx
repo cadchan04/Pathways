@@ -3,7 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { addRoute, getMultiModalRoutes } from '../../../services/routeServices'
 // import { getRouteSuggestions, addRoute, getMultiModalRoutes } from '../../../services/routeServices'
 import { getTrips } from '../../../services/tripServices'
-import { useUser } from '../../../../context/UserContext'
+import { useUser } from '../../../../context/useUser'
 import './RouteOptions.css'
 import { getWeatherForecast } from '../../../services/weatherServices';
 
@@ -75,6 +75,7 @@ export default function RouteOptions() {
   const destinationId = searchParams.get('destinationId') || ''
   const destinationName = searchParams.get('destinationName') || 'Unknown Destination'
   const departDate = searchParams.get('departDate') || ''
+  const mpg = searchParams.get('mpg') || ''
 
   const originLat = parseFloat(searchParams.get('originLat'))
   const originLng = parseFloat(searchParams.get('originLng'))
@@ -117,6 +118,9 @@ export default function RouteOptions() {
     const loadSuggestions = async () => {
       try {
         setLoading(true)
+
+        const mpgNumber = mpg.trim() !== '' ? Number(mpg) : undefined
+
         const response = await getMultiModalRoutes({
           origin: {
             name: originName,
@@ -134,7 +138,8 @@ export default function RouteOptions() {
               lng: destinationLng
             }
           },
-          date: departDate
+          date: departDate,
+          mpg: mpgNumber
         })
 
         console.log("Multimodal routes:", response)
@@ -343,20 +348,14 @@ export default function RouteOptions() {
   
     loadWeather();
   }, [routes, departDate]);
-  
-  
-// Filtering and sorting to be implemented
-/*
-  const availableModes = useMemo()
-  const displayedRoutes = useMemo()
-*/
 
   return (
     <section className="route-options-page">
       <header className="route-options-header">
         <div className="header-left">
           <h1>Route Suggestions</h1>
-          <p>{originName} to {destinationName} on {departDate}</p>
+          <p>{originName.split(",").slice(0, 2).join(",")} to {destinationName.split(",").slice(0, 2).join(",")} on {departDate}</p>
+          <p>MPG: {mpg}</p>
         </div>
 
         <div className="header-right">

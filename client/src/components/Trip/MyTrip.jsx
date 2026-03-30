@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { getTrips, duplicateTrip } from '../../services/tripServices';
-import { useUser } from '../../../context/UserContext';
+import { useUser } from '../../../context/useUser';
 
 import './MyTrip.css';
 

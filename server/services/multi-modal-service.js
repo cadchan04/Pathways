@@ -186,7 +186,7 @@ function isSamePlaceByName(locA, locB) {
 }
 
 /** If a leg's destination name is not the same as the next leg's origin name, insert a rideshare/driving leg between them. */
-async function fillTransferGaps(routes, date) {
+async function fillTransferGaps(routes, date, mpg) {
     const out = [];
     for (const route of routes) {
         const legs = route.legs || [];
@@ -220,7 +220,8 @@ async function fillTransferGaps(routes, date) {
                 const drivingRoutes = await drivingService.getDrivingRoutes({
                     originName: fromName,
                     destinationName: toName,
-                    departDate: departDateStr
+                    departDate: departDateStr,
+                    mpg: mpg
                 });
                 const firstDrive = drivingRoutes[0]?.legs?.[0];
                 const legDistance = firstDrive?.distance ?? distMiles;
@@ -281,13 +282,14 @@ async function fillTransferGaps(routes, date) {
 }
 
 /** Return a single route object for direct driving origin → destination, or null. */
-async function getDirectDrivingRoute(origin, destination, date) {
+async function getDirectDrivingRoute(origin, destination, date, mpg) {
     const dateStr = typeof date === "string" ? date.split("T")[0] : new Date(date).toISOString().split("T")[0];
     try {
         const routes = await drivingService.getDrivingRoutes({
             originName: origin?.name || origin?.address,
             destinationName: destination?.name || destination?.address,
-            departDate: dateStr
+            departDate: dateStr,
+            mpg: mpg
         });
         const r = routes[0];
         if (!r?.legs?.length) return null;
@@ -310,8 +312,8 @@ async function getDirectDrivingRoute(origin, destination, date) {
     }
 }
 
-async function multiModalRoutes(origin, destination, date) {
-    // console.log("\nmultimodalRoutes");
+async function multiModalRoutes(origin, destination, date, mpg) {
+     console.log(`MPG:${mpg}`);
 
     if (primaryCity(origin?.name) === primaryCity(destination?.name)) {
         return [];
@@ -371,8 +373,8 @@ async function multiModalRoutes(origin, destination, date) {
     // console.log("dynamic hub cities:", dynamicHubs);
 
     const [firstMile, lastMile] = await Promise.all([
-        createTargetedDrivingEdges(origin, hubs, date, "origin"),
-        createTargetedDrivingEdges(destination, hubs, date, "destination")
+        createTargetedDrivingEdges(origin, hubs, date, "origin", mpg),
+        createTargetedDrivingEdges(destination, hubs, date, "destination", mpg)
     ]);
 
     const allEdges = [...legPool, ...firstMile, ...lastMile];
@@ -389,9 +391,9 @@ async function multiModalRoutes(origin, destination, date) {
 
     let routes = formatAndRank(paths, origin, destination);
 
-    routes = await fillTransferGaps(routes, date);
+    routes = await fillTransferGaps(routes, date, mpg);
 
-    const drivingOnly = await getDirectDrivingRoute(origin, destination, date);
+    const drivingOnly = await getDirectDrivingRoute(origin, destination, date, mpg);
     if (drivingOnly) routes = [drivingOnly, ...routes];
 
     return routes;
@@ -585,7 +587,7 @@ function haversine(a, b) {
     return R * 2 * Math.atan2(Math.sqrt(aVal), Math.sqrt(1 - aVal));
 }
 
-async function createTargetedDrivingEdges(point, hubs, date, type) {
+async function createTargetedDrivingEdges(point, hubs, date, type, mpg) {
     const maxDrivingDist = (MAX_DRIVING_MINUTES - 20) * 0.7;
     const targets = hubs
         .map(h => ({ hub: h, dist: haversine(point.coordinates, h.coordinates) }))
@@ -607,7 +609,8 @@ async function createTargetedDrivingEdges(point, hubs, date, type) {
             const routes = await drivingService.getDrivingRoutes({
                 originName: type === "origin" ? point.name : item.hub.name,
                 destinationName: type === "origin" ? item.hub.name : point.name,
-                departDate: date
+                departDate: date,
+                mpg: mpg
             });
             const legs = (routes[0]?.legs || []).filter(l => (l.duration || 0) <= MAX_DRIVING_MINUTES);
             return legs.length > 0 ? legs : fallbackLeg(item);

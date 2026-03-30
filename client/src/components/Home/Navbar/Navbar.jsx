@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useUser } from '../../../../context/UserContext';
+import { useUser } from '../../../../context/useUser';
 import { getTrips, duplicateTrip } from '../../../services/tripServices';
 import './Navbar.css';
 

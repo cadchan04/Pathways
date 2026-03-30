@@ -20,7 +20,8 @@ export const getRouteSuggestions = async ({ originId, originName, destinationId,
       originName,
       destinationId,
       destinationName,
-      departDate
+      departDate,
+      mpg
     }
   })
 
@@ -63,13 +64,14 @@ export const updateLeg = async (tripId, routeId, legId, legData) => {
     .catch(err => console.error(err))
 }
 
-export const getMultiModalRoutes = async ({ origin, destination, date }) => {
+export const getMultiModalRoutes = async ({ origin, destination, date, mpg }) => {
   try {
 
     const response = await axios.post(`${API_URL}/api/routes/multimodal`, {
       origin,
       destination,
-      date
+      date,
+      mpg
     })
 
     return response.data

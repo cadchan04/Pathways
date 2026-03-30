@@ -50,6 +50,7 @@ export default function CreateRoute() {
   const [destination, setDestination] = useState(null)
   const [originSuggestions, setOriginSuggestions] = useState([])
   const [destinationSuggestions, setDestinationSuggestions] = useState([])
+  const [mpg, setMPG] = useState('')
 
   const [departDate, setDepartDate] = useState('')
   const [errors, setErrors] = useState({})
@@ -140,7 +141,7 @@ export default function CreateRoute() {
     event.preventDefault()
     setRequestError('')
 
-    const nextErrors = validateCreateRouteInput({ origin, destination, departDate })
+    const nextErrors = validateCreateRouteInput({ origin, destination, departDate, mpg })
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
@@ -160,7 +161,8 @@ export default function CreateRoute() {
       destinationLat: destination.coordinates.lat,
       destinationLng: destination.coordinates.lng,
 
-      departDate
+      departDate,
+      mpg: Number(mpg) || 25
     })
 
     navigate(`/route-options?${query.toString()}`)
@@ -210,6 +212,19 @@ export default function CreateRoute() {
             onChange={(event) => setDepartDate(event.target.value)}
           />
           {errors.departDate && <p className="create-route-error">{errors.departDate}</p>}
+        </div>
+
+        <div className="create-route-field">
+          <label htmlFor="mpg">Miles Per Gallon (optional)</label>
+            <input
+              id="mpg"
+              type="number"
+              min="1"
+              placeholder="e.g., 25"
+              value={mpg}
+              onChange={(e) => setMPG(e.target.value)}
+            />
+          {errors.mpg && <p className="create-route-error">{errors.mpg}</p>}
         </div>
 
         {requestError && <p className="create-route-error">{requestError}</p>}

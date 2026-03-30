@@ -71,7 +71,7 @@ router.get('/locations/search', async (req, res) => {
 })
 
 router.get('/suggestions', async (req, res) => {
-  const { originId, destinationId, departDate, originName, destinationName } = req.query
+  const { originId, destinationId, departDate, originName, destinationName, mpg } = req.query
 
   const validationError = validateSuggestionsQuery({
     originId,
@@ -88,8 +88,11 @@ router.get('/suggestions', async (req, res) => {
   const routes = []
 
   try {
+    const { originId, destinationId, departDate, originName, destinationName, mpg } = req.query
+
+    const mpgNumber = mpg && !isNaN(mpg) ? Number(mpg) : 25
     // get personal driving routes
-    const drivingRoutes = await getDrivingRoutes({ originName, destinationName, departDate })
+    const drivingRoutes = await getDrivingRoutes({ originName, destinationName, departDate, mpg: mpgNumber })
     // build estimated rideshare routes from driving metrics
     const rideshareRoutes = getEstimatedRideshareRoutes({ drivingRoutes })
     // get train routes
@@ -131,12 +134,13 @@ router.post("/multimodal", async (req, res) => {
 
   try {
 
-    const { origin, destination, date } = req.body
+    const { origin, destination, date, mpg } = req.body
 
     const routes = await multiModalRoutes(
       origin,
       destination,
-      date
+      date,
+      mpg
     )
 
     res.json(routes)

@@ -50,13 +50,6 @@ app.use('/api/trips', tripRoute); // trip route functions
 app.use('/api/user', userRoute);
 app.use('/api/push', pushRoutes);
 
-// POST /api/push/update
-app.post('/api/push/update', async (req, res) => {
-  const { userId, notificationEnabled } = req.body;
-  const user = await User.findByIdAndUpdate(userId, { notificationEnabled }, { new: true });
-  res.json({ success: true, notificationEnabled: user.notificationEnabled });
-});
-
 mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })
   .then(() => {
     console.log('MongoDB connected')

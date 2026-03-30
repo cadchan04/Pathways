@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Auth0Provider } from '@auth0/auth0-react';
+import { UserProvider } from "../context/UserContext";
 import React from 'react';
 
 import './index.css';
@@ -37,7 +38,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         );
       }}
     >
+      <UserProvider>
       <App />
+      </UserProvider>
     </Auth0Provider>
   </BrowserRouter>
 );

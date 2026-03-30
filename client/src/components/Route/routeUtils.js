@@ -15,7 +15,7 @@ export const isDateBeforeToday = (value, today = getTodayDateString()) => {
   return value < today
 }
 
-export const validateCreateRouteInput = ({ origin, destination, departDate}) => {
+export const validateCreateRouteInput = ({ origin, destination, departDate, mpg}) => {
   const errors = {}
   const today = getTodayDateString()
 
@@ -35,6 +35,10 @@ export const validateCreateRouteInput = ({ origin, destination, departDate}) => 
     errors.departDate = 'Please choose a departure date.'
   } else if (!isValidDateString(departDate) || isDateBeforeToday(departDate, today)) {
     errors.departDate = 'Departure date cannot be in the past.'
+  }
+
+  if (mpg !== '' && (isNaN(Number(mpg)) || Number(mpg) <= 0)) {
+    errors.mpg = 'Please enter a valid MPG greater than 0.'
   }
 
   return errors

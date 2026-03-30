@@ -50,15 +50,18 @@ const geocodeLocation = async (name, apiKey) => {
   return normalizeGeoapifyGeocode(response.data?.results?.[0], name)
 }
 
-const estimateDrivingCostUsd = ({ distanceMiles, durationMinutes }) => {
-  const estimate = distanceMiles * 0.18 + durationMinutes * 0.02
+const estimateDrivingCostUsd = ({ distanceMiles, durationMinutes, mpg = 25 }) => {
+  const gallonsUsed = distanceMiles / mpg
+  const gasCost = gallonsUsed * 3.5
+  const timeCost = durationMinutes * 0.2
+  const estimate = gasCost + timeCost
   return Math.max(4, round(estimate, 2))
 }
 
-const buildDrivingRoute = ({ origin, destination, departDate, distanceMeters, durationSeconds }) => {
+const buildDrivingRoute = ({ origin, destination, departDate, distanceMeters, durationSeconds, mpg }) => {
   const totalDistance = round(distanceMeters * MILES_PER_METER, 1)
   const totalDuration = Math.max(1, Math.round(durationSeconds / 60))
-  const totalCost = estimateDrivingCostUsd({ distanceMiles: totalDistance, durationMinutes: totalDuration })
+  const totalCost = estimateDrivingCostUsd({ distanceMiles: totalDistance, durationMinutes: totalDuration, mpg })
 
   const departAtDate = new Date(`${departDate}T09:00:00`)
   if (Number.isNaN(departAtDate.getTime())) {
@@ -98,7 +101,7 @@ const buildDrivingRoute = ({ origin, destination, departDate, distanceMeters, du
   }
 }
 
-const getDrivingRoutes = async ({ originName, destinationName, departDate }) => {
+const getDrivingRoutes = async ({ originName, destinationName, departDate, mpg = 25 }) => {
   const apiKey = process.env.GEOAPIFY_API_KEY
   if (!apiKey) return []
   if (!originName || !destinationName || !departDate) return []
@@ -135,7 +138,8 @@ const getDrivingRoutes = async ({ originName, destinationName, departDate }) => 
       destination,
       departDate,
       distanceMeters,
-      durationSeconds
+      durationSeconds,
+      mpg
     })
 
     return normalized ? [normalized] : []

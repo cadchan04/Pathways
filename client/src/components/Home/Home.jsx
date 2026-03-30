@@ -3,7 +3,7 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { testApiCall, createExample, getExamples } from "../../example_services.jsx";
 import { getRoutes, updateLeg, getLegs } from "../../services/routeServices.js";
 import { syncUser } from "../../services/userServices.js";
-import { useUser } from "../../../context/UserContext.jsx";
+import { useUser } from "../../../context/useUser";
 
 function Home() {
   const { isAuthenticated, user, isLoading } = useAuth0();
