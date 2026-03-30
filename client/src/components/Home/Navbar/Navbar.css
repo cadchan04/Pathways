@@ -120,3 +120,31 @@
   transform: rotate(45deg);
   box-shadow: -2px -2px 5px rgba(0,0,0,0.05);
 }
+
+.notifications-dropdown {
+  min-width: 220px; /* make it wider */
+  max-width: 400px; /* optional, prevent super wide */
+  padding: 0.5rem 0;
+  box-sizing: border-box;
+}
+
+.white-bell {
+  font-size: 1.5rem;
+  color: #ffffff;        /* white bell */
+  text-shadow: 0 0 2px #000000; /* subtle black outline */
+  position: relative;
+  cursor: pointer;
+}
+
+/* Badge on top of bell */
+.white-bell .badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background-color: #e63946; /* red badge */
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 2px 5px;
+  border-radius: 50%;
+}
