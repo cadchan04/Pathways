@@ -1,0 +1,13 @@
+{
+    "name": "Pathways",
+    "short_name": "Pathways",
+    "start_url": "/",
+    "display": "standalone",
+    "icons": [
+        {
+            "src": "/images/PathwaysNotifications.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        }
+    ]
+}

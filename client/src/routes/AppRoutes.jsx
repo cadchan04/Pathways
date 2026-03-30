@@ -17,7 +17,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* Redirect root → login */}
-      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="/" element={<Navigate to="/my-trips" replace />} />
 
       {/* Public routes - accessible without logging in */}
       <Route path="/login" element={<Login />} />             {/* LOGIN SHOULD BE PUBLIC */}

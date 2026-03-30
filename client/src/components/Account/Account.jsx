@@ -1,6 +1,7 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import NotificationToggle from '../NotificationToggle';
 import './Profile.css'
 
 function Account() {
@@ -23,7 +24,9 @@ function Account() {
 
   return (
     <section className="profile-page">
+      <div>
       <h1>Profile</h1>
+      </div>
       <p>View your account details.</p>
 
       <div className="profile-card">
@@ -39,7 +42,9 @@ function Account() {
 
         <div className="profile-field">
           <label><strong>Notifications</strong></label>
-          <p>{dbUser?.notificationEnabled ? 'On' : 'Off'}</p>
+          <div className="notifications-button">
+          <NotificationToggle userId={user.sub} />
+          </div>
         </div>
       </div>
 

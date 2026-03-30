@@ -1,13 +1,22 @@
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Auth0Provider } from '@auth0/auth0-react';
+import React from 'react';
 
-import './index.css'; // global styles (baseline)
-import App from './App'; // app component (which imports App.css)
-import './App.css'; // layout styles
+import './index.css';
+import App from './App';
+import './App.css';
 
-const domain = "dev-tttdz2uurevzcaog.us.auth0.com";  // Your Auth0 Domain
-const clientId = "og3kzXtXzUuXYCsvb5cmUXYVW76UEI7X"; // Your Auth0 Client ID
+const domain = "dev-tttdz2uurevzcaog.us.auth0.com"; 
+const clientId = "og3kzXtXzUuXYCsvb5cmUXYVW76UEI7X";
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('SW registered: ', reg.scope))
+      .catch(err => console.error('Sw registration failed: ', err));
+  });
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
@@ -17,14 +26,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       cacheLocation="localstorage"
       useRefreshTokens={true}
       authorizationParams={{
-        redirect_uri: "http://localhost:5173/callback",  // Ensure this is the same as in the Auth0 dashboard
-        scope: "openid profile email offline_access"  // Include offline_access for refresh tokens
+        redirect_uri: "http://localhost:5173/callback",
+        scope: "openid profile email offline_access" 
       }}
       onRedirectCallback={(appState) => {
         window.history.replaceState(
           {},
           document.title,
-          appState?.returnTo || '/home'  // Use your home route here
+          appState?.returnTo || '/my-trips'
         );
       }}
     >

@@ -8,7 +8,7 @@ export default function Callback() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate("/home");
+      navigate("/my-trips");
     }
   }, [isLoading, isAuthenticated, navigate]);
 

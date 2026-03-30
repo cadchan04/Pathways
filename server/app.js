@@ -12,6 +12,7 @@ const routesRoute = require('./routes/routes-route.js');
 const legRoute = require('./routes/leg-routes.js');
 const userRoute = require('./routes/user-routes.js');
 const tripRoute = require('./routes/trip-routes.js');
+const pushRoutes = require('./routes/push-routes.js');
 
 const app = express();
 
@@ -47,9 +48,20 @@ app.use('/api/trips/:tripId/routes/:routeId/legs', legRoute); //route leg functi
 app.use('/api/routes', routesRoute);
 app.use('/api/trips', tripRoute); // trip route functions
 app.use('/api/user', userRoute);
+app.use('/api/push', pushRoutes);
+
+// POST /api/push/update
+app.post('/api/push/update', async (req, res) => {
+  const { userId, notificationEnabled } = req.body;
+  const user = await User.findByIdAndUpdate(userId, { notificationEnabled }, { new: true });
+  res.json({ success: true, notificationEnabled: user.notificationEnabled });
+});
 
 mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })
-  .then(() => console.log('MongoDB connected'))
+  .then(() => {
+    console.log('MongoDB connected')
+    require('./jobs/notificationScheduler');
+  })
   .catch(err => console.error(err));
 
 app.listen(8080, () => console.log("Server running on port 8080"));

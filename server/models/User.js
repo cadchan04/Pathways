@@ -10,6 +10,7 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  pushSubscription: { type: Object, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
