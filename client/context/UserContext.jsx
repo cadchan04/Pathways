@@ -25,7 +25,10 @@ export const UserProvider = ({ children }) => {
      // Fetch dbUser from backend if we have Auth0 user but no dbUser yet
     useEffect(() => {
     const fetchDbUser = async () => {
-      if (!auth0User?.sub || dbUser) return;
+      if (!auth0User?.sub) {
+        setDbUser(null);
+        return;
+      }
 
       try {
         const res = await fetch(`http://localhost:8080/api/user/${auth0User.sub}`);
