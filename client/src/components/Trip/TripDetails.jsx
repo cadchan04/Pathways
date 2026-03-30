@@ -226,7 +226,7 @@ export default function TripDetails() {
             
             {/* Delete Route Confirmation Popup */}
             {showConfirm && (
-                <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center" }} >
+                <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999 }} >
                 <div style={{ background: "white", padding: "20px", borderRadius: "8px", width: "300px", textAlign: "center" }} >
                     <h3>Confirm Delete</h3>
                     <p>Delete “{routeToDelete?.name}”?</p>

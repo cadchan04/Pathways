@@ -8,15 +8,14 @@ const legSchema = new mongoose.Schema({
   destination: { type: locationSchema, required: true },
   departAt: { type: Date, required: true },
   arriveAt: { type: Date, required: true },
-  segments: [{ type: segmentSchema, default: [] }], // Only used for transports with multiple segments (e.g., flights with layovers)
-  cost: { type: Number, default: null }, // -1 if not available in case we want to display trip cost as not sure
-  duration: { type: Number, required: true }, // duration in minutes
+  segments: [{ type: segmentSchema, default: [] }],
+  cost: { type: Number, default: null },
+  duration: { type: Number, required: true },
   distance: { type: Number, required: true },
-  provider: [{ type: String }] // Optional: e.g., airline, bus company, etc.
-  /*geometry: {
-    type: { type: String, enum: ['LineString'], required: true },
-    coordinates: { type: [[Number]], required: true } // Array of [lng, lat] pairs
-  },*/ // Optional: Include geometry for mapping purposes but we can clear the routes in database and add this later if we want to use it
+  provider: { 
+    type: mongoose.Schema.Types.Mixed, // ✅ accepts both string and array
+    default: []
+  }
 });
 
 const Leg = mongoose.model('Leg', legSchema);
