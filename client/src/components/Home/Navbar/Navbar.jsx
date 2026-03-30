@@ -18,9 +18,6 @@ const Navbar = () => {
 
   // Fetch upcoming trips for dropdown
   // Inside your navbar or bell component
-useEffect(() => {
-  if (!dbUser?._id) return;
-
   const fetchUpcoming = async () => {
     try {
       const data = await getTrips(dbUser._id);
@@ -47,8 +44,17 @@ useEffect(() => {
     }
   };
 
+useEffect(() => {
+  if (!dbUser?._id) return;
+
   fetchUpcoming();
 }, [dbUser?._id]);
+
+  useEffect(() => {
+    const handleRefresh = () => fetchUpcoming();
+    window.addEventListener('refreshNotifications', handleRefresh);
+    return () => window.removeEventListener('refreshNotifications', handleRefresh);
+  }, [dbUser?._id]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -78,31 +84,31 @@ useEffect(() => {
 
           {/* Notifications Bell */}
           <li className="account-wrapper">
-          <span className="account-link white-bell">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      fill="white"
-      viewBox="0 0 24 24"
-    >
-      <path d="M12 24c1.104 0 2-.896 2-2h-4c0 1.104.896 2 2 2zm6.364-6c-.001-.001-.001-.002-.002-.003L18 16V11c0-3.314-2.686-6-6-6s-6 2.686-6 6v5l-.362 1.997c-.001.001-.001.002-.002.003C5.257 18.148 5 18.557 5 19v1h14v-1c0-.443-.257-.852-.636-1z"/>
-    </svg>
-    {notifications.length > 0 && (
-      <span className="badge">{notifications.length}</span>
-    )}
-  </span>
-  <div className="account-dropdown notifications-dropdown">
-    {notifications.length === 0 ? (
-      <p style={{ padding: '0.5rem 1rem', color: '#666' }}>No trips in the next week.</p>
-    ) : notifications.map((n, i) => (
-      <button key={i} onClick={() => navigate(n.url)}>
-        {n.title}<br/>
-        <span style={{ fontSize: '0.85rem', color: '#555' }}>{n.body}</span>
-      </button>
-    ))}
-  </div>
-</li>
+            <span className="account-link white-bell">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              fill="white"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 24c1.104 0 2-.896 2-2h-4c0 1.104.896 2 2 2zm6.364-6c-.001-.001-.001-.002-.002-.003L18 16V11c0-3.314-2.686-6-6-6s-6 2.686-6 6v5l-.362 1.997c-.001.001-.001.002-.002.003C5.257 18.148 5 18.557 5 19v1h14v-1c0-.443-.257-.852-.636-1z"/>
+            </svg>
+            {notifications.length > 0 && (
+              <span className="badge">{notifications.length}</span>
+            )}
+          </span>
+          <div className="account-dropdown notifications-dropdown">
+            {notifications.length === 0 ? (
+              <p style={{ padding: '0.5rem 1rem', color: '#666' }}>No trips in the next week.</p>
+            ) : notifications.map((n, i) => (
+              <button key={i} onClick={() => navigate(n.url)}>
+                {n.title}<br/>
+                <span style={{ fontSize: '0.85rem', color: '#555' }}>{n.body}</span>
+              </button>
+            ))}
+          </div>
+        </li>
 
           {/* Account */}
           <li className="account-wrapper">

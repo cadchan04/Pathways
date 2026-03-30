@@ -34,6 +34,8 @@ export default function MyTrip() {
         const data = await getTrips(dbUser._id);
         setTrips(data);
         console.log("Fetched trips:", data);
+
+        window.dispatchEvent(new Event('refreshNotifications'));
       } catch (err) {
         console.error("Error fetching trips:", err);
         setError("We couldn't load your trips right now. Please try again later.");
@@ -68,6 +70,9 @@ export default function MyTrip() {
       await duplicateTrip(id);
       const data = await getTrips(dbUser._id);
       setTrips(data);
+
+      window.dispatchEvent(new Event('refreshNotifications'));
+
     } catch (err) {
       console.error('Error duplicating trip:', err);
     } finally {
@@ -84,6 +89,9 @@ export default function MyTrip() {
 
       // Remove from UI
       setTrips(prev => prev.filter(t => t._id !== tripId));
+
+      window.dispatchEvent(new Event('refreshNotifications'));
+
     } catch (err) {
       console.error("Error deleting trip: ", err);
     }
