@@ -143,4 +143,20 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+router.patch('/:id/alerts/:alertId/read', async (req, res) => {
+    try {
+      const trip = await Trip.findById(req.params.id);
+      if (!trip) return res.status(404).json({ error: 'Trip not found' });
+  
+      const alert = trip.priceAlerts.id(req.params.alertId); // ✅ find by _id
+      if (!alert) return res.status(404).json({ error: 'Alert not found' });
+  
+      alert.read = true;
+      await trip.save();
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
 module.exports = router;

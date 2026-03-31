@@ -4,6 +4,8 @@ import { useAuth0 } from '@auth0/auth0-react';
 import { useUser } from '../../../../context/useUser';
 import { getTrips, duplicateTrip } from '../../../services/tripServices';
 import './Navbar.css';
+import axios from 'axios';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -37,10 +39,30 @@ const Navbar = () => {
           url: `/view-trip-details/${trip._id}`,
         }));
 
-      console.log('Upcoming trips in next 7 days:', upcomingTrips);
-      setNotifications(upcomingTrips);
+        const priceAlerts = data.flatMap(trip =>
+          (trip.priceAlerts || [])
+            .filter(alert => !alert.read)
+            .map((alert) => ({
+              title: `💰 Price Change: ${trip.name}`,
+              body: alert.message,
+              url: `/view-trip-details/${trip._id}`,
+              tripId: trip._id,
+              alertId: alert._id
+            }))
+        );
+
+      setNotifications([...priceAlerts, ...upcomingTrips]);
     } catch (err) {
       console.error('Error fetching trips for notifications:', err);
+    }
+  };
+
+  const dismissAlert = async (tripId, alertId) => {
+    try {
+      await axios.patch(`${API_URL}/api/trips/${tripId}/alerts/${alertId}/read`);
+      fetchUpcoming();
+    } catch (err) {
+      console.error('Error dismissing alert:', err);
     }
   };
 
@@ -99,14 +121,25 @@ useEffect(() => {
             )}
           </span>
           <div className="account-dropdown notifications-dropdown">
-            {notifications.length === 0 ? (
-              <p style={{ padding: '0.5rem 1rem', color: '#666' }}>No trips in the next week.</p>
-            ) : notifications.map((n, i) => (
-              <button key={i} onClick={() => navigate(n.url)}>
-                {n.title}<br/>
-                <span style={{ fontSize: '0.85rem', color: '#555' }}>{n.body}</span>
-              </button>
-            ))}
+          {notifications.map((n, i) => (
+  <div key={i} className="notification-item">
+    <button className="notification-btn" onClick={() => navigate(n.url)}>
+      {n.title}<br/>
+      <span style={{ fontSize: '0.85rem', color: '#555' }}>{n.body}</span>
+    </button>
+    {n.alertId !== undefined && (
+  <button
+    className="dismiss-btn"
+    onClick={(e) => {
+      e.stopPropagation();
+      dismissAlert(n.tripId, n.alertId);
+    }}
+  >
+    ✕
+  </button>
+)}
+  </div>
+))}
           </div>
         </li>
 

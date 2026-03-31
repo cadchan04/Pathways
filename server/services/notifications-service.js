@@ -84,4 +84,54 @@ async function checkAndSendNotifications() {
   );
 }
 
-module.exports = { checkAndSendNotifications };
+async function checkAndSendPriceChangeNotifications() {
+  const trips = await Trip.find({ routes: { $exists: true, $not: { $size: 0 } } });
+
+  await Promise.allSettled(
+    trips.map(async (trip) => {
+      try {
+        const user = await User.findOne({ _id: trip.owner });
+        const currentCost = Number(trip.totalCost) || 0;
+
+          if (trip.lastKnownCost === null || trip.lastKnownCost === undefined) {
+            trip.lastKnownCost = currentCost;
+            await trip.save();
+            return;
+          }
+
+          if (currentCost === 0 && Number(trip.lastKnownCost) === 0) {
+            return;
+          }
+
+          const lastCost = Number(trip.lastKnownCost);
+          const diff = currentCost - lastCost;
+          const absDiff = Math.abs(diff);
+
+          if (absDiff < 1) {
+            trip.lastKnownCost = currentCost;
+            await trip.save();
+            return;
+          }
+
+          const direction = diff > 0 ? 'increased' : 'decreased';
+          const message = `Trip cost ${direction} by $${absDiff.toFixed(2)} (now $${currentCost.toFixed(2)})`;
+
+          trip.priceAlerts.push({ message });
+          trip.lastKnownCost = currentCost;
+          await trip.save();
+
+          if (user?.pushSubscription) {
+            await sendPush(user.pushSubscription, {
+              title: `$ Price change for ${trip.name}`,
+              body: message,
+              url: `/view-trip-details/${trip._id}`
+            });
+        }
+      } catch (err) {
+        console.error(`Error checking price for trip ${trip._id}:`, err);
+      }
+    })
+  );
+}
+
+module.exports = { checkAndSendNotifications, checkAndSendPriceChangeNotifications };

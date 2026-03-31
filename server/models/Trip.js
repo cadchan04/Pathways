@@ -12,13 +12,17 @@ const TripSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
     budget: { type: Number },
-    totalCost: { type: Number, default: 0 }
+    totalCost: { type: Number, default: 0 },
+    lastKnownCost: { type: Number, default: null },
+    priceAlerts: [{
+        message: { type: String },
+        createdAt: { type: Date, default: Date.now },
+        read: { type: Boolean, default: false }
+    }]
 });
 
-const Trip = mongoose.model('Trip', TripSchema);
-
 // calculate total cost from routes
-TripSchema.pre('save', function(next) {
+TripSchema.pre('save', async function() {
     if (this.routes && this.routes.length > 0) {
         this.totalCost = this.routes.reduce((sum, route) => {
             return sum + (Number(route.totalCost) || 0);
@@ -26,7 +30,8 @@ TripSchema.pre('save', function(next) {
     } else {
         this.totalCost = 0;
     }
-    next();
 });
+
+const Trip = mongoose.model('Trip', TripSchema);
 
 module.exports = Trip;
