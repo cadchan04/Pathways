@@ -92,3 +92,13 @@ export const getMultiModalRoutes = async ({ origin, destination, date, mpg }) =>
     return []
   }
 }
+
+export const regenerateRoute = async (route, legIndicies) => {
+    try {
+        const response = await axios.post(`${API_URL}/api/routes/regenerate`, { route, legIndicies })
+        return response.data
+    } catch (err) {
+        console.error("Error regenerating route:", err)
+        throw err
+    }
+}

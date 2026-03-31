@@ -1,6 +1,6 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
-import { addRoute } from '../../../services/routeServices';
+import { addRoute, regenerateRoute } from '../../../services/routeServices';
 import { getTrips } from '../../../services/tripServices';
 import { useUser } from '../../../../context/useUser';
 
@@ -166,12 +166,14 @@ export default function RouteDetails() {
         });
     };
 
-    const handleRegenerateRoute = () => {
-        if (selectedLegs.length === 0) {
-            alert('Please select at least one leg to regenerate the route.');
-            return;
+    const handleRegenerateRoute = async (route) => {
+        try {
+            const newRoute = await regenerateRoute(route, selectedLegs);
+        } catch (err) {
+            console.error("Error regenerating route:", err);
+            alert('Could not regenerate route. Please try again.');
         }
-    }
+    };
 
 
     if (!route) {
@@ -319,7 +321,7 @@ export default function RouteDetails() {
                 {isEditing ? (
                     <button
                         className="regenerate-button"
-                        onClick={handleRegenerateRoute}
+                        onClick={() => handleRegenerateRoute(route, selectedLegs)}
                         disabled={selectedLegs.length === 0}
                     >
                         Regenerate Selected Legs

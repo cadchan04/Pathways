@@ -489,4 +489,60 @@ async function multiModalRoutes(origin, destination, date, mpg, onPartialResults
     return wave2Routes;
 }
 
-module.exports = { multiModalRoutes };
+async function regenerateRoute(route, legIndicies) {
+    console.log("Regenerating route with new legs...", route.name, legIndicies);
+
+    const gaps = [];
+    let currentGap = [];
+    const sortedIndices = [...legIndicies].sort((a, b) => a - b);
+
+    // Group consecutive leg indices into gaps
+    for (let i = 0; i < sortedIndices.length; i++) {
+        currentGap.push(sortedIndices[i]);
+        if (sortedIndices[i + 1] !== sortedIndices[i] + 1) {
+            gaps.push(currentGap);
+            currentGap = [];
+        }
+    }
+
+    let regeneratedRoutes = [route];
+
+    // For each gap, find replacements and create new routes
+    for (const gap of gaps) {
+        const startIndex = gap[0];
+        const endIndex = gap[gap.length - 1] + 1;
+
+        const origin = route.legs[startIndex].origin;
+        const destination = route.legs[endIndex - 1].destination;
+        const date = route.legs[startIndex].departAt;
+
+        const replacements = await multiModalRoutes(origin, destination, date);
+        if (replacements.length === 0) {
+            console.log(`No replacements found for legs ${startIndex}-${endIndex - 1} (${origin.name} -> ${destination.name})`);
+            continue;
+        }
+
+        let possibleRoutes = [];
+
+        // For each possible route, replace the gap with each replacement and add to possibleRoutes
+        for (const r of regeneratedRoutes) {
+            for (const replacement of replacements) {
+                const newLegs = [...r.legs];
+                const newCost = (r.totalCost || 0) - (newLegs.slice(startIndex, endIndex).reduce((s, l) => s + (l.cost || 0), 0)) + (replacement.legs.reduce((s, l) => s + (l.cost || 0), 0));
+                const newDuration = (r.totalDuration || 0) - (newLegs.slice(startIndex, endIndex).reduce((s, l) => s + (l.duration || 0), 0)) + (replacement.legs.reduce((s, l) => s + (l.duration || 0), 0));
+                newLegs.splice(startIndex, endIndex - startIndex, ...replacement.legs);
+
+                possibleRoutes.push({ ...r, totalCost: newCost, totalDuration: newDuration, updatedAt: new Date(), legs: newLegs });
+            }
+        }
+        regeneratedRoutes = possibleRoutes
+    }
+    console.log(`Regeneration complete. Found ${regeneratedRoutes.length} possible routes after replacing legs ${legIndicies.join(", ")}.`);
+    for (const r of regeneratedRoutes) {
+        console.log("Regenerated route:", r.legs.map(l => `${l.transportationMode}(${l.origin?.name || l.origin?.address} -> ${l.destination?.name || l.destination?.address})`).join(" -> "));
+    }
+    return regeneratedRoutes;
+}
+
+
+module.exports = { multiModalRoutes, regenerateRoute };
