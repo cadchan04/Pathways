@@ -489,4 +489,83 @@ async function multiModalRoutes(origin, destination, date, mpg, onPartialResults
     return wave2Routes;
 }
 
-module.exports = { multiModalRoutes };
+async function regenerateRoute(route, legIndicies) {
+    console.log("Regenerating route with new legs...", route.name, legIndicies);
+
+    const gaps = [];
+    let currentGap = [];
+    const sortedIndices = [...legIndicies].sort((a, b) => a - b);
+
+    // Group consecutive leg indices into gaps
+    for (let i = 0; i < sortedIndices.length; i++) {
+        currentGap.push(sortedIndices[i]);
+        if (sortedIndices[i + 1] !== sortedIndices[i] + 1) {
+            gaps.push(currentGap);
+            currentGap = [];
+        }
+    }
+
+    let regeneratedRoutes = [route];
+
+    // For each gap, find replacements and create new routes
+    for (const gap of gaps) {
+        // If all legs selected, just regenerate the entire route
+        if (gap.length === route.legs.length) {
+            const replacements = await multiModalRoutes(route.legs[0].origin, route.legs[route.legs.length - 1].destination, route.legs[0].departAt);
+            if (replacements.length === 0) {
+                console.log(`No replacements found for entire route (${route.legs[0].origin.name} -> ${route.legs[route.legs.length - 1].destination.name})`);
+                return [route];
+            }
+            regeneratedRoutes = replacements.map(r => ({
+                ...r,
+                updatedAt: new Date()
+            }));
+            continue;
+        }
+        const startIndex = gap[0];
+        const endIndex = gap[gap.length - 1] + 1;
+
+        const origin = route.legs[startIndex].origin;
+        const destination = route.legs[endIndex - 1].destination;
+        const date = route.legs[startIndex].departAt;
+
+        const replacements = await multiModalRoutes(origin, destination, date);
+        if (replacements.length === 0) {
+            console.log(`No replacements found for legs ${startIndex}-${endIndex - 1} (${origin.name} -> ${destination.name})`);
+            continue;
+        }
+
+        let possibleRoutes = [];
+
+        // For each possible route, replace the gap with each replacement and add to possibleRoutes
+        for (const r of regeneratedRoutes) {
+            for (const replacement of replacements) {
+                if (endIndex < r.legs.length && new Date(replacement.legs[replacement.legs.length - 1].arriveAt) > new Date(r.legs[endIndex].departAt)) {
+                    continue;
+                }
+                if (startIndex === 0) {
+                    r.departAt = replacement.legs[0].departAt;
+                }
+                if (endIndex === r.legs.length) {
+                    r.arriveAt = replacement.legs[replacement.legs.length - 1].arriveAt;
+                }
+                const newLegs = [...r.legs];
+                const newCost = (r.totalCost || 0) - (newLegs.slice(startIndex, endIndex).reduce((s, l) => s + (l.cost || 0), 0)) + (replacement.legs.reduce((s, l) => s + (l.cost || 0), 0));
+                const newDuration = (r.totalDuration || 0) - (newLegs.slice(startIndex, endIndex).reduce((s, l) => s + (l.duration || 0), 0)) + (replacement.legs.reduce((s, l) => s + (l.duration || 0), 0));
+                newLegs.splice(startIndex, endIndex - startIndex, ...replacement.legs);
+
+                possibleRoutes.push({ ...r, totalCost: newCost, totalDuration: newDuration, updatedAt: new Date(), legs: newLegs });
+            }
+        }
+        regeneratedRoutes = possibleRoutes
+    }
+    console.log(`Regeneration complete. Total possible routes after replacing legs ${legIndicies.join(", ")}: ${regeneratedRoutes.length}`);
+    for (const r of regeneratedRoutes) {
+        console.log("Regenerated route:", r.legs.map(l => `${l.transportationMode}(${l.origin?.name || l.origin?.address} -> ${l.destination?.name || l.destination?.address})`).join(" -> "));
+    }
+    const sortedRoutesByDuration = regeneratedRoutes.sort((a, b) => a.totalDuration - b.totalDuration);
+    return sortedRoutesByDuration;
+}
+
+
+module.exports = { multiModalRoutes, regenerateRoute };
