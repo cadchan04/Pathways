@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getTripById } from '../../services/tripServices';
 import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
+import { getRoutePreferences, saveMyRoutePreference } from '../../services/routePreferenceServices';
 import { useUser } from '../../../context/useUser';
 
 import './TripDetails.css';
@@ -18,8 +19,8 @@ function mongoIdString(value) {
 export default function TripDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { dbUser } = useUser();
     const location = useLocation();
+    const { dbUser } = useUser();
     const [trip, setTrip] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -33,6 +34,19 @@ export default function TripDetails() {
     const [inviteFeedback, setInviteFeedback] = useState(null);
     const [tripInvitations, setTripInvitations] = useState([]);
     const [inviteLoadError, setInviteLoadError] = useState(null);
+    const [isLoadingPreferenceData, setIsLoadingPreferenceData] = useState(false);
+    const [isSavingPreference, setIsSavingPreference] = useState(false);
+    const [preferenceError, setPreferenceError] = useState('');
+    const [groupSummary, setGroupSummary] = useState(null);
+    const [showPreferencesModal, setShowPreferencesModal] = useState(false);
+    const TRANSPORT_MODES = ['RIDESHARE', 'PERSONAL_VEHICLE', 'BUS', 'TRAIN', 'FLIGHT'];
+    const [rankByMode, setRankByMode] = useState({
+        RIDESHARE: '',
+        PERSONAL_VEHICLE: '',
+        BUS: '',
+        TRAIN: '',
+        FLIGHT: '',
+    });
 
     useEffect(() => {
         const fetchTripDetails = async () => {
@@ -87,19 +101,117 @@ export default function TripDetails() {
     }, [trip, dbUser?._id, id]);
 
     useEffect(() => {
-        if (location.state?.fromRouteDetails) {
-            // If coming back from route details, refresh trip data to get any updates
-            const refreshTrip = async () => {
-                try {
-                    const data = await getTripById(id);
-                    setTrip(data);
-                } catch (error) {
-                    console.error("Error refreshing trip details:", error);
-                }
-            }
-            refreshTrip();
+        if (!trip || !dbUser?._id) return;
+
+        const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
+        if (!hasCollaborators) {
+            setGroupSummary(null);
+            setPreferenceError('');
+            setRankByMode({
+                RIDESHARE: '',
+                PERSONAL_VEHICLE: '',
+                BUS: '',
+                TRAIN: '',
+                FLIGHT: '',
+            });
+            return;
         }
-    }, [location.state?.fromRouteDetails, id]);
+
+        let cancelled = false;
+        (async () => {
+            setIsLoadingPreferenceData(true);
+            setPreferenceError('');
+            try {
+                const tripId = id || mongoIdString(trip._id);
+                const uid = mongoIdString(dbUser._id);
+                const prefData = await getRoutePreferences(tripId, uid);
+                if (!cancelled) {
+                    setGroupSummary(prefData?.groupSummary || null);
+                    if (prefData?.myPreference?.rankByMode) {
+                        setRankByMode(normalizeRankByMode(prefData.myPreference.rankByMode));
+                    } else if (prefData?.myPreference?.ranking) {
+                        const normalized = normalizeRanking(prefData.myPreference.ranking);
+                        setRankByMode(buildRankByModeFromRanking(normalized));
+                    } else {
+                        setRankByMode({
+                            RIDESHARE: '',
+                            PERSONAL_VEHICLE: '',
+                            BUS: '',
+                            TRAIN: '',
+                            FLIGHT: '',
+                        });
+                    }
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    console.error('Error loading route preferences:', err);
+                    setPreferenceError(err?.response?.data?.error || 'Could not load route preferences.');
+                }
+            } finally {
+                if (!cancelled) setIsLoadingPreferenceData(false);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [trip, id, dbUser?._id]);
+
+    useEffect(() => {
+        if (!trip || !dbUser?._id) return;
+        const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
+        if (!hasCollaborators) return;
+
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return;
+            const tripId = id || mongoIdString(trip._id);
+            getRoutePreferences(tripId, mongoIdString(dbUser._id))
+                .then((prefData) => {
+                    setGroupSummary(prefData?.groupSummary || null);
+                })
+                .catch(() => {});
+        };
+
+        document.addEventListener('visibilitychange', onVisible);
+        return () => document.removeEventListener('visibilitychange', onVisible);
+    }, [trip, id, dbUser?._id]);
+
+    useEffect(() => {
+        if (!showPreferencesModal || !trip || !dbUser?._id) return;
+        const hc = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
+        if (!hc) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const tripId = id || mongoIdString(trip._id);
+                const uid = mongoIdString(dbUser._id);
+                const prefData = await getRoutePreferences(tripId, uid);
+                if (cancelled) return;
+                setGroupSummary(prefData?.groupSummary || null);
+            } catch (err) {
+                console.error('Error loading route preferences (modal):', err);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [showPreferencesModal, trip, id, dbUser?._id]);
+
+    useEffect(() => {
+        if (!location.state?.fromRouteDetails || !id || !dbUser?._id) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const data = await getTripById(id, mongoIdString(dbUser._id));
+                if (!cancelled) setTrip(data);
+            } catch (error) {
+                console.error('Error refreshing trip details:', error);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [location.state?.fromRouteDetails, id, dbUser?._id]);
 
     if (loading) {
         return (
@@ -233,6 +345,91 @@ export default function TripDetails() {
         }
     };
 
+    const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
+
+    const modeLabel = (mode) => {
+        const labels = {
+            RIDESHARE: 'Rideshare',
+            PERSONAL_VEHICLE: 'Personal Vehicle',
+            BUS: 'Bus',
+            TRAIN: 'Train',
+            FLIGHT: 'Flight',
+        };
+        return labels[mode] || mode;
+    };
+
+    const normalizeRanking = (ranking = []) => {
+        const cleaned = ranking.map((m) => String(m || '').trim().toUpperCase());
+        const uniqueValid = cleaned.filter(
+            (m, idx) => TRANSPORT_MODES.includes(m) && cleaned.indexOf(m) === idx
+        );
+        return uniqueValid;
+    };
+
+    const buildRankByModeFromRanking = (ranking) => ({
+        RIDESHARE: ranking.includes('RIDESHARE') ? ranking.indexOf('RIDESHARE') + 1 : '',
+        PERSONAL_VEHICLE: ranking.includes('PERSONAL_VEHICLE') ? ranking.indexOf('PERSONAL_VEHICLE') + 1 : '',
+        BUS: ranking.includes('BUS') ? ranking.indexOf('BUS') + 1 : '',
+        TRAIN: ranking.includes('TRAIN') ? ranking.indexOf('TRAIN') + 1 : '',
+        FLIGHT: ranking.includes('FLIGHT') ? ranking.indexOf('FLIGHT') + 1 : '',
+    });
+
+    const normalizeRankByMode = (raw = {}) => {
+        const normalized = {};
+        for (const mode of TRANSPORT_MODES) {
+            const value = raw?.[mode];
+            if (value === '' || value == null) {
+                normalized[mode] = '';
+                continue;
+            }
+            const n = Number(value);
+            normalized[mode] = Number.isInteger(n) && n >= 1 && n <= 5 ? n : '';
+        }
+        return normalized;
+    };
+
+    const handleRankSelectChange = (mode, value) => {
+        if (value === '') {
+            setRankByMode((prev) => ({ ...prev, [mode]: '' }));
+            return;
+        }
+        const nextRank = Number(value);
+        if (!Number.isInteger(nextRank) || nextRank < 1 || nextRank > 5) return;
+        setRankByMode((prev) => ({ ...prev, [mode]: nextRank }));
+    };
+
+    const handleSavePreferences = async () => {
+        if (!hasCollaborators || !dbUser?._id) return;
+        setIsSavingPreference(true);
+        setPreferenceError('');
+        try {
+            const tripId = id || tripIdStr;
+            const uid = mongoIdString(dbUser._id);
+            await saveMyRoutePreference(tripId, rankByMode, uid);
+            const latest = await getRoutePreferences(tripId, uid);
+            setGroupSummary(latest.groupSummary || null);
+            if (latest?.myPreference?.rankByMode) {
+                setRankByMode(normalizeRankByMode(latest.myPreference.rankByMode));
+            } else if (latest?.myPreference?.ranking) {
+                const normalized = normalizeRanking(latest.myPreference.ranking);
+                setRankByMode(buildRankByModeFromRanking(normalized));
+            } else {
+                setRankByMode({
+                    RIDESHARE: '',
+                    PERSONAL_VEHICLE: '',
+                    BUS: '',
+                    TRAIN: '',
+                    FLIGHT: '',
+                });
+            }
+        } catch (err) {
+            console.error('Error saving route preferences:', err);
+            setPreferenceError(err?.response?.data?.error || 'Could not save preferences right now.');
+        } finally {
+            setIsSavingPreference(false);
+        }
+    };
+
     const handleSendInvite = async (e) => {
         e.preventDefault();
         setInviteFeedback(null);
@@ -258,6 +455,112 @@ export default function TripDetails() {
         } finally {
             setInviteSending(false);
         }
+    };
+
+    const buildGroupSummaryModel = (summary) => {
+        if (!summary || summary.submissionsCount <= 0) return null;
+        const responseCount = summary.submissionsCount;
+        const avgForMode = (mode) => (summary.scores[mode] ?? 0) / responseCount;
+        const avgScores = TRANSPORT_MODES.map((m) => avgForMode(m));
+        const minAvg = Math.min(...avgScores);
+        const maxAvg = Math.max(...avgScores);
+        return {
+            responseCount,
+            avgForMode,
+            maxAvg,
+            avgSpan: maxAvg - minAvg,
+        };
+    };
+
+    const renderGroupSummaryBars = (summary, model) => (
+        <div className="group-transport-bars" role="list">
+            {[...TRANSPORT_MODES]
+                .sort((a, b) => {
+                    const da = model.avgForMode(a);
+                    const db = model.avgForMode(b);
+                    if (da !== db) return da - db;
+                    return modeLabel(a).localeCompare(modeLabel(b));
+                })
+                .map((mode) => {
+                    const avg = model.avgForMode(mode);
+                    const pct =
+                        model.avgSpan === 0 ? 100 : Math.round((100 * (model.maxAvg - avg)) / model.avgSpan);
+                    const isTopPick = (summary.tiedModes || []).includes(mode);
+                    return (
+                        <div key={mode} className="group-transport-bar-row" role="listitem">
+                            <span className="group-transport-bar-label">{modeLabel(mode)}</span>
+                            <div className="group-transport-bar-track" aria-hidden="true">
+                                <div
+                                    className={
+                                        isTopPick
+                                            ? 'group-transport-bar-fill group-transport-bar-fill--top'
+                                            : 'group-transport-bar-fill'
+                                    }
+                                    style={{ width: `${pct}%` }}
+                                />
+                            </div>
+                        </div>
+                    );
+                })}
+        </div>
+    );
+
+    const renderGroupSummaryEmptyBars = () => (
+        <div className="group-transport-bars group-transport-bars--empty" role="list">
+            {TRANSPORT_MODES.map((mode) => (
+                <div key={mode} className="group-transport-bar-row" role="listitem">
+                    <span className="group-transport-bar-label">{modeLabel(mode)}</span>
+                    <div className="group-transport-bar-track" aria-hidden="true">
+                        <div
+                            className="group-transport-bar-fill group-transport-bar-fill--empty"
+                            style={{ width: '0%' }}
+                        />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
+    const renderModalGroupSummary = () => {
+        if (!hasCollaborators) return null;
+        const model = groupSummary ? buildGroupSummaryModel(groupSummary) : null;
+        const tied = groupSummary?.tiedModes || [];
+        const summaryMeta =
+            model && groupSummary
+                ? (() => {
+                      const n = model.responseCount;
+                      const nLabel = `${n} ${n === 1 ? 'response' : 'responses'}`;
+                      if (tied.length > 1) {
+                          return `${nLabel} · Tie: ${tied.map((m) => modeLabel(m)).join(', ')}`;
+                      }
+                      return `${nLabel} · Top: ${modeLabel(groupSummary.topMode)}`;
+                  })()
+                : 'No responses yet';
+
+        const detailsKey = `gs-${groupSummary?.submissionsCount ?? 0}-${groupSummary?.topMode ?? 'none'}`;
+
+        return (
+            <details
+                key={detailsKey}
+                className="trip-route-preference-group-details"
+                defaultOpen
+            >
+                <summary className="trip-route-preference-group-summary">
+                    <span className="trip-route-preference-group-summary-title">
+                        <span className="trip-route-preference-group-chevron" aria-hidden>
+                            ▼
+                        </span>
+                        Group summary
+                    </span>
+                    <span className="trip-route-preference-group-summary-meta">{summaryMeta}</span>
+                </summary>
+                <div className="trip-route-preference-group-body">
+                    {model && groupSummary
+                        ? renderGroupSummaryBars(groupSummary, model)
+                        : renderGroupSummaryEmptyBars()}
+                </div>
+            </details>
+        );
     };
 
     return (
@@ -287,7 +590,7 @@ export default function TripDetails() {
                 
                 <div className="header-stats">
                     <p className="trip-desc">{trip.description}</p>
-                    <div className="trip-dates"><strong>Dates: </strong>{new Date(trip.startDate).toLocaleDateString('en-US', {timeZone: 'UTC'})} - {new Date(trip.endDate).toLocaleDateString('en-US', {timeZone: 'UTC'})}</div>
+                    <div className="trip-dates"><strong>Dates: </strong>{new Date(trip.startDate).toLocaleDateString()} - {new Date(trip.endDate).toLocaleDateString()}</div>
                     <div className="trip-budget"><strong>Budget:</strong> ${trip.budget?.toFixed(2) || 'N/A'}</div>
                     <div className={`trip-cost ${currentTotal > trip.budget ? 'over-budget' : ''}`}>
                         <strong>Total Cost:</strong> ${currentTotal?.toFixed(2) || 'N/A'} {/* using currentTotal for live updates, but can use trip.totalCost instead */}
@@ -361,7 +664,23 @@ export default function TripDetails() {
             )}
 
             <div className="details-content">
-                <h2>Routes</h2>
+                <div className="details-content-header">
+                    <h2 id="trip-routes-heading">Routes</h2>
+                    {hasCollaborators && (
+                        <button
+                            type="button"
+                            className="trip-route-preference-open"
+                            onClick={() => {
+                                setPreferenceError('');
+                                setShowPreferencesModal(true);
+                            }}
+                            aria-describedby="trip-routes-heading"
+                        >
+                            Group Transport Preferences
+                        </button>
+                    )}
+                </div>
+
                 {sortedRoutes && sortedRoutes.length > 0 ? (
                     <div className="routes-list">
                         <div className="routes-list">
@@ -439,6 +758,74 @@ export default function TripDetails() {
                     Cancel
                     </button>
                 </div>
+                </div>
+            )}
+
+            {hasCollaborators && showPreferencesModal && (
+                <div
+                    className="trip-route-preference-modal-overlay"
+                    onClick={() => {
+                        if (isSavingPreference) return;
+                        setShowPreferencesModal(false);
+                    }}
+                >
+                    <section className="trip-route-preference-panel" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            type="button"
+                            className="trip-route-preference-cancel"
+                            onClick={() => setShowPreferencesModal(false)}
+                            disabled={isSavingPreference}
+                        >
+                            ← Cancel
+                        </button>
+                        <div className="trip-route-preference-header">
+                            <h2>Mode of Transport Preference</h2>
+                            {isLoadingPreferenceData ? <p>Loading...</p> : null}
+                        </div>
+                        <p className="trip-route-preference-help">
+                            Rank transport modes from highest to lowest preference.
+                        </p>
+                        <ol className="trip-route-preference-list">
+                            {TRANSPORT_MODES.map((mode) => (
+                                <li key={mode} className="trip-route-preference-item">
+                                    <div className="trip-route-preference-buttons">
+                                            <label htmlFor={`rank-${mode}`} className="visually-hidden">
+                                                Rank for {modeLabel(mode)}
+                                            </label>
+                                            <select
+                                                id={`rank-${mode}`}
+                                                value={rankByMode[mode]}
+                                                onChange={(e) => handleRankSelectChange(mode, e.target.value)}
+                                                disabled={isSavingPreference}
+                                            >
+                                                <option value="">--</option>
+                                                {[1, 2, 3, 4, 5].map((rank) => (
+                                                    <option
+                                                        key={`${mode}-${rank}`}
+                                                        value={rank}
+                                                    >
+                                                        {rank}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                    </div>
+                                    <span>{modeLabel(mode)}</span>
+                                </li>
+                            ))}
+                        </ol>
+                        <div className="trip-route-preference-modal-actions">
+                            <button
+                                type="button"
+                                className="trip-route-preference-save"
+                                onClick={handleSavePreferences}
+                                disabled={isSavingPreference || isLoadingPreferenceData}
+                            >
+                                {isSavingPreference ? 'Saving...' : 'Save Preferences'}
+                            </button>
+                        </div>
+                        {renderModalGroupSummary()}
+                        {preferenceError ? <p className="trip-route-preference-error">{preferenceError}</p> : null}
+                    </section>
                 </div>
             )}
         </div>

@@ -50,7 +50,7 @@ router.put("/:auth0Id", async (req, res) => {
     const user = await User.findOneAndUpdate(
       { auth0Id: req.params.auth0Id },
       { name, notificationEnabled },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     res.json(user);

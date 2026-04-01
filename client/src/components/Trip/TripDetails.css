@@ -103,15 +103,15 @@
 }
 
 .invite-collaborators {
-    margin-top: 24px;
-    padding: 20px 0 24px;
-    border-bottom: 2px solid #f0f0f0;
+    margin-top: 16px;
+    padding: 12px 0 16px;
+    border-bottom: 1px solid #eee;
 }
 
 .invite-collaborators h2 {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     color: #1a1a1a;
-    margin: 0 0 16px 0;
+    margin: 0 0 10px 0;
 }
 
 .invite-collaborators-form {
@@ -175,15 +175,15 @@
 }
 
 .invite-activity-details {
-    margin-top: 18px;
+    margin-top: 10px;
     border: 1px solid #e4ecef;
-    border-radius: 10px;
+    border-radius: 8px;
     background: #fafcfd;
     overflow: hidden;
 }
 
 .invite-activity-summary {
-    padding: 12px 14px;
+    padding: 8px 12px;
     cursor: pointer;
     font-weight: 600;
     font-size: 0.9rem;
@@ -217,7 +217,7 @@
 }
 
 .invite-activity-body {
-    padding: 0 14px 14px 14px;
+    padding: 0 12px 10px 12px;
     border-top: 1px solid #eef2f5;
 }
 
@@ -248,7 +248,7 @@
 
 .header-stats {
     display: flex;
-    gap: 30px; /* spread out Dates, Budget, and Cost horizontally */
+    gap: 30px;
     flex-wrap: wrap;
 }
 
@@ -270,10 +270,308 @@
     align-items: flex-start;
 }
 
-.details-content h2 {
+.details-content-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 16px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.details-content-header h2 {
     font-size: 1.4rem;
     color: #1a1a1a;
-    margin-bottom: 24px;
+    margin: 0;
+}
+
+.group-transport-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.group-transport-bar-row {
+    display: grid;
+    grid-template-columns: minmax(100px, 130px) 1fr;
+    align-items: center;
+    gap: 10px;
+}
+
+.group-transport-bar-label {
+    font-size: 0.82rem;
+    color: #4b5563;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.group-transport-bar-track {
+    height: 10px;
+    border-radius: 999px;
+    background: #eef2f5;
+    overflow: hidden;
+}
+
+.group-transport-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #7ec8d8 0%, #3fa8c6 100%);
+    min-width: 2px;
+    transition: width 0.35s ease;
+}
+
+.group-transport-bar-fill--top {
+    background: linear-gradient(90deg, #2d8fa8 0%, #3fa8c6 55%, #5eb8cc 100%);
+    box-shadow: 0 0 0 1px rgba(63, 168, 198, 0.35);
+}
+
+.group-transport-bars--empty .group-transport-bar-fill--empty {
+    opacity: 0;
+    min-width: 0;
+}
+
+@media (max-width: 520px) {
+    .group-transport-bar-row {
+        grid-template-columns: minmax(72px, 1fr) 1fr;
+        gap: 6px;
+    }
+}
+
+.trip-route-preference-panel {
+    width: min(700px, 92vw);
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 20px;
+    border: 1px solid #e4ecef;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
+}
+
+button.trip-route-preference-cancel {
+    background: transparent;
+    background-color: transparent;
+    color: #888888;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 10px 0;
+    margin: 0 0 0 -4px;
+    font-weight: bold;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    line-height: 1.3;
+}
+
+button.trip-route-preference-cancel:hover:not(:disabled) {
+    background: transparent;
+    background-color: transparent;
+    color: #555555;
+}
+
+button.trip-route-preference-cancel:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: transparent;
+}
+
+.trip-route-preference-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.trip-route-preference-header h2 {
+    margin: 0 0 4px;
+    font-size: 1.15rem;
+}
+
+.trip-route-preference-help {
+    margin: 8px 0 12px;
+    color: #4b5563;
+}
+
+.trip-route-preference-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.trip-route-preference-item {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.trip-route-preference-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.trip-route-preference-buttons select {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    padding: 6px 10px;
+    cursor: pointer;
+    min-width: 64px;
+}
+
+.trip-route-preference-save {
+    border: none;
+    border-radius: 8px;
+    background: #3fa8c6;
+    color: #fff;
+    padding: 10px 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.trip-route-preference-save:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.trip-route-preference-error {
+    color: #c5303b;
+    margin: 8px 0 0;
+}
+
+.trip-route-preference-summary {
+    margin: 10px 0 0;
+}
+
+.trip-route-preference-open {
+    flex-shrink: 0;
+    border: 2px solid #3fa8c6;
+    border-radius: 8px;
+    background: transparent;
+    color: #3fa8c6;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.trip-route-preference-open:hover {
+    background: #3fa8c6;
+    color: #fff;
+}
+
+.trip-route-preference-summary-inline {
+    margin: 10px 0 0;
+    color: #374151;
+}
+
+.trip-route-preference-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    padding: 16px;
+}
+
+.trip-route-preference-modal-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 10px;
+}
+
+.trip-route-preference-group-details {
+    margin-top: 16px;
+    border: 1px solid #e4ecef;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #f8fafc 0%, #fff 55%);
+    overflow: hidden;
+}
+
+.trip-route-preference-group-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 14px;
+    padding: 12px 14px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.875rem;
+    color: #374151;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.trip-route-preference-group-summary::-webkit-details-marker {
+    display: none;
+}
+
+.trip-route-preference-group-summary::marker {
+    content: '';
+}
+
+.trip-route-preference-group-summary:hover {
+    background: rgba(63, 168, 198, 0.07);
+}
+
+.trip-route-preference-group-summary:focus {
+    outline: none;
+}
+
+.trip-route-preference-group-summary:focus-visible {
+    outline: 2px solid #3fa8c6;
+    outline-offset: 2px;
+}
+
+.trip-route-preference-group-details[open] > .trip-route-preference-group-summary {
+    border-bottom: 1px solid #e8eef1;
+}
+
+.trip-route-preference-group-summary-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.trip-route-preference-group-chevron {
+    display: inline-flex;
+    font-size: 0.55rem;
+    line-height: 1;
+    color: #6b7280;
+    transition: transform 0.2s ease;
+}
+
+.trip-route-preference-group-details:not([open]) .trip-route-preference-group-chevron {
+    transform: rotate(-90deg);
+}
+
+.trip-route-preference-group-summary-meta {
+    color: #6b7280;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-align: right;
+    flex: 1;
+    min-width: 0;
+}
+
+.trip-route-preference-group-body {
+    padding: 12px 14px 14px;
+}
+
+.trip-route-preference-group-body .group-transport-bars {
+    gap: 8px;
 }
 
 .routes-list {
