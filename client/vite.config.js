@@ -12,5 +12,13 @@ export default defineConfig({
         secure: false,
       }
     }
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/setupTests.js',
+    deps: {
+      inline: [/@exodus\/bytes/, /html-encoding-sniffer/, /jsdom/],
+    },
   }
 })

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { addRoute, getMultiModalRoutes } from '../../../services/routeServices'
+import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { addRoute, getMultiModalRoutes, updateRoute } from '../../../services/routeServices'
+// import { getRouteSuggestions, addRoute, getMultiModalRoutes } from '../../../services/routeServices'
 import { getTrips } from '../../../services/tripServices'
 import { useUser } from '../../../../context/useUser'
 import './RouteOptions.css'
@@ -42,6 +43,7 @@ function getWeatherDescription(code) {
 }
 
 export default function RouteOptions() {
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const { dbUser } = useUser()
 
@@ -69,12 +71,12 @@ export default function RouteOptions() {
   //const [modeFilter, setModeFilter] = useState('All')
   //const [sortBy, setSortBy] = useState('cost-asc')
 
-  const originId = searchParams.get('originId') || ''
-  const originName = searchParams.get('originName') || 'Unknown Origin'
-  const destinationId = searchParams.get('destinationId') || ''
-  const destinationName = searchParams.get('destinationName') || 'Unknown Destination'
-  const departDate = searchParams.get('departDate') || ''
-  const mpg = searchParams.get('mpg') || ''
+  const originId = searchParams.get('originId') || location.state?.originalRoute?.origin?.id || ''
+  const originName = searchParams.get('originName') || location.state?.originalRoute?.origin?.name || 'Unknown Origin'
+  const destinationId = searchParams.get('destinationId') || location.state?.originalRoute?.destination?.id || ''
+  const destinationName = searchParams.get('destinationName') || location.state?.originalRoute?.destination?.name || 'Unknown Destination'
+  const departDate = searchParams.get('departDate') || location.state?.originalRoute?.departAt?.split('T')[0] || ''
+  const mpg = searchParams.get('mpg') || location.state?.originalRoute?.mpg || ''
 
   const originLat = parseFloat(searchParams.get('originLat'))
   const originLng = parseFloat(searchParams.get('originLng'))
@@ -108,13 +110,21 @@ export default function RouteOptions() {
   });
 
   useEffect(() => {
-    if (!originId || !destinationId || !departDate) {
+    console.log(location.state?.isRegenerating ? "Loading regenerated routes..." : "Loading routes...")
+    if (!location.state?.isRegenerating && (!originId || !destinationId || !departDate)) {
       setError('Missing search details. Please create a route again.')
       setLoading(false)
       return
     }
 
     const loadSuggestions = async () => {
+      // If we're coming from a regeneration, we should already have the routes in state and can skip the API call
+      if (location.state?.isRegenerating) {
+        setRoutes(location.state?.regeneratedRoutes || [])
+        setLoading(false)
+        return
+      }
+      
       try {
         setLoading(true)
 
@@ -320,8 +330,27 @@ export default function RouteOptions() {
 
   // navigate to route detail page for a specific route
   const handleViewRoute = async (route) => {
-    navigate('/view-route-details', { state: { selectedRoute: route } });
+    if (location.state?.isRegenerating) {
+      navigate('/view-route-details', { state: { fromRegeneration: true, selectedRoute: route, tripId: location.state.tripId, originalRoute: location.state.originalRoute } });
+    } else {
+      navigate('/view-route-details', { state: { selectedRoute: route } });
+    }
+
   }
+
+  const handleSaveRegeneratedRoute = async (originalRouteId, route) => {
+          try {
+              setIsSubmitting(true);
+              await updateRoute(location.state.tripId, originalRouteId, route);
+          } catch (err) {
+              console.error('Error saving regenerated route:', err);
+              setSubmitError('Could not save the selected route. Please try again.');
+              return;
+          } finally {
+              setIsSubmitting(false);
+          }
+          navigate(`/view-trip-details/${location.state.tripId}`, { state: { fromRouteDetails: true } });
+      }
 
   // Weather
   useEffect(() => {
@@ -534,13 +563,13 @@ export default function RouteOptions() {
                           {(route.localizedFare
                             ? route.localizedFare
                             : (route.totalCost !== undefined && route.totalCost != null
-                              ? `Estimated Cost: $${route.totalCost}`
+                              ? `Estimated Cost: $${Number(route.totalCost).toFixed(2)}`
                               : "Fare Not Available"))}
                         </strong>
                       </p>
                     </div>
 
-                    <button className="route-option-select-button" onClick={() => handleAddRoute(route)}>
+                    <button className="route-option-select-button" onClick={() => location.state?.isRegenerating ? handleSaveRegeneratedRoute(location.state.originalRoute._id, route) : handleAddRoute(route)}>
                       Add Route
                     </button>
 
@@ -557,9 +586,12 @@ export default function RouteOptions() {
         </div>
       )}
 
-      <Link to="/create-route" className="route-options-back-link">
-        Edit Route Search
-      </Link>
+      {!location.state?.isRegenerating && (
+          <Link to="/create-route" className="route-options-back-link">
+            Edit Route Search
+          </Link>
+        )
+      }
 
       {showAddRouteModal && (
         <div className="route-modal-overlay" onClick={closeAddRouteModal}>

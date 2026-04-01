@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getTripById } from '../../services/tripServices';
 import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
@@ -19,6 +19,7 @@ function mongoIdString(value) {
 export default function TripDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { dbUser } = useUser();
     const [trip, setTrip] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -195,6 +196,22 @@ export default function TripDetails() {
             cancelled = true;
         };
     }, [showPreferencesModal, trip, id, dbUser?._id]);
+
+    useEffect(() => {
+        if (!location.state?.fromRouteDetails || !id || !dbUser?._id) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const data = await getTripById(id, mongoIdString(dbUser._id));
+                if (!cancelled) setTrip(data);
+            } catch (error) {
+                console.error('Error refreshing trip details:', error);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [location.state?.fromRouteDetails, id, dbUser?._id]);
 
     if (loading) {
         return (
@@ -393,9 +410,17 @@ export default function TripDetails() {
             setGroupSummary(latest.groupSummary || null);
             if (latest?.myPreference?.rankByMode) {
                 setRankByMode(normalizeRankByMode(latest.myPreference.rankByMode));
-            } else             if (latest?.myPreference?.ranking) {
+            } else if (latest?.myPreference?.ranking) {
                 const normalized = normalizeRanking(latest.myPreference.ranking);
                 setRankByMode(buildRankByModeFromRanking(normalized));
+            } else {
+                setRankByMode({
+                    RIDESHARE: '',
+                    PERSONAL_VEHICLE: '',
+                    BUS: '',
+                    TRAIN: '',
+                    FLIGHT: '',
+                });
             }
         } catch (err) {
             console.error('Error saving route preferences:', err);

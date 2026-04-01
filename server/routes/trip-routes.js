@@ -208,5 +208,32 @@ router.patch('/:id/alerts/:alertId/read', async (req, res) => {
       res.status(500).json({ error: err.message });
     }
   });
+  
+// Edit a route in a trip
+router.put('/:tripId/routes/:routeId/update', async (req, res) => {
+    try {
+        console.log("Received request to update route");
+        const { tripId, routeId } = req.params;
+        const { _id, ...cleanData } = req.body;
+
+        const trip = await Trip.findById(tripId);
+        if (!trip) {
+            return res.status(404).json({ message: "Trip not found" });
+        }
+
+        const route = trip.routes.id(routeId);
+        if (!route) {
+            return res.status(404).json({ message: "Route not found" });
+        }
+
+        Object.assign(route, cleanData);
+        await trip.save();
+
+        res.status(200).json(route);
+    } catch (err) {
+        console.error("Error updating route:", err);
+        res.status(400).json({ error: "Failed to update route" });
+    }
+});
 
 module.exports = router;
