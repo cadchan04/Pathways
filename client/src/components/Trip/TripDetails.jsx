@@ -2,13 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getTripById } from '../../services/tripServices';
 import { deleteRoute } from '../../services/routeServices';
+import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
+import { useUser } from '../../../context/useUser';
 
 import './TripDetails.css';
+
+function mongoIdString(value) {
+    if (value == null) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object' && value.$oid) return value.$oid;
+    return String(value);
+}
 
 
 export default function TripDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { dbUser } = useUser();
     const [trip, setTrip] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -16,22 +26,64 @@ export default function TripDetails() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [routeToDelete, setRouteToDelete] = useState(null);
 
+    // Invite collaborators (owner only)
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteSending, setInviteSending] = useState(false);
+    const [inviteFeedback, setInviteFeedback] = useState(null);
+    const [tripInvitations, setTripInvitations] = useState([]);
+    const [inviteLoadError, setInviteLoadError] = useState(null);
+
     useEffect(() => {
         const fetchTripDetails = async () => {
+            if (!dbUser?._id) {
+                setLoading(false);
+                return;
+            }
             try {
-                const data = await getTripById(id);
+                const data = await getTripById(id, dbUser._id);
                 console.log("Fetched trip data:", data);
                 setTrip(data);
 
             } catch (error) {
                 console.error("Error fetching trip details:", error);
+                setTrip(null);
             } finally {
                 setLoading(false);
             }
         }
 
         fetchTripDetails();
-    }, [id]);
+    }, [id, dbUser?._id]);
+
+    useEffect(() => {
+        if (!trip || !dbUser?._id) return;
+        const owner = mongoIdString(trip.owner) === mongoIdString(dbUser._id);
+        if (!owner) {
+            setTripInvitations([]);
+            setInviteLoadError(null);
+            return;
+        }
+        const tid = id || mongoIdString(trip._id);
+        let cancelled = false;
+        (async () => {
+            try {
+                setInviteLoadError(null);
+                const list = await listTripInvitations(tid, dbUser._id);
+                if (!cancelled) setTripInvitations(Array.isArray(list) ? list : []);
+            } catch (e) {
+                console.error('Error loading trip invitations:', e);
+                if (!cancelled) {
+                    setTripInvitations([]);
+                    setInviteLoadError(
+                        e?.response?.data?.error || 'Could not load invitation activity.'
+                    );
+                }
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [trip, dbUser?._id, id]);
 
     if (loading) {
         return (
@@ -39,6 +91,14 @@ export default function TripDetails() {
                 <p>Loading trip details...</p>
             </div>
         )
+    }
+
+    if (!dbUser?._id) {
+        return (
+            <div className="details-container">
+                <p>Sign in to view this trip.</p>
+            </div>
+        );
     }
 
     if (!trip) {
@@ -137,6 +197,53 @@ export default function TripDetails() {
         return `${start} to ${end}`;
     };
 
+    const tripIdStr = mongoIdString(trip._id);
+    const isTripOwner = mongoIdString(trip.owner) === mongoIdString(dbUser?._id);
+
+    const invitationActivityText = (inv) => {
+        const email = inv.inviteeEmail || 'Unknown';
+        const when = new Date(inv.updatedAt || inv.createdAt).toLocaleString();
+        switch (inv.status) {
+            case 'pending':
+                return `Invitation sent to ${email} — ${when}`;
+            case 'accepted':
+                return `${email} accepted the invitation — ${when}`;
+            case 'declined':
+                return `${email} declined the invitation — ${when}`;
+            case 'revoked':
+                return `Invitation to ${email} was revoked — ${when}`;
+            default:
+                return `${email} — ${inv.status} — ${when}`;
+        }
+    };
+
+    const handleSendInvite = async (e) => {
+        e.preventDefault();
+        setInviteFeedback(null);
+        const email = inviteEmail.trim();
+        if (!email) {
+            setInviteFeedback({ type: 'error', text: 'Enter an email address.' });
+            return;
+        }
+        setInviteSending(true);
+        try {
+            const apiTripId = id || tripIdStr;
+            await sendTripInvitation(apiTripId, email, dbUser._id);
+            setInviteEmail('');
+            setInviteLoadError(null);
+            const list = await listTripInvitations(apiTripId, dbUser._id);
+            setTripInvitations(Array.isArray(list) ? list : []);
+        } catch (err) {
+            const msg =
+                err?.response?.data?.error ||
+                err?.message ||
+                'Could not send the invitation. Please try again.';
+            setInviteFeedback({ type: 'error', text: msg });
+        } finally {
+            setInviteSending(false);
+        }
+    };
+
     return (
         <div className="details-container">
             <div className="top-nav">
@@ -147,12 +254,14 @@ export default function TripDetails() {
                     ← Back
                 </button>
 
-                <button
-                    className="edit-trip-button"
-                    onClick={() => navigate(`/edit-trip/${id}`)}
-                >
-                    Edit Trip Details
-                </button>
+                {isTripOwner && (
+                    <button
+                        className="edit-trip-button"
+                        onClick={() => navigate(`/edit-trip/${id}`)}
+                    >
+                        Edit Trip Details
+                    </button>
+                )}
             </div>
             
             <div className="details-header">
@@ -169,6 +278,71 @@ export default function TripDetails() {
                     </div>
                 </div>
             </div>
+
+            {isTripOwner && (
+                <section className="invite-collaborators" aria-labelledby="invite-collaborators-heading">
+                    <h2 id="invite-collaborators-heading">Invite collaborators</h2>
+                    <form className="invite-collaborators-form" onSubmit={handleSendInvite}>
+                        <label htmlFor="collaborator-email" className="visually-hidden">
+                            Collaborator email
+                        </label>
+                        <input
+                            id="collaborator-email"
+                            type="email"
+                            name="email"
+                            autoComplete="email"
+                            placeholder="name@example.com"
+                            value={inviteEmail}
+                            onChange={(e) => {
+                                setInviteEmail(e.target.value);
+                                if (inviteFeedback) setInviteFeedback(null);
+                            }}
+                            disabled={inviteSending}
+                            className="invite-collaborators-input"
+                        />
+                        <button
+                            type="submit"
+                            className="invite-collaborators-submit"
+                            disabled={inviteSending}
+                        >
+                            {inviteSending ? 'Sending…' : 'Send invitation'}
+                        </button>
+                    </form>
+                    {inviteFeedback?.type === 'error' && (
+                        <p className="invite-collaborators-message invite-collaborators-message--error" role="alert">
+                            {inviteFeedback.text}
+                        </p>
+                    )}
+
+                    <details className="invite-activity-details" defaultOpen>
+                        <summary className="invite-activity-summary">
+                            Invitation activity
+                            {tripInvitations.length > 0 ? (
+                                <span className="invite-activity-count">({tripInvitations.length})</span>
+                            ) : null}
+                        </summary>
+                        <div className="invite-activity-body">
+                            {inviteLoadError && (
+                                <p className="invite-collaborators-message invite-collaborators-message--error" role="alert">
+                                    {inviteLoadError}
+                                </p>
+                            )}
+                            {!inviteLoadError && tripInvitations.length === 0 ? (
+                                <p className="invite-activity-empty">No invitation activity yet.</p>
+                            ) : null}
+                            {!inviteLoadError && tripInvitations.length > 0 ? (
+                                <ul className="invite-activity-list">
+                                    {tripInvitations.map((inv) => (
+                                        <li key={mongoIdString(inv._id)} className="invite-activity-item">
+                                            {invitationActivityText(inv)}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : null}
+                        </div>
+                    </details>
+                </section>
+            )}
 
             <div className="details-content">
                 <h2>Routes</h2>
@@ -203,15 +377,17 @@ export default function TripDetails() {
                                                     View Details
                                                 </button>
 
-                                                <button
-                                                    className="delete-route-button"
-                                                    onClick={() => {
-                                                        setRouteToDelete(route);
-                                                        setShowConfirm(true);
-                                                    }}
-                                                >
-                                                    Delete Route
-                                                </button>
+                                                {isTripOwner && (
+                                                    <button
+                                                        className="delete-route-button"
+                                                        onClick={() => {
+                                                            setRouteToDelete(route);
+                                                            setShowConfirm(true);
+                                                        }}
+                                                    >
+                                                        Delete Route
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -232,8 +408,9 @@ export default function TripDetails() {
                     <p>Delete “{routeToDelete?.name}”?</p>
 
                     <button style={{ background: "#e63946", color: "white", padding: "10px", border: "none", borderRadius: "6px", marginRight: "10px", cursor: "pointer" }} onClick={async () => {
-                        await deleteRoute(trip._id, routeToDelete._id);
-                        const updatedTrip = await getTripById(trip._id);
+                        const tripId = typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
+                        await deleteRoute(tripId, routeToDelete._id, dbUser._id);
+                        const updatedTrip = await getTripById(tripId, dbUser._id);
                         setTrip(updatedTrip);
                         setShowConfirm(false);
                     }}

@@ -26,10 +26,12 @@ export const getTrips = async (userId) => {
     }
 };
 
-// get a single trip by ID
-export const getTripById = async (id) => {
+// get a single trip by ID (userId required)
+export const getTripById = async (id, userId) => {
     try {
-        const response = await axios.get(`${API_URL}/api/trips/${id}`);
+        const response = await axios.get(`${API_URL}/api/trips/${id}`, {
+            params: { userId },
+        });
         return response.data;
     } catch (err) {
         console.error(`Error fetching trip ${id}:`, err);
@@ -37,10 +39,12 @@ export const getTripById = async (id) => {
     }
 };
 
-// duplicate an existing trip
-export const duplicateTrip = async (tripId) => {
+// duplicate an existing trip (owner only)
+export const duplicateTrip = async (tripId, userId) => {
     try {
-        const response = await axios.post(`${API_URL}/api/trips/${tripId}/duplicate`);
+        const response = await axios.post(`${API_URL}/api/trips/${tripId}/duplicate`, {}, {
+            params: { userId },
+        });
         return response.data;
     } catch (err) {
         console.error(`Error duplicating trip ${tripId}:`, err);
@@ -48,11 +52,12 @@ export const duplicateTrip = async (tripId) => {
     }
 };
 
-// update a single trip by ID
-export const updateTrip = async (id, tripData) => {
+// update a single trip by ID (owner only on server)
+export const updateTrip = async (id, tripData, userId) => {
     try {
-        console.log("Full URL:", `${API_URL}/api/trips/${id}`);
-        const response = await axios.put(`${API_URL}/api/trips/${id}`, tripData);
+        const response = await axios.put(`${API_URL}/api/trips/${id}`, tripData, {
+            params: { userId },
+        });
         return response.data;
     } catch (err) {
         console.error(`Error updating trip ${id}:`, err);
@@ -60,13 +65,14 @@ export const updateTrip = async (id, tripData) => {
     }
 };
 
-// delete a single trip by ID
-export const deleteTrip = async (id) => {
+export const deleteTripById = async (tripId, userId) => {
     try {
-        const response = await axios.delete(`${API_URL}/api/trips/${id}`);
+        const response = await axios.delete(`${API_URL}/api/trips/${tripId}`, {
+            params: { userId },
+        });
         return response.data;
     } catch (err) {
-        console.error(`Error deleting trip ${id}:`, err);
+        console.error(`Error deleting trip ${tripId}:`, err);
         throw err;
     }
 };

@@ -107,7 +107,7 @@ export default function RouteDetails() {
         setIsSubmitting(true);
         setSubmitError('');
         try {
-            await addRoute(tripId, routePayload());
+            await addRoute(tripId, routePayload(), dbUser._id);
             closeModal();
             navigate(`/view-trip-details/${tripId}`);
         } catch (err) {

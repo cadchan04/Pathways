@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { addRoute, getMultiModalRoutes } from '../../../services/routeServices'
-// import { getRouteSuggestions, addRoute, getMultiModalRoutes } from '../../../services/routeServices'
 import { getTrips } from '../../../services/tripServices'
 import { useUser } from '../../../../context/useUser'
 import './RouteOptions.css'
@@ -296,10 +295,14 @@ export default function RouteOptions() {
 
   const handleConfirmAddToTrip = async (tripId) => {
     if (!routeToAdd) return
+    if (!dbUser?._id) {
+      setSubmitError('Your profile is still loading. Please try again.')
+      return
+    }
     setIsSubmitting(true)
     setSubmitError('')
     try {
-      await addRoute(tripId, buildRoutePayload(routeToAdd))
+      await addRoute(tripId, buildRoutePayload(routeToAdd), dbUser._id)
       closeAddRouteModal()
       navigate(`/view-trip-details/${tripId}`)
     } catch (err) {

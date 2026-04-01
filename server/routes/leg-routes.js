@@ -1,14 +1,23 @@
 const express = require('express');
 const Trip = require('../models/Trip');
+const { canViewTrip, canManageTrip, readUserId } = require('../collaboration/tripAccess');
 
 const router = express.Router({ mergeParams: true });
 
 // Get all legs for a route
 router.get('/', async (req, res) => {
   try {
+    const userId = readUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: 'userId is required' });
+    }
+
     const trip = await Trip.findById(req.params.tripId);
     if (!trip) {
       return res.status(404).json({ error: 'Trip not found' });
+    }
+    if (!canViewTrip(trip, userId)) {
+      return res.status(403).json({ error: 'You do not have access to this trip' });
     }
     const route = trip.routes.id(req.params.routeId);
     if (!route) {
@@ -23,12 +32,20 @@ router.get('/', async (req, res) => {
 // Update a leg within a route
 router.patch('/:legId', async (req, res) => {
   try {
+    const userId = readUserId(req);
+    if (!userId) {
+      return res.status(401).json({ error: 'userId is required' });
+    }
+
     console.log("Received request to update leg with data:", req.body)
 
     //find the trip, route, and leg based on the IDs in the request params
     const trip = await Trip.findById(req.params.tripId);
     if (!trip) {
       return res.status(404).json({ error: 'Trip not found' });
+    }
+    if (!canManageTrip(trip, userId)) {
+      return res.status(403).json({ error: 'Only the trip owner can edit route legs' });
     }
     const route = trip.routes.id(req.params.routeId);
     if (!route) {
