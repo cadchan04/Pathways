@@ -376,7 +376,6 @@ export default function RouteDetails() {
                         onClick={() => {
                             if (fromRegeneration) {
                                 handleSaveRegeneratedRoute(route);
-                                navigate(`/view-trip-details/${location.state.tripId}`);
                                 return;
                             }
                             setShowAddRouteModal(true);
