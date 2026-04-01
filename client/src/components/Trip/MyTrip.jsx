@@ -131,9 +131,9 @@ export default function MyTrip() {
                   </div>
 
                   <div className="trip-dates">
-                    <span>{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : 'TBD'}</span>
+                      <span> {trip.startDate? new Date(trip.startDate).toLocaleDateString('en-US', {timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit'}) : 'TBD'}</span>
                     <span> → </span>
-                    <span>{trip.endDate ? new Date(trip.endDate).toLocaleDateString() : 'TBD'}</span>
+                    <span>{trip.endDate ? new Date(trip.endDate).toLocaleDateString('en-US', {timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit'}) : 'TBD'}</span>
                   </div>
 
                   <div className="trip-actions">

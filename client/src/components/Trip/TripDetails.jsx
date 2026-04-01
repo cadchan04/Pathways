@@ -162,7 +162,7 @@ export default function TripDetails() {
                 
                 <div className="header-stats">
                     <p className="trip-desc">{trip.description}</p>
-                    <div className="trip-dates"><strong>Dates: </strong>{new Date(trip.startDate).toLocaleDateString()} - {new Date(trip.endDate).toLocaleDateString()}</div>
+                    <div className="trip-dates"><strong>Dates: </strong>{new Date(trip.startDate).toLocaleDateString('en-US', {timeZone: 'UTC'})} - {new Date(trip.endDate).toLocaleDateString('en-US', {timeZone: 'UTC'})}</div>
                     <div className="trip-budget"><strong>Budget:</strong> ${trip.budget?.toFixed(2) || 'N/A'}</div>
                     <div className={`trip-cost ${currentTotal > trip.budget ? 'over-budget' : ''}`}>
                         <strong>Total Cost:</strong> ${currentTotal?.toFixed(2) || 'N/A'} {/* using currentTotal for live updates, but can use trip.totalCost instead */}
