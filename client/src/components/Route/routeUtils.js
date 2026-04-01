@@ -79,6 +79,45 @@ export const getRouteStopCount = (route = {}) => {
   return Math.max(0, stopCount)
 }
 
+export const getRouteModeSummary = (route = {}) => {
+  const modes = (route.legs || []).map((leg) => leg.transportationMode).filter(Boolean)
+  const uniqueModes = modes.filter((mode, index) => index === 0 || mode !== modes[index - 1])
+
+  return uniqueModes.join(' → ') || 'Unknown'
+}
+
+export const getRouteProviderSummary = (route = {}) => {
+  const providers = (route.legs || []).flatMap((leg) => leg.provider).filter(Boolean)
+
+  if (providers.length > 2) {
+    return `${providers[0]}, ... , ${providers[providers.length - 1]}`
+  }
+
+  return providers.join(', ') || 'Unknown'
+}
+
+export const getRouteCostText = (route = {}) => {
+  if (route.localizedFare) return route.localizedFare
+  if (route.totalCost !== undefined && route.totalCost != null) {
+    return `Estimated Cost: $${route.totalCost}`
+  }
+
+  return 'Fare Not Available'
+}
+
+export const getComparisonWinner = (firstValue, secondValue, preference = 'lower') => {
+  const first = Number(firstValue)
+  const second = Number(secondValue)
+
+  if (!Number.isFinite(first) || !Number.isFinite(second) || first === second) return null
+
+  if (preference === 'higher') {
+    return first > second ? 'first' : 'second'
+  }
+
+  return first < second ? 'first' : 'second'
+}
+
 export const getRouteFilterErrors = (filters = {}) => ({
   travelTime: getTravelTimeFilterError(filters.travelTime),
   cost: getCostFilterError(filters.cost),
