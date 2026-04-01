@@ -143,6 +143,7 @@ export default function RouteDetails() {
 
     const formatTime = (isoString) => {
         if (!isoString) return "N/A";
+
         return new Date(isoString).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
@@ -153,7 +154,19 @@ export default function RouteDetails() {
     const getTimeDate = (isoString) => {
         if (!isoString) return "N/A";
         return isoString.split('T')[0].substring(5, 10).split('-').join('/');
-    }
+    };
+    
+    const formatTimeAndDate = (isoString) => {
+        if (!isoString) return "N/A";
+
+        return new Date(isoString).toLocaleTimeString([], {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+        });
+    };
 
     const formatDuration = (totalMinutes) => {
         if (!totalMinutes || totalMinutes <= 0) return "0 min";
@@ -238,7 +251,7 @@ export default function RouteDetails() {
             <div className="route-summary-banner">
                 <div className="summary-stat">
                     <strong>Total Travel Time:</strong>
-                    <span>{formatTime(route.departAt) } - {formatTime(route.arriveAt)}</span>
+                    <span>{formatTimeAndDate(route.departAt) } - {formatTimeAndDate(route.arriveAt)}</span>
                 </div>
                 <div className="summary-stat">
                     <strong>Total Duration: </strong>
