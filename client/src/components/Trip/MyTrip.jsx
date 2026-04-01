@@ -1,10 +1,17 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getTrips, duplicateTrip } from '../../services/tripServices';
+import { getTrips, duplicateTrip, deleteTripById } from '../../services/tripServices';
 import { useUser } from '../../../context/useUser';
 
 import './MyTrip.css';
+
+function mongoIdString(value) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value.$oid) return value.$oid;
+  return String(value);
+}
 
 export default function MyTrip() {
   const navigate = useNavigate();
@@ -67,7 +74,7 @@ export default function MyTrip() {
       typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
     setDuplicatingId(id);
     try {
-      await duplicateTrip(id);
+      await duplicateTrip(id, dbUser._id);
       const data = await getTrips(dbUser._id);
       setTrips(data);
 
@@ -80,22 +87,22 @@ export default function MyTrip() {
     }
   };
 
-  // Delete trip
   const handleDeleteTrip = async (tripId) => {
+    if (!dbUser?._id) return;
     try {
-      await fetch(`/api/trips/${tripId}`, {
-        method: "DELETE"
-      });
-
-      // Remove from UI
-      setTrips(prev => prev.filter(t => t._id !== tripId));
-
+      const idStr = typeof tripId === 'string' ? tripId : tripId?.$oid ?? String(tripId);
+      await deleteTripById(idStr, dbUser._id);
+      setTrips((prev) =>
+        prev.filter((t) => {
+          const tid = typeof t._id === 'string' ? t._id : t._id?.$oid ?? String(t._id);
+          return tid !== idStr;
+        })
+      );
       window.dispatchEvent(new Event('refreshNotifications'));
-
     } catch (err) {
       console.error("Error deleting trip: ", err);
     }
-  }
+  };
 
   const toggleMenu = (e, id) => {
     e.stopPropagation(); // prevent global click listener from closing it instantly
@@ -123,6 +130,9 @@ export default function MyTrip() {
               const tripIdStr =
                 typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
               const isOpen = activeMenuId === tripIdStr;
+              const isOwner =
+                dbUser?._id != null &&
+                mongoIdString(trip.owner) === mongoIdString(dbUser._id);
               return (
                 <div key={tripIdStr} className="trip-row">
                   <div className="trip-info">
@@ -145,7 +155,7 @@ export default function MyTrip() {
                       View Details
                     </button>
 
-                    {/* Three Dots Menu */}
+                    {isOwner && (
                     <div className="more-options-container">
                       <button
                         className="three-dots-button"
@@ -161,7 +171,7 @@ export default function MyTrip() {
                               className="duplicate-trip-button"
                               disabled={duplicatingId !== null}
                               onClick={(e) => {
-                                handleDuplicateTrip(e, trip); // pass 'e' to stop propagation
+                                handleDuplicateTrip(e, trip);
                                 setActiveMenuId(null);
                               }}
                             >
@@ -172,7 +182,7 @@ export default function MyTrip() {
                               type="button"
                               className="delete-trip-button"
                               onClick={(e) => {
-                                e.stopPropagation(); // keep the menu/row logic from firing
+                                e.stopPropagation();
                                 setTripToDelete(trip);
                                 setShowConfirm(true);
                                 setActiveMenuId(null);
@@ -183,6 +193,7 @@ export default function MyTrip() {
                           </div>
                         )}
                       </div>
+                    )}
                   </div>
                 </div>
               );

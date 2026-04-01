@@ -12,6 +12,7 @@ import CreateRoute from "../components/Route/CreateRoute/CreateRoute"
 import RouteOptions from "../components/Route/RouteOptions/RouteOptions"
 import RouteDetails from "../components/Route/RouteDetails/RouteDetails.jsx";
 import EditProfile from "../components/Account/EditProfile.jsx";
+import InvitationsPage from "../components/Invitations/InvitationsPage.jsx";
 
 export default function AppRoutes() {
   return (
@@ -26,6 +27,7 @@ export default function AppRoutes() {
       {/* Protected routes - login only */}
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/my-trips" element={<ProtectedRoute><MyTrip /></ProtectedRoute>} />
+      <Route path="/invitations" element={<ProtectedRoute><InvitationsPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
       <Route path="/create-trip" element={<ProtectedRoute><CreateTrip /></ProtectedRoute>} />
       <Route path="/edit-trip/:id" element={<ProtectedRoute><EditTrip /></ProtectedRoute>} />

@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getTripById, updateTrip, deleteTrip, duplicateTrip } from '../../services/tripServices';
+import { getTripById, updateTrip, deleteTripById, duplicateTrip } from '../../services/tripServices';
+import { useUser } from '../../../context/useUser';
 
 import './EditTrip.css';
+
+function mongoIdString(value) {
+    if (value == null) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object' && value.$oid) return value.$oid;
+    return String(value);
+}
 
 export default function EditTrip() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { dbUser } = useUser();
     
     const [formData, setFormData] = useState({
         name: '',
@@ -29,8 +38,18 @@ export default function EditTrip() {
     // fetch existing trip data
     useEffect(() => {
         const fetchTrip = async () => {
+            if (!dbUser?._id) {
+                setLoading(false);
+                return;
+            }
+            setLoading(true);
             try {
-                const data = await getTripById(id);
+                const data = await getTripById(id, dbUser._id);
+
+                if (mongoIdString(data.owner) !== mongoIdString(dbUser._id)) {
+                    navigate(`/view-trip-details/${id}`, { replace: true });
+                    return;
+                }
 
                 // format dates
                 setFormData({
@@ -49,7 +68,7 @@ export default function EditTrip() {
         }
 
         fetchTrip();
-    }, [id]);
+    }, [id, dbUser?._id]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -70,7 +89,7 @@ export default function EditTrip() {
     }
 
         try {
-            await updateTrip(id, formData);
+            await updateTrip(id, formData, dbUser._id);
 
             navigate(`/view-trip-details/${id}`);
         } catch (err) {
@@ -80,10 +99,11 @@ export default function EditTrip() {
     };
 
     const handleDuplicateTrip = async () => {
+        if (!dbUser?._id) return;
         setDuplicateError(null);
         setDuplicating(true);
         try {
-            await duplicateTrip(id);
+            await duplicateTrip(id, dbUser._id);
             navigate('/my-trips');
         } catch (err) {
             setDuplicateError("We couldn't duplicate this trip. Please try again.");
@@ -107,10 +127,18 @@ export default function EditTrip() {
         );
     }
 
+    if (!dbUser?._id) {
+        return (
+            <div className="edit-trip-container">
+                <p>Sign in to edit this trip.</p>
+            </div>
+        );
+    }
+
     // Delete Trip logic for a single trip view
     const handleDeleteTrip = async () => {
         try {
-            await deleteTrip(id);
+            await deleteTripById(id, dbUser._id);
             navigate('/my-trips');
         } catch (err) {
             console.error("Error deleting trip: ", err);

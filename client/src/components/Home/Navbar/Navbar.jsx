@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useUser } from '../../../../context/useUser';
-import { getTrips, duplicateTrip } from '../../../services/tripServices';
+import { getTrips } from '../../../services/tripServices';
+import { listMyInvitations } from '../../../services/invitationServices';
 import './Navbar.css';
 import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -11,10 +12,12 @@ const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth0();
   const { dbUser } = useUser();
 
   const [notifications, setNotifications] = useState([]);
+  const [inviteCount, setInviteCount] = useState(0);
   const [openNotifications, setOpenNotifications] = useState(false);
   const notifRef = useRef();
 
@@ -58,11 +61,28 @@ const Navbar = () => {
   };
 
   const dismissAlert = async (tripId, alertId) => {
+    if (!dbUser?._id) return;
     try {
-      await axios.patch(`${API_URL}/api/trips/${tripId}/alerts/${alertId}/read`);
+      await axios.patch(`${API_URL}/api/trips/${tripId}/alerts/${alertId}/read`, null, {
+        params: { userId: dbUser._id },
+      });
       fetchUpcoming();
     } catch (err) {
       console.error('Error dismissing alert:', err);
+    }
+  };
+
+  const fetchInviteCount = async () => {
+    if (!dbUser?._id) {
+      setInviteCount(0);
+      return;
+    }
+    try {
+      const data = await listMyInvitations(dbUser._id);
+      setInviteCount(Array.isArray(data) ? data.length : 0);
+    } catch (err) {
+      console.error('Error fetching invitations count:', err);
+      setInviteCount(0);
     }
   };
 
@@ -73,9 +93,20 @@ useEffect(() => {
 }, [dbUser?._id]);
 
   useEffect(() => {
+    if (!dbUser?._id) return;
+    fetchInviteCount();
+  }, [dbUser?._id, location.pathname]);
+
+  useEffect(() => {
     const handleRefresh = () => fetchUpcoming();
     window.addEventListener('refreshNotifications', handleRefresh);
     return () => window.removeEventListener('refreshNotifications', handleRefresh);
+  }, [dbUser?._id]);
+
+  useEffect(() => {
+    const onInvitesChanged = () => fetchInviteCount();
+    window.addEventListener('invitationsChanged', onInvitesChanged);
+    return () => window.removeEventListener('invitationsChanged', onInvitesChanged);
   }, [dbUser?._id]);
 
   // Close dropdown on outside click
@@ -102,6 +133,14 @@ useEffect(() => {
           </li>
           <li>
             <Link to="/my-trips">My Trips</Link>
+          </li>
+          <li className="nav-invitations-item">
+            <Link to="/invitations" className="nav-invitations-link">
+              Invitations
+              {inviteCount > 0 && (
+                <span className="nav-invitations-badge">{inviteCount}</span>
+              )}
+            </Link>
           </li>
 
           {/* Notifications Bell */}
