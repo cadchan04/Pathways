@@ -176,7 +176,7 @@ router.put('/:id', async (req, res) => {
         const updatedTrip = await Trip.findByIdAndUpdate(
             id,
             req.body,
-            { new: true, runValidators: true }
+            { returnDocument: "after", runValidators: true }
         );
 
         res.status(200).json(updatedTrip);
