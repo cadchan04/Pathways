@@ -17,17 +17,91 @@
 }
 
 .route-options-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
   margin: 1rem 0 1.2rem;
 }
 
-.route-options-controls select {
-  padding: 0.4rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+.route-filter-group {
+  background: #fff;
+  border: 1px solid #d8e4ea;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
+
+.route-filter-group-disabled {
+  background: #f7f9fa;
+  border-color: #e3e8eb;
+}
+
+.route-filter-header,
+.route-filter-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.route-filter-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.route-filter-meta {
+  font-size: 0.75rem;
+  color: #6a7c85;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.route-filter-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 0.8rem 0 0.65rem;
+}
+
+.route-filter-inputs input {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #c8d4db;
+  border-radius: 8px;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.route-filter-inputs input:disabled {
+  background: #eef3f5;
+  color: #8a9aa2;
+  cursor: not-allowed;
+}
+
+.route-filter-help {
+  font-size: 0.78rem;
+  color: #61727a;
+}
+
+.route-filter-clear {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #2c7a8f;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.route-filter-clear:disabled {
+  color: #9aa8ae;
+  cursor: default;
+}
+
+.route-filter-error {
+  margin: 0.55rem 0 0;
+  font-size: 0.78rem;
+  color: #b00020;
 }
 
 .route-options-list {
@@ -181,6 +255,11 @@
   color: #b00020;
 }
 
+.route-options-empty {
+  margin: 1rem 0;
+  color: #51636b;
+}
+
 .route-options-back-link {
   display: inline-block;
   margin-top: 1rem;
@@ -257,6 +336,12 @@
 .route-modal-lead {
   margin: 0 0 1rem;
   color: #555;
+}
+
+@media (max-width: 768px) {
+  .route-filter-inputs {
+    grid-template-columns: 1fr;
+  }
 }
 
 .route-modal-actions {

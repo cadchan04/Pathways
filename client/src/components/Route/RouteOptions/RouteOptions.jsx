@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { getRouteSuggestions, addRoute, getMultiModalRoutes } from '../../../services/routeServices'
+import { addRoute, getMultiModalRoutes } from '../../../services/routeServices'
 import { getTrips } from '../../../services/tripServices'
 import { useUser } from '../../../../context/UserContext'
 import './RouteOptions.css'
 import { getWeatherForecast } from '../../../services/weatherServices';
+import { applyRouteFilters, getRouteFilterErrors, getRouteStopCount } from '../routeUtils'
 
 
 
@@ -58,6 +59,24 @@ export default function RouteOptions() {
   const [tripsError, setTripsError] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [filters, setFilters] = useState({
+    travelTime: {
+      min: '',
+      max: ''
+    },
+    cost: {
+      min: '',
+      max: ''
+    },
+    distance: {
+      min: '',
+      max: ''
+    },
+    stops: {
+      min: '',
+      max: ''
+    }
+  })
 
 
   const navigate = useNavigate();
@@ -77,6 +96,12 @@ export default function RouteOptions() {
 
   const destinationLat = parseFloat(searchParams.get('destinationLat'))
   const destinationLng = parseFloat(searchParams.get('destinationLng'))
+  const filterErrors = getRouteFilterErrors(filters)
+
+  const displayedRoutes = useMemo(
+    () => applyRouteFilters(routes, filters),
+    [routes, filters]
+  )
 
   useEffect(() => {
     if (!originId || !destinationId || !departDate) {
@@ -279,13 +304,70 @@ export default function RouteOptions() {
   
     loadWeather();
   }, [routes, departDate]);
-  
-  
-// Filtering and sorting to be implemented
-/*
-  const availableModes = useMemo()
-  const displayedRoutes = useMemo()
-*/
+
+  const handleFilterChange = (filterKey, bound, value) => {
+    if (value !== '' && Number(value) < 0) return
+
+    setFilters((currentFilters) => ({
+      ...currentFilters,
+      [filterKey]: {
+        ...currentFilters[filterKey],
+        [bound]: value
+      }
+    }))
+  }
+
+  const clearFilter = (filterKey) => {
+    setFilters((currentFilters) => ({
+      ...currentFilters,
+      [filterKey]: {
+        min: '',
+        max: ''
+      }
+    }))
+  }
+
+  const hasActiveFilter = (filterKey) => filters[filterKey].min !== '' || filters[filterKey].max !== ''
+  const filterConfigs = [
+    {
+      key: 'travelTime',
+      label: 'Travel time',
+      meta: 'Minutes',
+      minPlaceholder: 'Min',
+      maxPlaceholder: 'Max',
+      helpText: 'Filter by travel time.'
+    },
+    {
+      key: 'cost',
+      label: 'Cost',
+      meta: 'USD',
+      minPlaceholder: 'Min',
+      maxPlaceholder: 'Max',
+      helpText: 'Filter by total cost.'
+    },
+    {
+      key: 'distance',
+      label: 'Distance',
+      meta: 'Miles',
+      minPlaceholder: 'Min',
+      maxPlaceholder: 'Max',
+      helpText: 'Filter by distance traveled.'
+    },
+    {
+      key: 'stops',
+      label: 'Stops',
+      meta: 'Count',
+      minPlaceholder: 'Min',
+      maxPlaceholder: 'Max',
+      helpText: 'Filter by number of stops.'
+    }
+  ]
+  const activeFilterLabels = filterConfigs
+    .filter((filter) => hasActiveFilter(filter.key))
+    .map((filter) => filter.label.toLowerCase())
+  const noMatchMessage = activeFilterLabels.length > 0
+    ? `No routes match the selected ${activeFilterLabels.join(', ')} filter${activeFilterLabels.length > 1 ? 's' : ''}.`
+    : 'No routes match the selected filters.'
 
   return (
     <section className="route-options-page">
@@ -324,18 +406,60 @@ export default function RouteOptions() {
       </div>
     )}
   </div>
-</header>
+      </header>
 
-      {/* Implement filter and sorting */}
+      <section className="route-options-controls" aria-label="Route filters">
+        {filterConfigs.map((filter) => (
+          <div key={filter.key} className="route-filter-group">
+            <div className="route-filter-header">
+              <label className="route-filter-label">{filter.label}</label>
+              <span className="route-filter-meta">{filter.meta}</span>
+            </div>
+            <div className="route-filter-inputs">
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                placeholder={filter.minPlaceholder}
+                value={filters[filter.key].min}
+                onChange={(event) => handleFilterChange(filter.key, 'min', event.target.value)}
+                aria-label={`Minimum ${filter.label.toLowerCase()}`}
+              />
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                placeholder={filter.maxPlaceholder}
+                value={filters[filter.key].max}
+                onChange={(event) => handleFilterChange(filter.key, 'max', event.target.value)}
+                aria-label={`Maximum ${filter.label.toLowerCase()}`}
+              />
+            </div>
+            <div className="route-filter-footer">
+              <span className="route-filter-help">{filter.helpText}</span>
+              <button
+                type="button"
+                className="route-filter-clear"
+                onClick={() => clearFilter(filter.key)}
+                disabled={!hasActiveFilter(filter.key)}
+              >
+                Clear
+              </button>
+            </div>
+            {filterErrors[filter.key] && <p className="route-filter-error">{filterErrors[filter.key]}</p>}
+          </div>
+        ))}
+      </section>
 
       {loading && <p>Loading route suggestions...</p>}
       {!loading && error && <p className="route-options-error">{error}</p>}
       {!loading && !error && routes.length === 0 && <p>No matching routes found.</p>}
-
-      {/* Change to displayedRoutes when filtering/sorting is implemented */}
-      {!loading && !error && routes.length > 0 && (
+      {!loading && !error && routes.length > 0 && displayedRoutes.length === 0 && (
+        <p className="route-options-empty">{noMatchMessage}</p>
+      )}
+      {!loading && !error && displayedRoutes.length > 0 && (
         <ul className="route-options-list">
-          {routes.map((route, index) => {
+          {displayedRoutes.map((route, index) => {
             console.log(`Rendering Route ${index + 1}:`, route);
 
             return (
@@ -396,15 +520,7 @@ export default function RouteOptions() {
                     <hr />
                     <span className="stop-count">
                       {(() => {
-                        // Add segment counts and leg counts if available, otherwise fallback to leg count for stop count
-                        var stopCount = -1; // Start at -1 to not count the first leg as a stop
-                        for (let leg of route.legs) {
-                          if (leg.segments && leg.segments.length > 0) {
-                            stopCount += leg.segments.length;
-                          } else {
-                            stopCount += 1; // If no segments, each leg is a direct connection (1 stop)
-                          }
-                        }
+                        const stopCount = getRouteStopCount(route)
                         if (stopCount <= 0) return "Direct (Non-stop)";
                         return `${stopCount} ${stopCount === 1 ? 'Stop' : 'Stops'}`;
                       })()}
@@ -428,16 +544,7 @@ export default function RouteOptions() {
                     <p>
                       <strong>
                         Stops: {(() => {
-
-                          // Add segment counts and leg counts if available, otherwise fallback to leg count for stop count
-                          var stopCount = -1; // Start at -1 to not count the first leg as a stop
-                          for (let leg of route.legs) {
-                            if (leg.segments && leg.segments.length > 0) {
-                              stopCount += leg.segments.length;
-                            } else {
-                              stopCount += 1; // If no segments, each leg is a direct connection (1 stop)
-                            }
-                          }
+                          const stopCount = getRouteStopCount(route)
                           if (stopCount <= 0) return "Direct (Non-stop)";
                           return `${stopCount} ${stopCount === 1 ? 'Transfer' : 'Transfers'}`;
                         })()}

@@ -1,5 +1,25 @@
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
+const parseFilterBound = (value) => {
+  if (value === '' || value == null) return null
+
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return null
+
+  return parsed
+}
+
+const getRangeError = (range = {}, label) => {
+  const min = parseFilterBound(range.min)
+  const max = parseFilterBound(range.max)
+
+  if (min != null && max != null && min > max) {
+    return `Minimum ${label} cannot be greater than maximum ${label}.`
+  }
+
+  return ''
+}
+
 export const getTodayDateString = () => {
   const today = new Date()
   const year = today.getFullYear()
@@ -40,8 +60,70 @@ export const validateCreateRouteInput = ({ origin, destination, departDate}) => 
   return errors
 }
 
-// filtering and sorting to be implemented 
-// export const applyRouteFiltersAndSort = (routes, { modeFilter = 'All', sortBy = 'cost-asc' }) => { }
+export const getTravelTimeFilterError = (travelTime = {}) => getRangeError(travelTime, 'travel time')
+export const getCostFilterError = (cost = {}) => getRangeError(cost, 'cost')
+export const getDistanceFilterError = (distance = {}) => getRangeError(distance, 'distance')
+export const getStopsFilterError = (stops = {}) => getRangeError(stops, 'stops')
+
+export const getRouteStopCount = (route = {}) => {
+  let stopCount = -1
+
+  for (const leg of route.legs || []) {
+    if (leg.segments && leg.segments.length > 0) {
+      stopCount += leg.segments.length
+    } else {
+      stopCount += 1
+    }
+  }
+
+  return Math.max(0, stopCount)
+}
+
+export const getRouteFilterErrors = (filters = {}) => ({
+  travelTime: getTravelTimeFilterError(filters.travelTime),
+  cost: getCostFilterError(filters.cost),
+  distance: getDistanceFilterError(filters.distance),
+  stops: getStopsFilterError(filters.stops)
+})
+
+export const applyRouteFilters = (routes = [], filters = {}) => {
+  const travelTime = filters.travelTime || {}
+  const cost = filters.cost || {}
+  const distance = filters.distance || {}
+  const stops = filters.stops || {}
+  const errors = getRouteFilterErrors(filters)
+
+  if (Object.values(errors).some(Boolean)) {
+    return []
+  }
+
+  const minDuration = parseFilterBound(travelTime.min)
+  const maxDuration = parseFilterBound(travelTime.max)
+  const minCost = parseFilterBound(cost.min)
+  const maxCost = parseFilterBound(cost.max)
+  const minDistance = parseFilterBound(distance.min)
+  const maxDistance = parseFilterBound(distance.max)
+  const minStops = parseFilterBound(stops.min)
+  const maxStops = parseFilterBound(stops.max)
+
+  return routes.filter((route) => {
+    const duration = Number(route.totalDuration) || 0
+    const totalCost = Number(route.totalCost) || 0
+    const totalDistance = Number(route.totalDistance) || 0
+    const stopCount = getRouteStopCount(route)
+
+    if (minDuration != null && duration < minDuration) return false
+    if (maxDuration != null && duration > maxDuration) return false
+    if (minCost != null && totalCost < minCost) return false
+    if (maxCost != null && totalCost > maxCost) return false
+    if (minDistance != null && totalDistance < minDistance) return false
+    if (maxDistance != null && totalDistance > maxDistance) return false
+    if (minStops != null && stopCount < minStops) return false
+    if (maxStops != null && stopCount > maxStops) return false
+
+    return true
+  })
+}
 
 // displays time in user's local timezone (not sure if that will matter for flights)
 export const formatTimeRange = (departureTime, arrivalTime) => {
