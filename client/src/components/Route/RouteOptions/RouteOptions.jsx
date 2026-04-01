@@ -563,7 +563,7 @@ export default function RouteOptions() {
                           {(route.localizedFare
                             ? route.localizedFare
                             : (route.totalCost !== undefined && route.totalCost != null
-                              ? `Estimated Cost: $${route.totalCost}`
+                              ? `Estimated Cost: $${Number(route.totalCost).toFixed(2)}`
                               : "Fare Not Available"))}
                         </strong>
                       </p>
