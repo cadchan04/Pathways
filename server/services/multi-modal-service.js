@@ -509,6 +509,19 @@ async function regenerateRoute(route, legIndicies) {
 
     // For each gap, find replacements and create new routes
     for (const gap of gaps) {
+        // If all legs selected, just regenerate the entire route
+        if (gap.length === route.legs.length) {
+            const replacements = await multiModalRoutes(route.legs[0].origin, route.legs[route.legs.length - 1].destination, route.legs[0].departAt);
+            if (replacements.length === 0) {
+                console.log(`No replacements found for entire route (${route.legs[0].origin.name} -> ${route.legs[route.legs.length - 1].destination.name})`);
+                return [route];
+            }
+            regeneratedRoutes = replacements.map(r => ({
+                ...r,
+                updatedAt: new Date()
+            }));
+            continue;
+        }
         const startIndex = gap[0];
         const endIndex = gap[gap.length - 1] + 1;
 
@@ -527,6 +540,15 @@ async function regenerateRoute(route, legIndicies) {
         // For each possible route, replace the gap with each replacement and add to possibleRoutes
         for (const r of regeneratedRoutes) {
             for (const replacement of replacements) {
+                if (endIndex < r.legs.length && new Date(replacement.legs[replacement.legs.length - 1].arriveAt) > new Date(r.legs[endIndex].departAt)) {
+                    continue;
+                }
+                if (startIndex === 0) {
+                    r.departAt = replacement.legs[0].departAt;
+                }
+                if (endIndex === r.legs.length) {
+                    r.arriveAt = replacement.legs[replacement.legs.length - 1].arriveAt;
+                }
                 const newLegs = [...r.legs];
                 const newCost = (r.totalCost || 0) - (newLegs.slice(startIndex, endIndex).reduce((s, l) => s + (l.cost || 0), 0)) + (replacement.legs.reduce((s, l) => s + (l.cost || 0), 0));
                 const newDuration = (r.totalDuration || 0) - (newLegs.slice(startIndex, endIndex).reduce((s, l) => s + (l.duration || 0), 0)) + (replacement.legs.reduce((s, l) => s + (l.duration || 0), 0));
@@ -537,11 +559,12 @@ async function regenerateRoute(route, legIndicies) {
         }
         regeneratedRoutes = possibleRoutes
     }
-    console.log(`Regeneration complete. Found ${regeneratedRoutes.length} possible routes after replacing legs ${legIndicies.join(", ")}.`);
+    console.log(`Regeneration complete. Total possible routes after replacing legs ${legIndicies.join(", ")}: ${regeneratedRoutes.length}`);
     for (const r of regeneratedRoutes) {
         console.log("Regenerated route:", r.legs.map(l => `${l.transportationMode}(${l.origin?.name || l.origin?.address} -> ${l.destination?.name || l.destination?.address})`).join(" -> "));
     }
-    return regeneratedRoutes;
+    const sortedRoutesByDuration = regeneratedRoutes.sort((a, b) => a.totalDuration - b.totalDuration);
+    return sortedRoutesByDuration;
 }
 
 

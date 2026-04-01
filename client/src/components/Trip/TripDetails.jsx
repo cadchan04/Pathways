@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getTripById } from '../../services/tripServices';
 import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
@@ -19,6 +19,7 @@ export default function TripDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { dbUser } = useUser();
+    const location = useLocation();
     const [trip, setTrip] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -84,6 +85,21 @@ export default function TripDetails() {
             cancelled = true;
         };
     }, [trip, dbUser?._id, id]);
+
+    useEffect(() => {
+        if (location.state?.fromRouteDetails) {
+            // If coming back from route details, refresh trip data to get any updates
+            const refreshTrip = async () => {
+                try {
+                    const data = await getTripById(id);
+                    setTrip(data);
+                } catch (error) {
+                    console.error("Error refreshing trip details:", error);
+                }
+            }
+            refreshTrip();
+        }
+    }, [location.state?.fromRouteDetails, id]);
 
     if (loading) {
         return (

@@ -1,6 +1,6 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
-import { addRoute, regenerateRoute } from '../../../services/routeServices';
+import { addRoute, regenerateRoute, updateRoute } from '../../../services/routeServices';
 import { getTrips } from '../../../services/tripServices';
 import { useUser } from '../../../../context/useUser';
 
@@ -19,10 +19,12 @@ export default function RouteDetails() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [selectedLegs, setSelectedLegs] = useState([]);
+    const [isSubmittingRegeneration, setIsSubmittingRegeneration] = useState(false);
 
     const route = location.state?.selectedRoute;
     const fromTripDetails = Boolean(location.state?.fromTripDetails);
     const tripIdFromState = location.state?.tripId;
+    const fromRegeneration = Boolean(location.state?.fromRegeneration);
 
     useEffect(() => {
         if (!showAddRouteModal || modalStep !== 'choose-trip') return;
@@ -125,6 +127,20 @@ export default function RouteDetails() {
         navigate('/create-trip', { state: { pendingRoute: route } });
     };
 
+    const handleSaveRegeneratedRoute = async (route) => {
+        try {
+            setIsSubmitting(true);
+            await updateRoute(location.state.tripId, location.state.originalRoute?._id, route);
+        } catch (err) {
+            console.error('Error saving regenerated route:', err);
+            setSubmitError('Could not save the selected route. Please try again.');
+            return;
+        } finally {
+            setIsSubmitting(false);
+        }
+        navigate(`/view-trip-details/${location.state.tripId}`, { state: { fromRouteDetails: true } });
+    }
+
     const formatTime = (isoString) => {
         if (!isoString) return "N/A";
         return new Date(isoString).toLocaleTimeString([], {
@@ -133,6 +149,11 @@ export default function RouteDetails() {
             hour12: true,
         });
     };
+
+    const getTimeDate = (isoString) => {
+        if (!isoString) return "N/A";
+        return isoString.split('T')[0].substring(5, 10).split('-').join('/');
+    }
 
     const formatDuration = (totalMinutes) => {
         if (!totalMinutes || totalMinutes <= 0) return "0 min";
@@ -168,10 +189,20 @@ export default function RouteDetails() {
 
     const handleRegenerateRoute = async (route) => {
         try {
-            const newRoute = await regenerateRoute(route, selectedLegs);
+            setIsSubmittingRegeneration(true);
+            const newRoutes = await regenerateRoute(route, selectedLegs);
+            navigate('/route-options', { 
+                state: { 
+                        isRegenerating: true,
+                        tripId: fromTripDetails ? tripIdFromState : null,                       
+                        originalRoute: route, 
+                        regeneratedRoutes: newRoutes
+                    } });
         } catch (err) {
             console.error("Error regenerating route:", err);
             alert('Could not regenerate route. Please try again.');
+        } finally {
+            setIsSubmittingRegeneration(false);
         }
     };
 
@@ -182,15 +213,26 @@ export default function RouteDetails() {
 
     return (
         <div className="route-details-page">
+            { isSubmittingRegeneration && (
+                <div className="regeneration-overlay">
+                    <div className="spinner"></div>
+                    <p>Regenerating route...</p>
+                </div>
+            )
+
+            }
             <div className="route-details-header">
                 <h2>Itinerary: {route.name}</h2>
-                <button
-                    className="edit-route-button"
-                    onClick={() => setIsEditing((prev) => !prev)}
-                    disabled={route.legs.length === 0}
-                >
-                    {isEditing ? 'Cancel Edit' : 'Edit Route'}
-                </button>
+                
+                {fromTripDetails && (
+                    <button
+                        className="edit-route-button"
+                        onClick={() => setIsEditing((prev) => !prev)}
+                        disabled={route.legs.length === 0}
+                    >
+                        {isEditing ? 'Cancel Edit' : 'Edit Route'}
+                    </button>
+                )}
             </div>
 
             <div className="route-summary-banner">
@@ -280,6 +322,7 @@ export default function RouteDetails() {
                                     // FALLBACK: SINGLE LEG (No Segments)
                                     <>
                                         <div className="path-node">
+                                            <span className="path-date">{getTimeDate(leg.departAt)}</span>
                                             <span className="path-time">{formatTime(leg.departAt)}</span>
                                             <span className="path-address">{leg.origin.name}</span>
                                         </div>
@@ -291,6 +334,7 @@ export default function RouteDetails() {
                                         </div>
 
                                         <div className="path-node">
+                                            <span className = "path-date">{getTimeDate(leg.arriveAt)}</span>
                                             <span className="path-time">{formatTime(leg.arriveAt)}</span>
                                             <span className="path-address">{leg.destination.name}</span>
                                         </div>
@@ -330,13 +374,18 @@ export default function RouteDetails() {
                     <button
                         className="add-route-button"
                         onClick={() => {
+                            if (fromRegeneration) {
+                                handleSaveRegeneratedRoute(route);
+                                navigate(`/view-trip-details/${location.state.tripId}`);
+                                return;
+                            }
                             setShowAddRouteModal(true);
                             setModalStep('choose-action');
                             setTripsError('');
                             setSubmitError('');
                         }}
                     >
-                        Add Route
+                        {fromRegeneration ? "Select Route" : "Add Route"}
                     </button>
                     )
                 )}

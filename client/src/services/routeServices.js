@@ -65,12 +65,9 @@ export const getLegs = async (tripId, routeId, userId) => {
     .catch(err => console.error(err))
 }
 
-export const updateLeg = async (tripId, routeId, legId, legData, userId) => {
-  return await axios.patch(
-    `${API_URL}/api/trips/${tripId}/routes/${routeId}/legs/${legId}`,
-    legData,
-    { params: { userId } }
-  )
+// Update a route with new route data (e.g. after regenerating)
+export const updateRoute = async (tripId, routeId, route) => {
+  return await axios.put(`${API_URL}/api/trips/${tripId}/routes/${routeId}/update/`, route)
     .then(res => res.data)
     .catch(err => console.error(err))
 }
