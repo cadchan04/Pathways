@@ -72,7 +72,10 @@ export default function RouteOptions() {
   const [tripsError, setTripsError] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+<<<<<<< HEAD
   const [pendingTripId, setPendingTripId] = useState(null);
+=======
+>>>>>>> 7d12caa (Delete extra add route button)
   const [comparisonRoutes, setComparisonRoutes] = useState([null, null])
   const [filters, setFilters] = useState({
     travelTime: {
