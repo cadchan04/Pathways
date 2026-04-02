@@ -7,22 +7,24 @@
   "type": "commonjs",
   "main": "app.js",
   "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "test": "node --test"
   },
   "dependencies": {
     "@duffel/api": "^4.21.5",
-    "axios": "^1.13.5",
+    "axios": "^1.13.6",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
-    "express": "^4.22.1",
     "express-oauth2-jwt-bearer": "^1.7.4",
     "express-openid-connect": "^2.19.4",
     "luxon": "^3.7.2",
-    "mongoose": "^9.2.1"
+    "node-cron": "^4.2.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "express": "^5.2.1",
-    "mongoose": "^9.2.1",
+    "mongoose": "^9.2.4",
     "nodemon": "^3.1.11"
   }
 }

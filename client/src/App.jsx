@@ -15,12 +15,10 @@ function App() {
 
   return (
     <div>
-      <UserProvider>
         <Navbar />
         <main className="app-content">
           <AppRoutes />
         </main>
-      </UserProvider>
     </div>
   );
 }

@@ -9,7 +9,7 @@ const { searchFlightsCity } = require('../services/flight-services')
 const { getTrainRoutes } = require('../services/train-service');
 const { getDrivingRoutes } = require('../services/driving-service')
 const { getBusRoutes } = require('../services/bus-service');
-const { multiModalRoutes } = require("../services/multi-modal-service")
+const { multiModalRoutes, regenerateRoute } = require("../services/multi-modal-service")
 const { getEstimatedRideshareRoutes } = require('../services/rideshare-estimate-service')
 
 const router = express.Router()
@@ -71,7 +71,7 @@ router.get('/locations/search', async (req, res) => {
 })
 
 router.get('/suggestions', async (req, res) => {
-  const { originId, destinationId, departDate, originName, destinationName } = req.query
+  const { originId, destinationId, departDate, originName, destinationName, mpg } = req.query
 
   const validationError = validateSuggestionsQuery({
     originId,
@@ -88,8 +88,11 @@ router.get('/suggestions', async (req, res) => {
   const routes = []
 
   try {
+    const { originId, destinationId, departDate, originName, destinationName, mpg } = req.query
+
+    const mpgNumber = mpg && !isNaN(mpg) ? Number(mpg) : 25
     // get personal driving routes
-    const drivingRoutes = await getDrivingRoutes({ originName, destinationName, departDate })
+    const drivingRoutes = await getDrivingRoutes({ originName, destinationName, departDate, mpg: mpgNumber })
     // build estimated rideshare routes from driving metrics
     const rideshareRoutes = getEstimatedRideshareRoutes({ drivingRoutes })
     // get train routes
@@ -131,12 +134,13 @@ router.post("/multimodal", async (req, res) => {
 
   try {
 
-    const { origin, destination, date } = req.body
+    const { origin, destination, date, mpg } = req.body
 
     const routes = await multiModalRoutes(
       origin,
       destination,
-      date
+      date,
+      mpg
     )
 
     res.json(routes)
@@ -147,6 +151,31 @@ router.post("/multimodal", async (req, res) => {
 
     res.status(500).json({
       error: "Failed to generate routes"
+    })
+
+  }
+
+})
+
+router.post("/regenerate", async (req, res) => {
+  console.log("Received request to regenerate route with body:", req.body)
+  try {
+
+    const { route, legIndicies } = req.body
+
+    const newRoute = await regenerateRoute (
+      route,
+      legIndicies
+    )
+
+    res.json(newRoute)
+
+  } catch (err) {
+
+    console.error(err)
+
+    res.status(500).json({
+      error: "Failed to regenerate route"
     })
 
   }

@@ -1,0 +1,197 @@
+.edit-trip-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.back-cancel-button {
+    background-color: transparent;
+    color: #888888;
+    border: none;
+    padding: 10px 0;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.back-cancel-button:hover {
+    color: #555555;
+    background-color: transparent;
+}
+
+.edit-header h1 {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+.edit-trip-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+input, textarea {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.form-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Space between the two buttons */
+    margin-top: 20px;
+}
+
+.save-button, .delete-trip-button, .duplicate-trip-button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.save-button {
+    background-color: #3fa8c6;
+}
+
+.save-button:hover {
+    background-color: #348ea8;
+}
+
+.duplicate-trip-button:hover:not(:disabled) {
+    background-color: #d5e4e9;
+    color: #2c454d;
+}
+
+.duplicate-trip-button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.duplicate-trip-button:disabled:hover {
+    background-color: #e4eef1;
+    color: #3d5f66;
+}
+
+.duplicate-error {
+    color: #c5303b;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+}
+
+.delete-trip-button {
+    background-color: #e63946;
+    color: white;
+    border: 2px solid #e63946;
+}
+
+.delete-trip-button:hover {
+    background-color: #c5303b;
+    color: white;
+}
+
+.save-button:active, 
+.delete-trip-button:active {
+    transform: scale(0.98);
+}
+
+/* Modal Content */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5); /* dim the background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    color: #1a1a1a;
+}
+
+.modal-content p {
+    color: #222222;
+    line-height: 1.5;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.confirm-button {
+    flex: 1;
+    background-color: transparent;
+    color: #e63946;
+    border: 2px solid #e63946;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.cancel-button {
+    flex: 1;
+    background-color: #3fa8c6;
+    background: #eee;
+    color: #333;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.confirm-button:hover {
+    background: #d62828;
+    color: white;
+}
+
+.cancel-button:hover {
+    background: #ddd;
+}

@@ -12,6 +12,12 @@ const routesRoute = require('./routes/routes-route.js');
 const legRoute = require('./routes/leg-routes.js');
 const userRoute = require('./routes/user-routes.js');
 const tripRoute = require('./routes/trip-routes.js');
+const routePreferenceRoute = require('./routes/route-preference-routes.js');
+const pushRoutes = require('./routes/push-routes.js');
+const {
+  tripInvitationsRouter,
+  invitationsRouter,
+} = require('./routes/invitation-routes.js');
 
 const app = express();
 
@@ -42,14 +48,21 @@ app.get("/protected", checkJwt, (req, res) => {
 
 /* ROUTES */
 app.use('/api/example', exampleRoute); //examples route functions
+app.use('/api/trips/:tripId/invitations', tripInvitationsRouter);
+app.use('/api/trips/:tripId/route-preferences', routePreferenceRoute);
 app.use('/api/trips/:tripId/routes', tripRouteRoute); //trip route route functions - handles adding/getting/editing routes for a specific trip
 app.use('/api/trips/:tripId/routes/:routeId/legs', legRoute); //route leg functions
 app.use('/api/routes', routesRoute);
+app.use('/api/invitations', invitationsRouter);
 app.use('/api/trips', tripRoute); // trip route functions
 app.use('/api/user', userRoute);
+app.use('/api/push', pushRoutes);
 
 mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })
-  .then(() => console.log('MongoDB connected'))
+  .then(() => {
+    console.log('MongoDB connected')
+    require('./jobs/notificationScheduler');
+  })
   .catch(err => console.error(err));
 
 app.listen(8080, () => console.log("Server running on port 8080"));

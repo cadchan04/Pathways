@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { addRoute, getMultiModalRoutes } from '../../../services/routeServices'
+import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { addRoute, getMultiModalRoutes, updateRoute } from '../../../services/routeServices'
+// import { getRouteSuggestions, addRoute, getMultiModalRoutes } from '../../../services/routeServices'
 import { getTrips } from '../../../services/tripServices'
-import { useUser } from '../../../../context/UserContext'
+import { useUser } from '../../../../context/useUser'
 import './RouteOptions.css'
 import { getWeatherForecast } from '../../../services/weatherServices';
 import {
@@ -27,7 +28,8 @@ const formatTime = (isoString) => {
   if (!isoString) return "N/A";
   return new Date(isoString).toLocaleTimeString([], {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: true,
   });
 };
 
@@ -50,12 +52,15 @@ function getWeatherDescription(code) {
 }
 
 export default function RouteOptions() {
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const { dbUser } = useUser()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [routes, setRoutes] = useState([])
+  const [providers, setProviders] = useState([])
+  const [selectedProviders, setSelectedProviders] = useState([])
   const [weather, setWeather] = useState(null);
   const [weatherError, setWeatherError] = useState('');
   const desc = weather ? getWeatherDescription(weather.weatherCode) : null;
@@ -95,11 +100,12 @@ export default function RouteOptions() {
   //const [modeFilter, setModeFilter] = useState('All')
   //const [sortBy, setSortBy] = useState('cost-asc')
 
-  const originId = searchParams.get('originId') || ''
-  const originName = searchParams.get('originName') || 'Unknown Origin'
-  const destinationId = searchParams.get('destinationId') || ''
-  const destinationName = searchParams.get('destinationName') || 'Unknown Destination'
-  const departDate = searchParams.get('departDate') || ''
+  const originId = searchParams.get('originId') || location.state?.originalRoute?.origin?.id || ''
+  const originName = searchParams.get('originName') || location.state?.originalRoute?.origin?.name || 'Unknown Origin'
+  const destinationId = searchParams.get('destinationId') || location.state?.originalRoute?.destination?.id || ''
+  const destinationName = searchParams.get('destinationName') || location.state?.originalRoute?.destination?.name || 'Unknown Destination'
+  const departDate = searchParams.get('departDate') || location.state?.originalRoute?.departAt?.split('T')[0] || ''
+  const mpg = searchParams.get('mpg') || location.state?.originalRoute?.mpg || ''
 
   const originLat = parseFloat(searchParams.get('originLat'))
   const originLng = parseFloat(searchParams.get('originLng'))
@@ -108,21 +114,57 @@ export default function RouteOptions() {
   const destinationLng = parseFloat(searchParams.get('destinationLng'))
   const filterErrors = getRouteFilterErrors(filters)
 
-  const displayedRoutes = useMemo(
-    () => applyRouteFilters(routes, filters),
-    [routes, filters]
-  )
+
+  // Handing the toggling of providers from the sidebar
+  const handleProviderToggle = (name) => {
+    setSelectedProviders((prevSelected) => {
+      if (prevSelected.includes(name)) {
+        // Remove it
+        return prevSelected.filter((p) => p !== name);
+      } else {
+        // Add it
+        return [...prevSelected, name];
+      }
+    });
+  };
+
+  // Only display the routes of the selected providers and by filter options
+  const displayedRoutes = useMemo(() => {
+    const filteredRoutes = applyRouteFilters(routes, filters);
+  
+    return filteredRoutes.filter(route => {
+      if (selectedProviders.length === 0) return true;
+  
+      const routeProviders = route.legs.flatMap(leg => {
+        if (Array.isArray(leg.provider)) return leg.provider;
+        return leg.provider ? [leg.provider] : [];
+      });
+  
+      return routeProviders.every(p => selectedProviders.includes(p));
+    });
+  }, [routes, filters, selectedProviders]);
 
   useEffect(() => {
-    if (!originId || !destinationId || !departDate) {
+    console.log(location.state?.isRegenerating ? "Loading regenerated routes..." : "Loading routes...")
+    if (!location.state?.isRegenerating && (!originId || !destinationId || !departDate)) {
       setError('Missing search details. Please create a route again.')
       setLoading(false)
       return
     }
 
     const loadSuggestions = async () => {
+      // If we're coming from a regeneration, we should already have the routes in state and can skip the API call
+      if (location.state?.isRegenerating) {
+        setRoutes(location.state?.regeneratedRoutes || [])
+        setLoading(false)
+        return
+      }
+      
       try {
         setLoading(true)
+
+        const mpgNumber = mpg.trim() !== '' ? Number(mpg) : undefined
+
         const response = await getMultiModalRoutes({
           origin: {
             name: originName,
@@ -140,7 +182,8 @@ export default function RouteOptions() {
               lng: destinationLng
             }
           },
-          date: departDate
+          date: departDate,
+          mpg: mpgNumber
         })
 
         console.log("Multimodal routes:", response)
@@ -169,7 +212,42 @@ export default function RouteOptions() {
     }
 
     loadSuggestions()
-  }, [departDate, destinationId, originId, originName, destinationName])
+  }, [departDate, destinationId, originId, originName, destinationName, destinationLat, destinationLng, originLat, originLng])
+
+  // Load providers for all routes after they are fetched
+  useEffect(() => {
+    if (!routes.length) return;
+
+    let isMounted = true;
+
+    const loadProviders = async () => {
+      const providerSet = new Set();
+      
+      routes.forEach(route => {
+        route.legs.forEach(leg => {
+          // Check if provider is an array, then add each item individually
+          if (Array.isArray(leg.provider)) {
+            leg.provider.forEach(p => providerSet.add(p));
+          } else if (leg.provider) {
+            // Fallback if it's just a single string
+            providerSet.add(leg.provider);
+          }
+        });
+      });
+
+      if (isMounted) {
+        // Convert to array and sort alphabetically for a better UI experience
+        const providerArray = Array.from(providerSet).sort();
+        setProviders(providerArray);
+        setSelectedProviders(providerArray) // Initially select all providers
+        console.log("Extracted providers:", providerArray);
+      }
+    };
+
+    loadProviders();
+
+    return () => { isMounted = false; };
+  }, [routes]);
 
   useEffect(() => {
     if (!showAddRouteModal || modalStep !== 'choose-trip') return
@@ -262,10 +340,14 @@ export default function RouteOptions() {
 
   const handleConfirmAddToTrip = async (tripId) => {
     if (!routeToAdd) return
+    if (!dbUser?._id) {
+      setSubmitError('Your profile is still loading. Please try again.')
+      return
+    }
     setIsSubmitting(true)
     setSubmitError('')
     try {
-      await addRoute(tripId, buildRoutePayload(routeToAdd))
+      await addRoute(tripId, buildRoutePayload(routeToAdd), dbUser._id)
       closeAddRouteModal()
       navigate(`/view-trip-details/${tripId}`)
     } catch (err) {
@@ -283,8 +365,27 @@ export default function RouteOptions() {
 
   // navigate to route detail page for a specific route
   const handleViewRoute = async (route) => {
-    navigate('/view-route-details', { state: { selectedRoute: route } });
+    if (location.state?.isRegenerating) {
+      navigate('/view-route-details', { state: { fromRegeneration: true, selectedRoute: route, tripId: location.state.tripId, originalRoute: location.state.originalRoute } });
+    } else {
+      navigate('/view-route-details', { state: { selectedRoute: route } });
+    }
+
   }
+
+  const handleSaveRegeneratedRoute = async (originalRouteId, route) => {
+          try {
+              setIsSubmitting(true);
+              await updateRoute(location.state.tripId, originalRouteId, route);
+          } catch (err) {
+              console.error('Error saving regenerated route:', err);
+              setSubmitError('Could not save the selected route. Please try again.');
+              return;
+          } finally {
+              setIsSubmitting(false);
+          }
+          navigate(`/view-trip-details/${location.state.tripId}`, { state: { fromRouteDetails: true } });
+      }
 
   // Weather
   useEffect(() => {
@@ -514,43 +615,44 @@ export default function RouteOptions() {
 
   return (
     <section className="route-options-page">
-<header className="route-options-header">
-  <div className="header-left">
-    <h1>Route Suggestions</h1>
-    <p>{originName} to {destinationName} on {departDate}</p>
-  </div>
-
-  <div className="header-right">
-    {weather && weather.weatherCode !== undefined && (
-      <div className="weather-box">
-        <p className="weather-destination">
-          {destinationName.split(",").slice(0, 2).join(",")}
-        </p>
-
-        <div className="weather-main">
-          <span className="weather-icon">{desc.icon}</span>
-          <span className="weather-temp">{weather.highTemp}°F</span>
+      <header className="route-options-header">
+        <div className="header-left">
+          <h1>Route Suggestions</h1>
+          <p>{originName.split(",").slice(0, 2).join(",")} to {destinationName.split(",").slice(0, 2).join(",")} on {departDate}</p>
+          <p>MPG: {mpg}</p>
         </div>
 
-        <p className="weather-precip">{weather.precipitation}% chance of rain</p>
+        <div className="header-right">
+          {weather && weather.weatherCode !== undefined && (
+            <div className="weather-box">
+              <p className="weather-destination">
+                {destinationName.split(",").slice(0, 2).join(",")}
+              </p>
 
-        <p className="weather-date">
-          {new Date(departDate + "T00:00").toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric"
-        })}
-        </p>
-      </div>
-    )}
+              <div className="weather-main">
+                <span className="weather-icon">{desc.icon}</span>
+                <span className="weather-temp">{weather.highTemp}°F</span>
+              </div>
 
-    {weatherError && (
-      <div className="weather-box">
-        <p>{weatherError}</p>
-      </div>
-    )}
-  </div>
+              <p className="weather-precip">{weather.precipitation}% chance of rain</p>
+
+              <p className="weather-date">
+                {new Date(departDate + "T00:00").toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric"
+              })}
+              </p>
+            </div>
+          )}
+
+          {weatherError && (
+            <div className="weather-box">
+              <p>{weatherError}</p>
+            </div>
+          )}
+        </div>
       </header>
-
+      
       {hasComparison && (
         <section ref={comparisonPanelRef} className="route-comparison-panel" aria-label="Route comparison">
           <div className="route-comparison-header">
@@ -616,114 +718,152 @@ export default function RouteOptions() {
       {loading && <p>Loading route suggestions...</p>}
       {!loading && error && <p className="route-options-error">{error}</p>}
       {!loading && !error && routes.length === 0 && <p>No matching routes found.</p>}
-      {!loading && !error && routes.length > 0 && displayedRoutes.length === 0 && (
-        <p className="route-options-empty">{noMatchMessage}</p>
-      )}
-      {!loading && !error && displayedRoutes.length > 0 && (
-        <ul className="route-options-list">
-          {displayedRoutes.map((route, index) => {
-            console.log(`Rendering Route ${index + 1}:`, route);
 
-            return (
-              <li key={index} className="route-option-card">
-                {/* Left Column: Mode and Provider */}
-                <div className="route-main-info">
-                  <h2>
-                    {/* {route.legs.map((leg) => {
-                        // If there are segments, repeat the mode N times
-                        if (leg.segments && leg.segments.length === 2) {
-                          return Array(leg.segments.length)
-                            .fill(leg.transportationMode)
-                            .join(" → ");
-                        } else if (leg.segments && leg.segments.length > 2) {
-                          return `${leg.transportationMode} → ... → ${leg.transportationMode}`;
-                        }
-                        // Otherwise, just show the mode once
-                        return leg.transportationMode;
-                      })} */}
-                    {(() => {
-                      const modes = route.legs.map(l => l.transportationMode)
-
-                      const uniqueModes = modes.filter(
-                        (mode, i) => i === 0 || mode !== modes[i - 1]
-                      )
-
-                      return uniqueModes.join(" → ")
-                    })()}
-                  </h2>
-
-                  <p>
-                    <strong>Provider: </strong> {(() => {
-                      const providers = route.legs.flatMap(leg => leg.provider);
-                      return providers.length > 2 ? `${providers[0]}, ... , ${providers[providers.length - 1]}` : providers.join(", ");
-                    })()}
-                  </p>
-                </div>
-
-                {/* Middle Column: Visual Route Runway */}
-                <div className="route-visual-path">
-                  {/* <p>{formatTimeRange(route.departAt, route.arriveAt)}</p> */}
-
-                  <div className="time-block">
-                    <strong>{formatTime(route.departAt)}</strong>
-                    <p>{new Date(route.departAt).toLocaleDateString()}</p>
-                    <p className="station-subtext">{route.legs[0]?.origin?.name || "Origin"}</p>
+      {/* Change to displayedRoutes when filtering/sorting is implemented */}
+      {displayedRoutes.length == 0 && !loading && !error ? (<p>No matching routes found.</p>) : null}
+      {!loading && !error && displayedRoutes.length > 0 && ( 
+        <div className="route-options-layout">
+          <aside className="provider-sidebar">
+            <h3>Filter by Provider</h3>
+              <div className="provider-checklist-scroll">
+                {/* We use Object.keys(providers) from your earlier useEffect state */}
+                {providers.map((name) => (
+                  <div key={name} className="checklist-item">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedProviders.includes(name)}
+                      onChange={() => handleProviderToggle(name)} 
+                    />
+                    <label htmlFor={`provider-${name}`}>{name}</label>
                   </div>
+                ))}
+              </div>
+          </aside>
+          {displayedRoutes.length > 0 && (
+            <main className="route-options-list">
+              {displayedRoutes.map((route, index) => {
+                console.log(`Rendering Route ${index + 1}:`, route);
 
-                  <div className="duration-arrow">
-                    <span>
+              return (
+                <li key={index} className="route-option-card">
+                  {/* Left Column: Mode and Provider */}
+                  <div className="route-main-info">
+                    <h2>
+                      {/* {route.legs.map((leg) => {
+                          // If there are segments, repeat the mode N times
+                          if (leg.segments && leg.segments.length === 2) {
+                            return Array(leg.segments.length)
+                              .fill(leg.transportationMode)
+                              .join(" → ");
+                          } else if (leg.segments && leg.segments.length > 2) {
+                            return `${leg.transportationMode} → ... → ${leg.transportationMode}`;
+                          }
+                          // Otherwise, just show the mode once
+                          return leg.transportationMode;
+                        })} */}
                       {(() => {
-                        const totalMinutes = route.totalDuration;
-                        const h = Math.floor(totalMinutes / 60);
-                        const m = totalMinutes % 60;
-                        return `${h > 0 ? h + ' hr ' : ''}${m} min`;
+                        const modes = route.legs.map(l => l.transportationMode)
+
+                        const uniqueModes = modes.filter(
+                          (mode, i) => i === 0 || mode !== modes[i - 1]
+                        )
+
+                        return uniqueModes.join(" → ")
                       })()}
-                    </span>
-                    <hr />
-                    <span className="stop-count">
-                      {(() => {
-                        const stopCount = getRouteStopCount(route)
-                        if (stopCount <= 0) return "Direct (Non-stop)";
-                        return `${stopCount} ${stopCount === 1 ? 'Stop' : 'Stops'}`;
-                      })()}
-                    </span>
-                  </div>
-
-                  <div className="time-block" style={{ textAlign: "right" }}>
-                    <strong>{formatTime(route.arriveAt)}</strong>
-                    <p style={{ textAlign: "right", textWrap: "balance" }}>{new Date(route.arriveAt).toLocaleDateString()}</p>
-                    <p className="station-subtext" style={{ textAlign: "right" }}>{route.legs[route.legs.length - 1]?.destination?.name || "Destination"}</p>
-                  </div>
-                </div>
-
-                {/* Right Column: Key Details and Button */}
-                <div className="route-details-column">
-                  <div className="meta-stats">
-                    <p><strong>Distance: {route.totalDistance} miles</strong></p>
-
-                    <p><strong>Duration: {formatDuration(route.totalDuration)}</strong></p>
+                    </h2>
 
                     <p>
-                      <strong>
-                        Stops: {(() => {
-                          const stopCount = getRouteStopCount(route)
-                          if (stopCount <= 0) return "Direct (Non-stop)";
-                          return `${stopCount} ${stopCount === 1 ? 'Transfer' : 'Transfers'}`;
+                      <strong>Provider: </strong> {(() => {
+                        const providers = route.legs.flatMap(leg => leg.provider);
+                        return providers.length > 2 ? `${providers[0]}, ... , ${providers[providers.length - 1]}` : providers.join(", ");
+                      })()}
+                    </p>
+                  </div>
+
+                  {/* Middle Column: Visual Route Runway */}
+                  <div className="route-visual-path">
+                    {/* <p>{formatTimeRange(route.departAt, route.arriveAt)}</p> */}
+
+                    <div className="time-block">
+                      <strong>{formatTime(route.departAt)}</strong>
+                      <p>{new Date(route.departAt).toLocaleDateString()}</p>
+                      <p className="station-subtext">{route.legs[0]?.origin?.name || "Origin"}</p>
+                    </div>
+
+                    <div className="duration-arrow">
+                      <span>
+                        {(() => {
+                          const totalMinutes = route.totalDuration;
+                          const h = Math.floor(totalMinutes / 60);
+                          const m = totalMinutes % 60;
+                          return `${h > 0 ? h + ' hr ' : ''}${m} min`;
                         })()}
-                      </strong>
-                    </p>
+                      </span>
+                      <hr />
+                      <span className="stop-count">
+                        {(() => {
+                          // Add segment counts and leg counts if available, otherwise fallback to leg count for stop count
+                          var stopCount = -1; // Start at -1 to not count the first leg as a stop
+                          for (let leg of route.legs) {
+                            if (leg.segments && leg.segments.length > 0) {
+                              stopCount += leg.segments.length;
+                            } else {
+                              stopCount += 1; // If no segments, each leg is a direct connection (1 stop)
+                            }
+                          }
+                          if (stopCount <= 0) return "Direct (Non-stop)";
+                          return `${stopCount} ${stopCount === 1 ? 'Stop' : 'Stops'}`;
+                        })()}
+                      </span>
+                    </div>
 
-                    <p>
-                      <strong>
-                        {(route.localizedFare
-                          ? route.localizedFare
-                          : (route.totalCost !== undefined && route.totalCost != null
-                            ? `Estimated Cost: $${route.totalCost}`
-                            : "Fare Not Available"))}
-                      </strong>
-                    </p>
+                    <div className="time-block" style={{ textAlign: "right" }}>
+                      <strong>{formatTime(route.arriveAt)}</strong>
+                      <p style={{ textAlign: "right", textWrap: "balance" }}>{new Date(route.arriveAt).toLocaleDateString()}</p>
+                      <p className="station-subtext" style={{ textAlign: "right" }}>{route.legs[route.legs.length - 1]?.destination?.name || "Destination"}</p>
+                    </div>
                   </div>
 
+                  {/* Right Column: Key Details and Button */}
+                  <div className="route-details-column">
+                    <div className="meta-stats">
+                      <p><strong>Distance: {route.totalDistance} miles</strong></p>
+
+                      <p><strong>Duration: {formatDuration(route.totalDuration)}</strong></p>
+
+                      <p>
+                        <strong>
+                          Stops: {(() => {
+
+                            // Add segment counts and leg counts if available, otherwise fallback to leg count for stop count
+                            var stopCount = -1; // Start at -1 to not count the first leg as a stop
+                            for (let leg of route.legs) {
+                              if (leg.segments && leg.segments.length > 0) {
+                                stopCount += leg.segments.length;
+                              } else {
+                                stopCount += 1; // If no segments, each leg is a direct connection (1 stop)
+                              }
+                            }
+                            if (stopCount <= 0) return "Direct (Non-stop)";
+                            return `${stopCount} ${stopCount === 1 ? 'Transfer' : 'Transfers'}`;
+                          })()}
+                        </strong>
+                      </p>
+
+                      <p>
+                        <strong>
+                          {(route.localizedFare
+                            ? route.localizedFare
+                            : (route.totalCost !== undefined && route.totalCost != null
+                              ? `Estimated Cost: $${Number(route.totalCost).toFixed(2)}`
+                              : "Fare Not Available"))}
+                        </strong>
+                      </p>
+                    </div>
+
+                    <button className="route-option-select-button" onClick={() => location.state?.isRegenerating ? handleSaveRegeneratedRoute(location.state.originalRoute._id, route) : handleAddRoute(route)}>
+                      Add Route
+                    </button>
                   <button className="route-option-select-button" onClick={() => handleAddRoute(route)}>
                     Add Route
                   </button>
@@ -735,20 +875,25 @@ export default function RouteOptions() {
                     {getComparisonSlot(route) === 0 ? 'Comparing: Route 1' : getComparisonSlot(route) === 1 ? 'Comparing: Route 2' : 'Compare'}
                   </button>
 
-                  <button className="route-option-details-button" onClick={() => handleViewRoute(route)}>
-                    View Route Details
-                  </button>
+                    <button className="route-option-details-button" onClick={() => handleViewRoute(route)}>
+                      View Route Details
+                    </button>
 
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  </div>
+                </li>
+              );
+            })}
+          </main>
+          )}
+        </div>
       )}
 
-      <Link to="/create-route" className="route-options-back-link">
-        Edit Route Search
-      </Link>
+      {!location.state?.isRegenerating && (
+          <Link to="/create-route" className="route-options-back-link">
+            Edit Route Search
+          </Link>
+        )
+      }
 
       {showAddRouteModal && (
         <div className="route-modal-overlay" onClick={closeAddRouteModal}>

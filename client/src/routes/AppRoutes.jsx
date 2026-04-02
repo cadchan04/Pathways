@@ -6,17 +6,19 @@ import ProtectedRoute from "./ProtectedRoute";
 import Callback from "../Callback";
 import Login from "../components/Login/Login.jsx";
 import CreateTrip from "../components/Trip/CreateTrip"
+import EditTrip from "../components/Trip/EditTrip.jsx";
 import TripDetails from "../components/Trip/TripDetails"
 import CreateRoute from "../components/Route/CreateRoute/CreateRoute"
 import RouteOptions from "../components/Route/RouteOptions/RouteOptions"
 import RouteDetails from "../components/Route/RouteDetails/RouteDetails.jsx";
 import EditProfile from "../components/Account/EditProfile.jsx";
+import InvitationsPage from "../components/Invitations/InvitationsPage.jsx";
 
 export default function AppRoutes() {
   return (
     <Routes>
       {/* Redirect root → login */}
-      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route path="/" element={<Navigate to="/my-trips" replace />} />
 
       {/* Public routes - accessible without logging in */}
       <Route path="/login" element={<Login />} />             {/* LOGIN SHOULD BE PUBLIC */}
@@ -25,8 +27,10 @@ export default function AppRoutes() {
       {/* Protected routes - login only */}
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/my-trips" element={<ProtectedRoute><MyTrip /></ProtectedRoute>} />
+      <Route path="/invitations" element={<ProtectedRoute><InvitationsPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
       <Route path="/create-trip" element={<ProtectedRoute><CreateTrip /></ProtectedRoute>} />
+      <Route path="/edit-trip/:id" element={<ProtectedRoute><EditTrip /></ProtectedRoute>} />
       <Route path="/view-trip-details/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
       <Route path="/create-route" element={<ProtectedRoute><CreateRoute /></ProtectedRoute>} />
       <Route path="/route-options" element={<ProtectedRoute><RouteOptions /></ProtectedRoute>} />

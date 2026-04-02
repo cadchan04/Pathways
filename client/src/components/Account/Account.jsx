@@ -1,29 +1,19 @@
 import { useAuth0 } from '@auth0/auth0-react';
-import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import NotificationToggle from '../NotificationToggle';
+import { useUser } from '../../../context/useUser';
 import './Profile.css'
 
 function Account() {
   const { user, logout } = useAuth0();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [dbUser, setDbUser] = useState(null);
-
-  useEffect(() => {
-    if (!user?.sub) return;
-
-    const fetchUser = async () => {
-      const res = await fetch(`http://localhost:8080/api/user/${user.sub}`);
-      const data = await res.json();
-      setDbUser(data);
-    };
-
-    fetchUser();
-  }, [user, location.state]);
+  const { dbUser } = useUser();
 
   return (
     <section className="profile-page">
+      <div>
       <h1>Profile</h1>
+      </div>
       <p>View your account details.</p>
 
       <div className="profile-card">
@@ -39,7 +29,9 @@ function Account() {
 
         <div className="profile-field">
           <label><strong>Notifications</strong></label>
-          <p>{dbUser?.notificationEnabled ? 'On' : 'Off'}</p>
+          <div className="notifications-button">
+          <NotificationToggle userId={user.sub} />
+          </div>
         </div>
       </div>
 

@@ -7,7 +7,7 @@ export const syncUser = async (userData) => {
         const response = await axios.post(`${API_URL}/api/user/sync`, userData);
         return response.data;
     } catch (err) {
-        console.error("Error syncing user:", err);
+        console.error("Status:", err.response?.status)
         throw err;
     }
 }

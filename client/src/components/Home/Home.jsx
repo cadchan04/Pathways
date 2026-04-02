@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { testApiCall, createExample, getExamples } from "../../example_services.jsx";
-import { getRoutes, updateLeg, getLegs } from "../../services/routeServices.js";
+import { getRoutes, getLegs } from "../../services/routeServices.js";
 import { syncUser } from "../../services/userServices.js";
-import { useUser } from "../../../context/UserContext.jsx";
+import { useUser } from "../../../context/useUser";
 
 function Home() {
   const { isAuthenticated, user, isLoading } = useAuth0();
-  const { setDbUser } = useUser();
+  const { setDbUser, dbUser } = useUser();
 
   useEffect(() => {
     const performSync = async () => {
@@ -67,29 +67,18 @@ function Home() {
 
   // GET ROUTES TEST - replace with actual trip ID when integrated with choosing a trip to view
   const handleGetRoutes = async () => {
+    if (!dbUser?._id) {
+      console.warn("Sync user first (need userId for trip APIs)");
+      return;
+    }
     try {
-      const routes = await getRoutes("699372005537e006fcc02660")
+      const routes = await getRoutes("699372005537e006fcc02660", dbUser._id)
       console.log("Routes for Trip:", routes)
     } catch (err) {
       console.error(err)
     }
   }
 
-  // Update leg test
-  const handleUpdateLeg = async () => {
-    try {
-      // The req body has to have the same name as the field in the schema that needs to be updated
-      const routeId = await getRoutes("699372005537e006fcc02660").then(routes => routes[0]._id) // get the first route's ID for testing
-      const legId = await getLegs("699372005537e006fcc02660", routeId).then(legs => legs[0]._id) // get the first leg's ID for testing
-      //const updatedLeg = await updateLeg("699372005537e006fcc02660", routeId, legId, { "origin.name": "San Jose, CA" })
-      //const updatedLeg = await updateLeg("699372005537e006fcc02660", routeId, legId, { cost: 67 })
-      const updatedLeg = await updateLeg("699372005537e006fcc02660", routeId, legId, { cost: 50, duration: 160 })
-      
-      console.log("Updated Leg:", updatedLeg)
-    } catch (err) {
-      console.error(err)
-    }
-  }
 
   return (
     <div className="home-container">

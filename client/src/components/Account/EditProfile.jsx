@@ -55,21 +55,6 @@ function EditProfile() {
           />
         </div>
 
-        <div className="profile-field">
-          <label>
-            <div className="profile-field">
-                <label><strong>Notifications</strong></label>
-                <select
-                    value={notificationEnabled ? 'on' : 'off'}
-                    onChange={(e) => setNotificationEnabled(e.target.value === 'on')}
-                >
-                    <option value="on">On</option>
-                    <option value="off">Off</option>
-                </select>
-                </div>
-          </label>
-        </div>
-
         {success && <p className="profile-success">{success}</p>}
 
         <button type="submit">Save Changes</button>

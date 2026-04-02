@@ -1,10 +1,17 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getTrips, duplicateTrip } from '../../services/tripServices';
-import { useUser } from '../../../context/UserContext';
+import { getTrips, duplicateTrip, deleteTripById } from '../../services/tripServices';
+import { useUser } from '../../../context/useUser';
 
 import './MyTrip.css';
+
+function mongoIdString(value) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value.$oid) return value.$oid;
+  return String(value);
+}
 
 export default function MyTrip() {
   const navigate = useNavigate();
@@ -14,11 +21,11 @@ export default function MyTrip() {
   const [error, setError] = useState(null);
   const { dbUser } = useUser();
 
-  // Delete popup state
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [tripToDelete, setTripToDelete] = useState(null);
-
+  // Menu State
+  const [activeMenuId, setActiveMenuId] = useState(null);
   const [duplicatingId, setDuplicatingId] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false); // delete popup state
+  const [tripToDelete, setTripToDelete] = useState(null);
 
   // Fetch trips
   useEffect(() => {
@@ -34,6 +41,8 @@ export default function MyTrip() {
         const data = await getTrips(dbUser._id);
         setTrips(data);
         console.log("Fetched trips:", data);
+
+        window.dispatchEvent(new Event('refreshNotifications'));
       } catch (err) {
         console.error("Error fetching trips:", err);
         setError("We couldn't load your trips right now. Please try again later.");
@@ -45,14 +54,32 @@ export default function MyTrip() {
     fetchTrips();
   }, [dbUser?._id, location.key]);
 
-  const handleDuplicateTrip = async (trip) => {
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenuId(null);
+
+    if (activeMenuId) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    }
+  }, [activeMenuId]);
+
+  // Duplicate trip
+  const handleDuplicateTrip = async (e, trip) => {
+    e.stopPropagation(); // stop from triggering menu close too early
     const id =
       typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
     setDuplicatingId(id);
     try {
-      await duplicateTrip(id);
+      await duplicateTrip(id, dbUser._id);
       const data = await getTrips(dbUser._id);
       setTrips(data);
+
+      window.dispatchEvent(new Event('refreshNotifications'));
+
     } catch (err) {
       console.error('Error duplicating trip:', err);
     } finally {
@@ -60,19 +87,27 @@ export default function MyTrip() {
     }
   };
 
-  // Delete trip
-  const deleteTrip = async (tripId) => {
+  const handleDeleteTrip = async (tripId) => {
+    if (!dbUser?._id) return;
     try {
-      await fetch(`/api/trips/${tripId}`, {
-        method: "DELETE"
-      });
-
-      // Remove from UI
-      setTrips(prev => prev.filter(t => t._id !== tripId));
+      const idStr = typeof tripId === 'string' ? tripId : tripId?.$oid ?? String(tripId);
+      await deleteTripById(idStr, dbUser._id);
+      setTrips((prev) =>
+        prev.filter((t) => {
+          const tid = typeof t._id === 'string' ? t._id : t._id?.$oid ?? String(t._id);
+          return tid !== idStr;
+        })
+      );
+      window.dispatchEvent(new Event('refreshNotifications'));
     } catch (err) {
       console.error("Error deleting trip: ", err);
     }
-  }
+  };
+
+  const toggleMenu = (e, id) => {
+    e.stopPropagation(); // prevent global click listener from closing it instantly
+    setActiveMenuId(activeMenuId === id ? null : id);
+  };
 
   return (
     <div className="my-trips-container">
@@ -94,6 +129,10 @@ export default function MyTrip() {
             trips.map((trip) => {
               const tripIdStr =
                 typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
+              const isOpen = activeMenuId === tripIdStr;
+              const isOwner =
+                dbUser?._id != null &&
+                mongoIdString(trip.owner) === mongoIdString(dbUser._id);
               return (
                 <div key={tripIdStr} className="trip-row">
                   <div className="trip-info">
@@ -102,9 +141,9 @@ export default function MyTrip() {
                   </div>
 
                   <div className="trip-dates">
-                    <span>{trip.startDate ? new Date(trip.startDate).toLocaleDateString() : 'TBD'}</span>
+                      <span> {trip.startDate? new Date(trip.startDate).toLocaleDateString('en-US', {timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit'}) : 'TBD'}</span>
                     <span> → </span>
-                    <span>{trip.endDate ? new Date(trip.endDate).toLocaleDateString() : 'TBD'}</span>
+                    <span>{trip.endDate ? new Date(trip.endDate).toLocaleDateString('en-US', {timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit'}) : 'TBD'}</span>
                   </div>
 
                   <div className="trip-actions">
@@ -116,25 +155,45 @@ export default function MyTrip() {
                       View Details
                     </button>
 
-                    <button
-                      type="button"
-                      className="duplicate-trip-button"
-                      disabled={duplicatingId !== null}
-                      onClick={() => handleDuplicateTrip(trip)}
-                    >
-                      {duplicatingId === tripIdStr ? 'Duplicating…' : 'Duplicate'}
-                    </button>
+                    {isOwner && (
+                    <div className="more-options-container">
+                      <button
+                        className="three-dots-button"
+                        onClick={(e) => toggleMenu(e, tripIdStr)}
+                        >
+                          ⋮
+                        </button>
 
-                    <button
-                      type="button"
-                      className="delete-button"
-                      onClick={() => {
-                        setTripToDelete(trip);
-                        setShowConfirm(true);
-                      }}
-                    >
-                      Delete
-                    </button>
+                        {isOpen && (
+                          <div className="options-dropdown">
+                            <button
+                              type="button"
+                              className="duplicate-trip-button"
+                              disabled={duplicatingId !== null}
+                              onClick={(e) => {
+                                handleDuplicateTrip(e, trip);
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              {duplicatingId === tripIdStr ? 'Duplicating…' : 'Duplicate'}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="delete-trip-button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTripToDelete(trip);
+                                setShowConfirm(true);
+                                setActiveMenuId(null);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -157,7 +216,7 @@ export default function MyTrip() {
             <p>Delete “{tripToDelete?.name}”?</p>
 
             <button style={{ background: "#e63946", color: "white", padding: "10px", border: "none", borderRadius: "6px", marginRight: "10px", cursor: "pointer" }} onClick={async () => {
-                await deleteTrip(tripToDelete._id);
+                await handleDeleteTrip(tripToDelete._id);
                 setShowConfirm(false);
               }}
             >
