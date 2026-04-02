@@ -68,7 +68,7 @@ export default function EditTrip() {
         }
 
         fetchTrip();
-    }, [id, dbUser?._id]);
+    }, [id, dbUser?._id, navigate]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
