@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { addRoute, getMultiModalRoutes } from '../../../services/routeServices'
 import { getTrips } from '../../../services/tripServices'
@@ -89,6 +89,7 @@ export default function RouteOptions() {
 
 
   const navigate = useNavigate();
+  const comparisonPanelRef = useRef(null)
 
   // Something like this
   //const [modeFilter, setModeFilter] = useState('All')
@@ -397,6 +398,15 @@ export default function RouteOptions() {
     })
   }
 
+  useEffect(() => {
+    if (!firstComparedRoute || !secondComparedRoute || !comparisonPanelRef.current) return
+
+    comparisonPanelRef.current.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    })
+  }, [firstComparedRoute, secondComparedRoute])
+
   const clearComparison = () => {
     setComparisonRoutes([null, null])
   }
@@ -542,7 +552,7 @@ export default function RouteOptions() {
       </header>
 
       {hasComparison && (
-        <section className="route-comparison-panel" aria-label="Route comparison">
+        <section ref={comparisonPanelRef} className="route-comparison-panel" aria-label="Route comparison">
           <div className="route-comparison-header">
             <div>
               <h2>Compare Routes</h2>

@@ -52,9 +52,6 @@
 .route-comparison-remove,
 .route-option-compare-button {
   padding: 8px 16px;
-  border: 1px solid #3fa8c6;
-  background: #fff;
-  color: #2c7a8f;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
@@ -295,21 +292,15 @@
 }
 
 .route-option-select-button,
-.route-option-details-button {
+.route-option-details-button,
+.route-option-compare-button {
   background-color: #3fa8c6;
   color: white;
-}
-
-.route-option-compare-button {
-  background: #eff8fb;
-  color: #2c7a8f;
-  border: 1px solid #8ec7d8;
 }
 
 .route-option-compare-button-active {
   background: #2c7a8f;
   color: #fff;
-  border-color: #2c7a8f;
 }
 
 .time-block {
