@@ -72,6 +72,7 @@ export default function RouteOptions() {
   const [tripsError, setTripsError] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pendingTripId, setPendingTripId] = useState(null);
   const [comparisonRoutes, setComparisonRoutes] = useState([null, null])
   const [filters, setFilters] = useState({
     travelTime: {
@@ -344,6 +345,21 @@ export default function RouteOptions() {
       setSubmitError('Your profile is still loading. Please try again.')
       return
     }
+
+    // perform date validation checks of route before adding to trip
+    const selectedTrip = trips.find(t => t._id === tripId);
+    if (selectedTrip && selectedTrip.startDate && selectedTrip.endDate) {
+      const routeDate = new Date(routeToAdd.departAt).setHours(0,0,0,0);
+      const tripStart = new Date(selectedTrip.startDate).setHours(0,0,0,0);
+      const tripEnd = new Date(selectedTrip.endDate).setHours(0,0,0,0);
+
+      if (routeDate < tripStart || routeDate > tripEnd) {
+        setPendingTripId(tripId);
+        setModalStep('date-warning');
+        return;
+      }
+    }
+
     setIsSubmitting(true)
     setSubmitError('')
     try {
@@ -357,6 +373,52 @@ export default function RouteOptions() {
       setIsSubmitting(false)
     }
   }
+
+  // const handleAddRoute = (route) => {
+  //   setRouteToAdd(route)
+  //   setShowAddRouteModal(true)
+  //   setModalStep('choose-action')
+  //   setTripsError('')
+  //   setSubmitError('')
+  // }
+
+  // const handleConfirmAddToTrip = async (tripId) => {
+  //   if (!routeToAdd) return
+  //   if (!dbUser?._id) {
+  //     setSubmitError('Your profile is still loading. Please try again.')
+  //     return
+  //   }
+  //   setIsSubmitting(true)
+  //   setSubmitError('')
+  //   try {
+  //     await addRoute(tripId, buildRoutePayload(routeToAdd), dbUser._id)
+  //     closeAddRouteModal()
+  //     navigate(`/view-trip-details/${tripId}`)
+  //   } catch (err) {
+  //     console.error('Error adding route to trip:', err)
+  //     setSubmitError(err?.response?.data?.error || 'Could not add route. Please try again.')
+  //   } finally {
+  //     setIsSubmitting(false)
+  //   }
+  // }
+
+  // handle actual API call to add route to trip after confirming date warning
+  const executeAddRoute = async (tripId) => {
+    if (!routeToAdd || !dbUser?._id) return;
+    
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      await addRoute(tripId, buildRoutePayload(routeToAdd), dbUser._id);
+      closeAddRouteModal();
+      navigate(`/view-trip-details/${tripId}`);
+    } catch (err) {
+      console.error('Error adding route to trip:', err);
+      setSubmitError(err?.response?.data?.error || 'Could not add route. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleCreateNewTrip = () => {
     closeAddRouteModal()
@@ -971,6 +1033,36 @@ export default function RouteOptions() {
                   </button>
                 </div>
               </>
+            )}
+
+            {modalStep === 'date-warning' && (
+              <div className="route-modal-warning">
+                <h3>WARNING ⚠️</h3>
+                <p>This route departs on <strong>{new Date(routeToAdd.departAt).toLocaleDateString('en-US', { timeZone: 'UTC' })}</strong>, 
+                    which is outside the trip date range of <strong>{new Date(trips.find(t => t._id === pendingTripId)?.startDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</strong> to <strong>{new Date(trips.find(t => t._id === pendingTripId)?.endDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</strong>.
+                    Do you want to accept and continue adding this route to the trip?</p>
+
+                <div className="route-modal-actions">
+                  <button
+                    className="route-modal-primary"
+                    onClick={() => executeAddRoute(pendingTripId)}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Adding...' : 'Accept'}
+                  </button>
+
+                  <button
+                    className="route-modal-secondary"
+                    onClick={() => {
+                      setModalStep('choose-trip');
+                      setPendingTripId(null);
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

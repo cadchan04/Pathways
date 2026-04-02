@@ -12,6 +12,20 @@ function mongoIdString(value) {
     return String(value);
 }
 
+const toYYYYMMDD = (dateValue) => {
+    if (!dateValue) return null;
+    // handle MongoDB $date format or standard ISO strings
+    const date = new Date(dateValue?.$date || dateValue);
+    if (isNaN(date.getTime())) return null;
+    
+    // use UTC methods to avoid timezone issues and ensure consistent date formatting
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+};
+
 export default function EditTrip() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -27,6 +41,10 @@ export default function EditTrip() {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Date Warning
+    const [originalRoutes, setOriginalRoutes] = useState([]);
+    const [showDateWarning, setShowDateWarning] = useState(false);
 
     // Delete popup state
     const [showConfirm, setShowConfirm] = useState(false);
@@ -60,6 +78,7 @@ export default function EditTrip() {
                     budget: data.budget || 0,
                     totalCost: data.totalCost || 0
                 });
+                setOriginalRoutes(data.routes || []);
             } catch (error) {
                 console.error("Error fetching trip for editing:", error);
             } finally {
@@ -75,26 +94,43 @@ export default function EditTrip() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const executeSubmit = async () => {
+        try {
+            await updateTrip(id, formData, dbUser._id);
+            navigate(`/view-trip-details/${id}`);
+        } catch (err) {
+            console.error("Error updating trip:", err);
+            setError("Failed to update trip. Please try again.");
+        } finally {
+            setShowDateWarning(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError(null);
 
-        if (formData.startDate && formData.endDate) {
-        const start = new Date(formData.startDate);
-        const end = new Date(formData.endDate);
-        
-        if (end < start) {
+        const start = formData.startDate; 
+        const end = formData.endDate;
+
+        // basic date validation
+        if (start && end && end < start) {
             setError("End date cannot be earlier than the start date.");
             return;
         }
-    }
 
-        try {
-            await updateTrip(id, formData, dbUser._id);
+        // check if any existing routes fall outside this new range
+        const hasOrphanedRoutes = originalRoutes.some(route => {
+            const routeDateStr = toYYYYMMDD(route.departAt);
+            if (start && routeDateStr < start) return true;
+            if (end && routeDateStr > end) return true;
+            return false;
+        });
 
-            navigate(`/view-trip-details/${id}`);
-        } catch (err) {
-            console.error("Error in submitting and fetching trip for editing:", err);
-            setError("Failed to load trip details. Please try again.");
+        if (hasOrphanedRoutes) {
+            setShowDateWarning(true);
+        } else {
+            executeSubmit();
         }
     };
 
@@ -250,6 +286,27 @@ export default function EditTrip() {
                     </div>
                 </div>
             )}
+
+            {/* Date Warning Popup */}
+            {showDateWarning && (
+            <div className="modal-overlay">
+                <div className="modal-content warning-border">
+                    <h3>⚠️ Warning</h3>
+                    <p>
+                        <strong>One or more routes</strong> in this trip fall outside your new date range. 
+                        Do you want to accept these changes anyway?
+                    </p>
+                    <div className="modal-buttons">
+                        <button className="confirm-button" onClick={executeSubmit}>
+                            Accept
+                        </button>
+                        <button className="cancel-button" onClick={() => setShowDateWarning(false)}>
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
 
         </div>
     )

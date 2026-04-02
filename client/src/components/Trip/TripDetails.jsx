@@ -24,6 +24,20 @@ const TABS = [
     { id: 'changelog',      label: 'Changelog',       icon: '◷' },
 ];
 
+const toYYYYMMDD = (dateValue) => {
+    if (!dateValue) return null;
+    // handle MongoDB $date format or standard ISO strings
+    const date = new Date(dateValue?.$date || dateValue);
+    if (isNaN(date.getTime())) return null;
+    
+    // use UTC methods to avoid timezone issues and ensure consistent date formatting
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+};
+
 export default function TripDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -211,6 +225,16 @@ export default function TripDetails() {
         }
         if (parts.length >= 2) return `${parts[0]}, ${parts[1]}`;
         return parts[0];
+    };
+
+    const isRouteOutOfRange = (route) => {
+        if (!trip?.startDate || !trip?.endDate || !route?.departAt) return false;
+
+        const routeStr = toYYYYMMDD(route.departAt);
+        const tripStartStr = toYYYYMMDD(trip.startDate);
+        const tripEndStr = toYYYYMMDD(trip.endDate);
+
+        return (routeStr < tripStartStr) || (routeStr > tripEndStr);
     };
 
     const getRouteTitle = (route) => {
@@ -456,17 +480,24 @@ export default function TripDetails() {
                         const currentDate = formatDate(route.departAt);
                         const previousDate = index > 0 ? formatDate(sortedRoutes[index - 1].departAt) : null;
                         const isSameDay = currentDate === previousDate;
+                        const outOfRange = isRouteOutOfRange(route);
+
                         return (
                             <div key={index} className={`td-timeline-entry${isSameDay ? ' same-day' : ''}`}>
                                 <div className="td-timeline-date-circle">
                                     {!isSameDay ? currentDate : ''}
                                 </div>
-                                <div className="td-route-card">
+
+                                <div className={`td-route-card ${outOfRange ? 'td-route-card--warning' : ''}`}>
                                     <div className="td-route-info">
-                                        <h3>{getRouteTitle(route)}</h3>
+                                        <h3>
+                                            {outOfRange && <span title="Outside trip dates">⚠️ </span>}
+                                            {getRouteTitle(route)}
+                                        </h3>
                                         <p>{getRouteMetaLine(route)}</p>
                                         <p>{getRouteTimeLine(route)}</p>
                                     </div>
+
                                     <div className="td-route-actions">
                                         <button
                                             className="td-btn-view"
