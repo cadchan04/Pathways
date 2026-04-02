@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { addRoute, getMultiModalRoutes, updateRoute } from '../../../services/routeServices'
 // import { getRouteSuggestions, addRoute, getMultiModalRoutes } from '../../../services/routeServices'
@@ -6,6 +6,15 @@ import { getTrips } from '../../../services/tripServices'
 import { useUser } from '../../../../context/useUser'
 import './RouteOptions.css'
 import { getWeatherForecast } from '../../../services/weatherServices';
+import {
+  applyRouteFilters,
+  getComparisonWinner,
+  getRouteCostText,
+  getRouteFilterErrors,
+  getRouteModeSummary,
+  getRouteProviderSummary,
+  getRouteStopCount
+} from '../routeUtils'
 
 
 
@@ -63,9 +72,29 @@ export default function RouteOptions() {
   const [tripsError, setTripsError] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [comparisonRoutes, setComparisonRoutes] = useState([null, null])
+  const [filters, setFilters] = useState({
+    travelTime: {
+      min: '',
+      max: ''
+    },
+    cost: {
+      min: '',
+      max: ''
+    },
+    distance: {
+      min: '',
+      max: ''
+    },
+    stops: {
+      min: '',
+      max: ''
+    }
+  })
 
 
   const navigate = useNavigate();
+  const comparisonPanelRef = useRef(null)
 
   // Something like this
   //const [modeFilter, setModeFilter] = useState('All')
@@ -83,6 +112,8 @@ export default function RouteOptions() {
 
   const destinationLat = parseFloat(searchParams.get('destinationLat'))
   const destinationLng = parseFloat(searchParams.get('destinationLng'))
+  const filterErrors = getRouteFilterErrors(filters)
+
 
   // Handing the toggling of providers from the sidebar
   const handleProviderToggle = (name) => {
@@ -97,17 +128,21 @@ export default function RouteOptions() {
     });
   };
 
-  // Only display the routes of the selected providers
-  const displayedRoutes = routes.filter(route => {
-    if (selectedProviders.length === 0) return true; // Show all if none selected
-    
-    const routeProviders = route.legs.flatMap(leg => {
+  // Only display the routes of the selected providers and by filter options
+  const displayedRoutes = useMemo(() => {
+    const filteredRoutes = applyRouteFilters(routes, filters);
+  
+    return filteredRoutes.filter(route => {
+      if (selectedProviders.length === 0) return true;
+  
+      const routeProviders = route.legs.flatMap(leg => {
         if (Array.isArray(leg.provider)) return leg.provider;
         return leg.provider ? [leg.provider] : [];
+      });
+  
+      return routeProviders.every(p => selectedProviders.includes(p));
     });
-
-    return routeProviders.every(p => selectedProviders.includes(p));
-  });
+  }, [routes, filters, selectedProviders]);
 
   useEffect(() => {
     console.log(location.state?.isRegenerating ? "Loading regenerated routes..." : "Loading routes...")
@@ -381,6 +416,203 @@ export default function RouteOptions() {
     loadWeather();
   }, [routes, departDate]);
 
+  const handleFilterChange = (filterKey, bound, value) => {
+    if (value !== '' && Number(value) < 0) return
+
+    setFilters((currentFilters) => ({
+      ...currentFilters,
+      [filterKey]: {
+        ...currentFilters[filterKey],
+        [bound]: value
+      }
+    }))
+  }
+
+  const clearFilter = (filterKey) => {
+    setFilters((currentFilters) => ({
+      ...currentFilters,
+      [filterKey]: {
+        min: '',
+        max: ''
+      }
+    }))
+  }
+
+  const hasActiveFilter = (filterKey) => filters[filterKey].min !== '' || filters[filterKey].max !== ''
+  const filterConfigs = [
+    {
+      key: 'travelTime',
+      label: 'Travel time',
+      meta: 'Minutes',
+      minPlaceholder: 'Min',
+      maxPlaceholder: 'Max',
+      helpText: 'Filter by travel time.'
+    },
+    {
+      key: 'cost',
+      label: 'Cost',
+      meta: 'USD',
+      minPlaceholder: 'Min',
+      maxPlaceholder: 'Max',
+      helpText: 'Filter by total cost.'
+    },
+    {
+      key: 'distance',
+      label: 'Distance',
+      meta: 'Miles',
+      minPlaceholder: 'Min',
+      maxPlaceholder: 'Max',
+      helpText: 'Filter by distance traveled.'
+    },
+    {
+      key: 'stops',
+      label: 'Stops',
+      meta: 'Count',
+      minPlaceholder: 'Min',
+      maxPlaceholder: 'Max',
+      helpText: 'Filter by number of stops.'
+    }
+  ]
+  const activeFilterLabels = filterConfigs
+    .filter((filter) => hasActiveFilter(filter.key))
+    .map((filter) => filter.label.toLowerCase())
+  const noMatchMessage = activeFilterLabels.length > 0
+    ? `No routes match the selected ${activeFilterLabels.join(', ')} filter${activeFilterLabels.length > 1 ? 's' : ''}.`
+    : 'No routes match the selected filters.'
+  const [firstComparedRoute, secondComparedRoute] = comparisonRoutes
+  const hasComparison = Boolean(firstComparedRoute || secondComparedRoute)
+
+  const getComparisonSlot = (route) => comparisonRoutes.findIndex((selectedRoute) => selectedRoute === route)
+
+  const handleCompareRoute = (route) => {
+    setComparisonRoutes((currentRoutes) => {
+      const [firstRoute, secondRoute] = currentRoutes
+
+      if (firstRoute === route || secondRoute === route) {
+        return currentRoutes
+      }
+
+      if (!firstRoute) return [route, null]
+      if (!secondRoute) return [firstRoute, route]
+
+      return [firstRoute, route]
+    })
+  }
+
+  useEffect(() => {
+    if (!firstComparedRoute || !secondComparedRoute || !comparisonPanelRef.current) return
+
+    comparisonPanelRef.current.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    })
+  }, [firstComparedRoute, secondComparedRoute])
+
+  const clearComparison = () => {
+    setComparisonRoutes([null, null])
+  }
+
+  const removeComparisonRoute = (slotIndex) => {
+    setComparisonRoutes((currentRoutes) => {
+      if (slotIndex === 0) {
+        return [currentRoutes[1], null]
+      }
+
+      return [currentRoutes[0], null]
+    })
+  }
+
+  const comparisonRows = [
+    {
+      label: 'Modes',
+      getValue: (route) => getRouteModeSummary(route)
+    },
+    {
+      label: 'Providers',
+      getValue: (route) => getRouteProviderSummary(route)
+    },
+    {
+      label: 'Departure',
+      getValue: (route) => `${formatTime(route?.departAt)} • ${new Date(route?.departAt).toLocaleDateString()}`
+    },
+    {
+      label: 'Arrival',
+      getValue: (route) => `${formatTime(route?.arriveAt)} • ${new Date(route?.arriveAt).toLocaleDateString()}`
+    },
+    {
+      label: 'Duration',
+      getValue: (route) => formatDuration(route?.totalDuration || 0),
+      getWinner: (firstRoute, secondRoute) => getComparisonWinner(firstRoute?.totalDuration, secondRoute?.totalDuration)
+    },
+    {
+      label: 'Distance',
+      getValue: (route) => `${route?.totalDistance ?? 0} miles`,
+      getWinner: (firstRoute, secondRoute) => getComparisonWinner(firstRoute?.totalDistance, secondRoute?.totalDistance)
+    },
+    {
+      label: 'Stops',
+      getValue: (route) => {
+        const stopCount = getRouteStopCount(route)
+        return stopCount <= 0 ? 'Direct' : `${stopCount}`
+      },
+      getWinner: (firstRoute, secondRoute) => getComparisonWinner(getRouteStopCount(firstRoute), getRouteStopCount(secondRoute))
+    },
+    {
+      label: 'Estimated cost',
+      getValue: (route) => getRouteCostText(route),
+      getWinner: (firstRoute, secondRoute) => getComparisonWinner(firstRoute?.totalCost, secondRoute?.totalCost)
+    }
+  ]
+
+  const renderComparisonSlot = (route, slotIndex) => {
+    if (!route) {
+      return (
+        <div className="route-comparison-slot route-comparison-slot-empty">
+          <p className="route-comparison-slot-label">Route {slotIndex + 1}</p>
+          <p className="route-comparison-empty-title">Select a route to compare</p>
+          <p className="route-comparison-empty-copy">Click the Compare button on a route card below to add it here.</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="route-comparison-slot">
+        <div className="route-comparison-slot-top">
+          <div>
+            <p className="route-comparison-slot-label">Route {slotIndex + 1}</p>
+            <h2>{getRouteModeSummary(route)}</h2>
+            <p className="route-comparison-subtitle">{getRouteProviderSummary(route)}</p>
+          </div>
+          <button
+            type="button"
+            className="route-comparison-remove"
+            onClick={() => removeComparisonRoute(slotIndex)}
+          >
+            Remove
+          </button>
+        </div>
+
+        <div className="route-comparison-metrics">
+          {comparisonRows.map((row) => {
+            const winner = firstComparedRoute && secondComparedRoute && row.getWinner
+              ? row.getWinner(firstComparedRoute, secondComparedRoute)
+              : null
+            const isWinner = (slotIndex === 0 && winner === 'first') || (slotIndex === 1 && winner === 'second')
+
+            return (
+              <div key={row.label} className="route-comparison-metric-row">
+                <span className="route-comparison-metric-label">{row.label}</span>
+                <span className={`route-comparison-metric-value${isWinner ? ' route-comparison-metric-value-winning' : ''}`}>
+                  {row.getValue(route)}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <section className="route-options-page">
       <header className="route-options-header">
@@ -420,8 +652,68 @@ export default function RouteOptions() {
           )}
         </div>
       </header>
+      
+      {hasComparison && (
+        <section ref={comparisonPanelRef} className="route-comparison-panel" aria-label="Route comparison">
+          <div className="route-comparison-header">
+            <div>
+              <h2>Compare Routes</h2>
+              <p>Review two route options side by side without leaving the page.</p>
+            </div>
+            <button type="button" className="route-comparison-clear" onClick={clearComparison}>
+              Clear Comparison
+            </button>
+          </div>
 
-      {/* Implement filter and sorting */}
+          <div className="route-comparison-grid">
+            {renderComparisonSlot(firstComparedRoute, 0)}
+            {renderComparisonSlot(secondComparedRoute, 1)}
+          </div>
+        </section>
+      )}
+
+      <section className="route-options-controls" aria-label="Route filters">
+        {filterConfigs.map((filter) => (
+          <div key={filter.key} className="route-filter-group">
+            <div className="route-filter-header">
+              <label className="route-filter-label">{filter.label}</label>
+              <span className="route-filter-meta">{filter.meta}</span>
+            </div>
+            <div className="route-filter-inputs">
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                placeholder={filter.minPlaceholder}
+                value={filters[filter.key].min}
+                onChange={(event) => handleFilterChange(filter.key, 'min', event.target.value)}
+                aria-label={`Minimum ${filter.label.toLowerCase()}`}
+              />
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                placeholder={filter.maxPlaceholder}
+                value={filters[filter.key].max}
+                onChange={(event) => handleFilterChange(filter.key, 'max', event.target.value)}
+                aria-label={`Maximum ${filter.label.toLowerCase()}`}
+              />
+            </div>
+            <div className="route-filter-footer">
+              <span className="route-filter-help">{filter.helpText}</span>
+              <button
+                type="button"
+                className="route-filter-clear"
+                onClick={() => clearFilter(filter.key)}
+                disabled={!hasActiveFilter(filter.key)}
+              >
+                Clear
+              </button>
+            </div>
+            {filterErrors[filter.key] && <p className="route-filter-error">{filterErrors[filter.key]}</p>}
+          </div>
+        ))}
+      </section>
 
       {loading && <p>Loading route suggestions...</p>}
       {!loading && error && <p className="route-options-error">{error}</p>}
@@ -429,7 +721,7 @@ export default function RouteOptions() {
 
       {/* Change to displayedRoutes when filtering/sorting is implemented */}
       {displayedRoutes.length == 0 && !loading && !error ? (<p>No matching routes found.</p>) : null}
-      {!loading && !error && ( 
+      {!loading && !error && displayedRoutes.length > 0 && ( 
         <div className="route-options-layout">
           <aside className="provider-sidebar">
             <h3>Filter by Provider</h3>
@@ -569,9 +861,16 @@ export default function RouteOptions() {
                       </p>
                     </div>
 
-                    <button className="route-option-select-button" onClick={() => location.state?.isRegenerating ? handleSaveRegeneratedRoute(location.state.originalRoute._id, route) : handleAddRoute(route)}>
-                      Add Route
-                    </button>
+                  <button className="route-option-select-button" onClick={() => location.state?.isRegenerating ? handleSaveRegeneratedRoute(location.state.originalRoute._id, route) : handleAddRoute(route)}>
+                    Add Route
+                  </button>
+
+                  <button
+                    className={`route-option-compare-button${getComparisonSlot(route) !== -1 ? ' route-option-compare-button-active' : ''}`}
+                    onClick={() => handleCompareRoute(route)}
+                  >
+                    {getComparisonSlot(route) === 0 ? 'Comparing: Route 1' : getComparisonSlot(route) === 1 ? 'Comparing: Route 2' : 'Compare'}
+                  </button>
 
                     <button className="route-option-details-button" onClick={() => handleViewRoute(route)}>
                       View Route Details
