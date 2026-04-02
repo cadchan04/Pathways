@@ -861,10 +861,7 @@ export default function RouteOptions() {
                       </p>
                     </div>
 
-                    <button className="route-option-select-button" onClick={() => location.state?.isRegenerating ? handleSaveRegeneratedRoute(location.state.originalRoute._id, route) : handleAddRoute(route)}>
-                      Add Route
-                    </button>
-                  <button className="route-option-select-button" onClick={() => handleAddRoute(route)}>
+                  <button className="route-option-select-button" onClick={() => location.state?.isRegenerating ? handleSaveRegeneratedRoute(location.state.originalRoute._id, route) : handleAddRoute(route)}>
                     Add Route
                   </button>
 
