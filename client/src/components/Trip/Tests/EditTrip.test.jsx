@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import EditTrip from '../EditTrip';
 import { getTripById, updateTrip } from '../../../services/tripServices';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { useUser } from '../../../../context/useUser';
 
 // Mock services
 vi.mock('../../../services/tripServices', () => ({
@@ -12,9 +13,14 @@ vi.mock('../../../services/tripServices', () => ({
   duplicateTrip: vi.fn(),
 }));
 
+vi.mock('../../../../context/useUser', () => ({
+  useUser: vi.fn(),
+}));
+
 // Mock trip for testing
 const mockTrip = {
     _id: '123',
+    owner: 'user-123',
     name: 'Existing Trip',
     description: 'Old Description',
     startDate: '2026-03-01',
@@ -25,7 +31,7 @@ const mockTrip = {
 describe('EditTrip Component', () => {
     beforeEach(() => {
         vi.clearAllMocks(); // clear mocks before each test
-
+        useUser.mockReturnValue({ dbUser: { _id: 'user-123' } });
         getTripById.mockResolvedValue(mockTrip); // use direct function name
     });
 
@@ -70,7 +76,7 @@ describe('EditTrip Component', () => {
                 startDate: '2026-03-01',
                 endDate: '2026-03-05',
                 budget: 500
-            }));
+            }), 'user-123');
         });
     });
 });
