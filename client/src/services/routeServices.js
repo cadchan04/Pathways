@@ -50,11 +50,16 @@ export const getRoutes = async (tripId, userId) => {
 
 // delete a route from a trip (owner only)
 export const deleteRoute = async (tripId, routeId, userId) => {
-    return await axios.delete(`${API_URL}/api/trips/${tripId}/routes/${routeId}/`, {
-      params: { userId },
-    })
-        .then(res => res.data)
-        .catch(err => console.error(err))
+  return await axios.delete(`${API_URL}/api/trips/${tripId}/routes/${routeId}/`, {
+    params: { userId },
+  })
+      .then(res => {
+        window.dispatchEvent(new CustomEvent('routeDeleted', { 
+          detail: { tripId, routeId } 
+        }));
+        return res.data;
+      })
+      .catch(err => console.error(err))
 }
 
 export const getLegs = async (tripId, routeId, userId) => {

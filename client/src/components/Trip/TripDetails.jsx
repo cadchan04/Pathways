@@ -742,13 +742,15 @@ export default function TripDetails() {
                     <h3>Confirm Delete</h3>
                     <p>Delete “{routeToDelete?.name}”?</p>
 
-                    <button style={{ background: "#e63946", color: "white", padding: "10px", border: "none", borderRadius: "6px", marginRight: "10px", cursor: "pointer" }} onClick={async () => {
-                        const tripId = typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
-                        await deleteRoute(tripId, routeToDelete._id, dbUser._id);
-                        const updatedTrip = await getTripById(tripId, dbUser._id);
-                        setTrip(updatedTrip);
-                        setShowConfirm(false);
-                    }}
+                    <button style={{ background: "#e63946", color: "white", padding: "10px", border: "none", borderRadius: "6px", marginRight: "10px", cursor: "pointer" }}
+onClick={async () => {
+    const tripId = typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
+    await deleteRoute(tripId, routeToDelete._id, dbUser._id);
+    const updatedTrip = await getTripById(tripId, dbUser._id);
+    setTrip(updatedTrip);
+    setShowConfirm(false);
+    window.dispatchEvent(new Event('refreshNotifications'));
+}}
                     >
                     Confirm
                     </button>

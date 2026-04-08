@@ -87,6 +87,9 @@ router.delete('/:routeId', async (req, res) => {
         const costBefore = Number(trip.totalCost) || 0;
         route.deleteOne();
 
+        route.deleteOne();
+
+        trip.totalCost = trip.routes.reduce((sum, r) => sum + (Number(r.totalCost) || 0), 0);
         trip.lastKnownCost = costBefore;
         await trip.save();
         console.log("Deleted route:", route.name, "from trip:", trip.name)

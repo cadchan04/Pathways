@@ -31,15 +31,16 @@ const Navbar = () => {
       const now = Date.now(); // milliseconds
       const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
       
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
       const upcomingTrips = data
         .filter(trip => {
-          const tripStart = new Date(trip.startDate).getTime(); // timestamp
-          return tripStart - now <= ONE_WEEK_MS;
+          const tripStart = new Date(trip.startDate).getTime();
+          return tripStart - now <= ONE_DAY_MS && tripStart - now >= 0;
         })
         .map(trip => ({
-          title: `${trip.name} in < 1 week`,
-          body: `Starts: ${new Date(trip.startDate).toLocaleDateString()}`,
-          url: `/view-trip-details/${trip._id}`,
+          title: `${trip.name} in < 1 day`,
+          body: `Starts: ${new Date(trip.startDate.split('T')[0] + 'T00:00').toLocaleDateString()}`,          url: `/view-trip-details/${trip._id}`,
         }));
 
         const priceAlerts = data.flatMap(trip =>
@@ -86,11 +87,11 @@ const Navbar = () => {
     }
   };
 
-useEffect(() => {
-  if (!dbUser?._id) return;
-
-  fetchUpcoming();
-}, [dbUser?._id]);
+  useEffect(() => {
+    if (!dbUser?._id) return;
+  
+    fetchUpcoming();
+  }, [dbUser?._id, location.pathname]);
 
   useEffect(() => {
     if (!dbUser?._id) return;
