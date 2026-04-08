@@ -15,20 +15,30 @@ function mongoIdString(value) {
     return String(value);
 }
 
+const TABS = [
+    { id: 'timeline',       label: 'Timeline',       icon: '◈' },
+    { id: 'routes',         label: 'Routes',          icon: '⇢' },
+    { id: 'accommodations', label: 'Accommodations',  icon: '⌂' },
+    { id: 'map',            label: 'Map',             icon: '◎' },
+    { id: 'collaboration',  label: 'Collaboration',   icon: '⌘' },
+    { id: 'changelog',      label: 'Changelog',       icon: '◷' },
+];
 
 export default function TripDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const { dbUser } = useUser();
+
     const [trip, setTrip] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [activeTab, setActiveTab] = useState('timeline');
+    const [showAddMenu, setShowAddMenu] = useState(false);
 
-    // Delete route confirmation state
     const [showConfirm, setShowConfirm] = useState(false);
     const [routeToDelete, setRouteToDelete] = useState(null);
 
-    // Invite collaborators (owner only)
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteSending, setInviteSending] = useState(false);
     const [inviteFeedback, setInviteFeedback] = useState(null);
@@ -39,45 +49,34 @@ export default function TripDetails() {
     const [preferenceError, setPreferenceError] = useState('');
     const [groupSummary, setGroupSummary] = useState(null);
     const [showPreferencesModal, setShowPreferencesModal] = useState(false);
+
     const TRANSPORT_MODES = ['RIDESHARE', 'PERSONAL_VEHICLE', 'BUS', 'TRAIN', 'FLIGHT'];
     const [rankByMode, setRankByMode] = useState({
-        RIDESHARE: '',
-        PERSONAL_VEHICLE: '',
-        BUS: '',
-        TRAIN: '',
-        FLIGHT: '',
+        RIDESHARE: '', PERSONAL_VEHICLE: '', BUS: '', TRAIN: '', FLIGHT: '',
     });
+
+    // ── data fetching ─────────────────────────────────────────────────────────
 
     useEffect(() => {
         const fetchTripDetails = async () => {
-            if (!dbUser?._id) {
-                setLoading(false);
-                return;
-            }
+            if (!dbUser?._id) { setLoading(false); return; }
             try {
                 const data = await getTripById(id, dbUser._id);
-                console.log("Fetched trip data:", data);
                 setTrip(data);
-
             } catch (error) {
-                console.error("Error fetching trip details:", error);
+                console.error('Error fetching trip details:', error);
                 setTrip(null);
             } finally {
                 setLoading(false);
             }
-        }
-
+        };
         fetchTripDetails();
     }, [id, dbUser?._id]);
 
     useEffect(() => {
         if (!trip || !dbUser?._id) return;
         const owner = mongoIdString(trip.owner) === mongoIdString(dbUser._id);
-        if (!owner) {
-            setTripInvitations([]);
-            setInviteLoadError(null);
-            return;
-        }
+        if (!owner) { setTripInvitations([]); setInviteLoadError(null); return; }
         const tid = id || mongoIdString(trip._id);
         let cancelled = false;
         (async () => {
@@ -86,41 +85,26 @@ export default function TripDetails() {
                 const list = await listTripInvitations(tid, dbUser._id);
                 if (!cancelled) setTripInvitations(Array.isArray(list) ? list : []);
             } catch (e) {
-                console.error('Error loading trip invitations:', e);
                 if (!cancelled) {
                     setTripInvitations([]);
-                    setInviteLoadError(
-                        e?.response?.data?.error || 'Could not load invitation activity.'
-                    );
+                    setInviteLoadError(e?.response?.data?.error || 'Could not load invitation activity.');
                 }
             }
         })();
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [trip, dbUser?._id, id]);
 
     useEffect(() => {
         if (!trip || !dbUser?._id) return;
-
         const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
         if (!hasCollaborators) {
-            setGroupSummary(null);
-            setPreferenceError('');
-            setRankByMode({
-                RIDESHARE: '',
-                PERSONAL_VEHICLE: '',
-                BUS: '',
-                TRAIN: '',
-                FLIGHT: '',
-            });
+            setGroupSummary(null); setPreferenceError('');
+            setRankByMode({ RIDESHARE: '', PERSONAL_VEHICLE: '', BUS: '', TRAIN: '', FLIGHT: '' });
             return;
         }
-
         let cancelled = false;
         (async () => {
-            setIsLoadingPreferenceData(true);
-            setPreferenceError('');
+            setIsLoadingPreferenceData(true); setPreferenceError('');
             try {
                 const tripId = id || mongoIdString(trip._id);
                 const uid = mongoIdString(dbUser._id);
@@ -130,48 +114,31 @@ export default function TripDetails() {
                     if (prefData?.myPreference?.rankByMode) {
                         setRankByMode(normalizeRankByMode(prefData.myPreference.rankByMode));
                     } else if (prefData?.myPreference?.ranking) {
-                        const normalized = normalizeRanking(prefData.myPreference.ranking);
-                        setRankByMode(buildRankByModeFromRanking(normalized));
+                        setRankByMode(buildRankByModeFromRanking(normalizeRanking(prefData.myPreference.ranking)));
                     } else {
-                        setRankByMode({
-                            RIDESHARE: '',
-                            PERSONAL_VEHICLE: '',
-                            BUS: '',
-                            TRAIN: '',
-                            FLIGHT: '',
-                        });
+                        setRankByMode({ RIDESHARE: '', PERSONAL_VEHICLE: '', BUS: '', TRAIN: '', FLIGHT: '' });
                     }
                 }
             } catch (err) {
-                if (!cancelled) {
-                    console.error('Error loading route preferences:', err);
-                    setPreferenceError(err?.response?.data?.error || 'Could not load route preferences.');
-                }
+                if (!cancelled) setPreferenceError(err?.response?.data?.error || 'Could not load route preferences.');
             } finally {
                 if (!cancelled) setIsLoadingPreferenceData(false);
             }
         })();
-
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [trip, id, dbUser?._id]);
 
     useEffect(() => {
         if (!trip || !dbUser?._id) return;
         const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
         if (!hasCollaborators) return;
-
         const onVisible = () => {
             if (document.visibilityState !== 'visible') return;
             const tripId = id || mongoIdString(trip._id);
             getRoutePreferences(tripId, mongoIdString(dbUser._id))
-                .then((prefData) => {
-                    setGroupSummary(prefData?.groupSummary || null);
-                })
+                .then((prefData) => setGroupSummary(prefData?.groupSummary || null))
                 .catch(() => {});
         };
-
         document.addEventListener('visibilitychange', onVisible);
         return () => document.removeEventListener('visibilitychange', onVisible);
     }, [trip, id, dbUser?._id]);
@@ -186,15 +153,10 @@ export default function TripDetails() {
                 const tripId = id || mongoIdString(trip._id);
                 const uid = mongoIdString(dbUser._id);
                 const prefData = await getRoutePreferences(tripId, uid);
-                if (cancelled) return;
-                setGroupSummary(prefData?.groupSummary || null);
-            } catch (err) {
-                console.error('Error loading route preferences (modal):', err);
-            }
+                if (!cancelled) setGroupSummary(prefData?.groupSummary || null);
+            } catch (err) { console.error('Error loading route preferences (modal):', err); }
         })();
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [showPreferencesModal, trip, id, dbUser?._id]);
 
     useEffect(() => {
@@ -204,74 +166,44 @@ export default function TripDetails() {
             try {
                 const data = await getTripById(id, mongoIdString(dbUser._id));
                 if (!cancelled) setTrip(data);
-            } catch (error) {
-                console.error('Error refreshing trip details:', error);
-            }
+            } catch (error) { console.error('Error refreshing trip details:', error); }
         })();
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [location.state?.fromRouteDetails, id, dbUser?._id]);
 
-    if (loading) {
-        return (
-            <div className="details-container">
-                <p>Loading trip details...</p>
-            </div>
-        )
-    }
+    useEffect(() => {
+        const handleClick = () => setShowAddMenu(false);
+    
+        if (showAddMenu) {
+            window.addEventListener('click', handleClick);
+        }
+    
+        return () => window.removeEventListener('click', handleClick);
+    }, [showAddMenu]);
 
-    if (!dbUser?._id) {
-        return (
-            <div className="details-container">
-                <p>Sign in to view this trip.</p>
-            </div>
-        );
-    }
+    // ── helpers ───────────────────────────────────────────────────────────────
 
-    if (!trip) {
-        return (
-            <div className="details-container">
-                <p>Trip not found.</p>
-            </div>
-        )
-    }
-
-    const calculateTotalCost = (routes) => {
-        return routes.reduce((total, route) => total + (Number(route.totalCost) || 0), 0);
-    };
-    const currentTotal = trip.routes ? calculateTotalCost(trip.routes) : 0;
-
-    const sortedRoutes = trip.routes ? [...trip.routes].sort((a, b) => {
-        const dateA = new Date(a.departAt?.$date || a.departAt);
-        const dateB = new Date(b.departAt?.$date || b.departAt);
-        return dateA - dateB;
-    }) : [];
+    const calculateTotalCost = (routes) =>
+        routes.reduce((total, route) => total + (Number(route.totalCost) || 0), 0);
 
     const formatDate = (dateObj) => {
-    const dateString = dateObj?.$date || dateObj; // check if the date is a nested $date object or a direct string
-    if (!dateString) return 'MM/DD';
-    
-    const date = new Date(dateString);
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-}
+        const dateString = dateObj?.$date || dateObj;
+        if (!dateString) return 'MM/DD';
+        const date = new Date(dateString);
+        return `${date.getMonth() + 1}/${date.getDate()}`;
+    };
 
     const formatTime = (dateObj) => {
         const dateString = dateObj?.$date || dateObj;
-        if (!dateString) return "N/A";
-        return new Date(dateString).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
     const formatShortUsLocation = (value) => {
         const raw = String(value || '').trim();
         if (!raw) return 'Unknown';
         const parts = raw.split(',').map((p) => p.trim()).filter(Boolean);
-        const hasUS = parts.some((p) =>
-            /^(united states|united states of america|usa|us)$/i.test(p)
-        );
+        const hasUS = parts.some((p) => /^(united states|united states of america|usa|us)$/i.test(p));
         if (hasUS) {
             const city = parts[0] || 'Unknown';
             const state = parts[1] || '';
@@ -289,99 +221,43 @@ export default function TripDetails() {
 
     const getRouteMetaLine = (route) => {
         const legs = Array.isArray(route?.legs) ? route.legs : [];
-        if (legs.length === 0) return "No leg details";
-
-        const modes = legs
-            .map((leg) => leg?.transportationMode)
-            .filter(Boolean)
-            .map((mode) => {
-                const lower = String(mode).toLowerCase();
-                return lower.charAt(0).toUpperCase() + lower.slice(1);
-            });
-
-        const uniqueModes = modes.filter((mode, index) => index === 0 || mode !== modes[index - 1]);
-        const modeText = uniqueModes.join(" → ");
-
-        // start at -1 to not count first departure as stop
+        if (legs.length === 0) return 'No leg details';
+        const modes = legs.map((leg) => leg?.transportationMode).filter(Boolean)
+            .map((mode) => { const l = String(mode).toLowerCase(); return l.charAt(0).toUpperCase() + l.slice(1); });
+        const uniqueModes = modes.filter((mode, idx) => idx === 0 || mode !== modes[idx - 1]);
         let stopCount = -1;
         for (const leg of legs) {
-            if (Array.isArray(leg?.segments) && leg.segments.length > 0) {
-                stopCount += leg.segments.length;
-            } else {
-                stopCount += 1;
-            }
+            stopCount += Array.isArray(leg?.segments) && leg.segments.length > 0 ? leg.segments.length : 1;
         }
-
-        const stopsText = stopCount <= 0
-            ? "Direct"
-            : `${stopCount} ${stopCount === 1 ? "Stop" : "Stops"}`;
-
-        return `${modeText} • ${stopsText}`;
+        const stopsText = stopCount <= 0 ? 'Direct' : `${stopCount} ${stopCount === 1 ? 'Stop' : 'Stops'}`;
+        return `${uniqueModes.join(' → ')} • ${stopsText}`;
     };
 
-    const getRouteTimeLine = (route) => {
-        const start = formatTime(route?.departAt);
-        const end = formatTime(route?.arriveAt);
-        return `${start} to ${end}`;
-    };
+    const getRouteTimeLine = (route) => `${formatTime(route?.departAt)} to ${formatTime(route?.arriveAt)}`;
 
-    const tripIdStr = mongoIdString(trip._id);
-    const isTripOwner = mongoIdString(trip.owner) === mongoIdString(dbUser?._id);
-
-    const invitationActivityText = (inv) => {
-        const email = inv.inviteeEmail || 'Unknown';
-        const when = new Date(inv.updatedAt || inv.createdAt).toLocaleString();
-        switch (inv.status) {
-            case 'pending':
-                return `Invitation sent to ${email} — ${when}`;
-            case 'accepted':
-                return `${email} accepted the invitation — ${when}`;
-            case 'declined':
-                return `${email} declined the invitation — ${when}`;
-            case 'revoked':
-                return `Invitation to ${email} was revoked — ${when}`;
-            default:
-                return `${email} — ${inv.status} — ${when}`;
-        }
-    };
-
-    const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
-
-    const modeLabel = (mode) => {
-        const labels = {
-            RIDESHARE: 'Rideshare',
-            PERSONAL_VEHICLE: 'Personal Vehicle',
-            BUS: 'Bus',
-            TRAIN: 'Train',
-            FLIGHT: 'Flight',
-        };
-        return labels[mode] || mode;
-    };
+    const modeLabel = (mode) => ({
+        RIDESHARE: 'Rideshare', PERSONAL_VEHICLE: 'Personal Vehicle',
+        BUS: 'Bus', TRAIN: 'Train', FLIGHT: 'Flight',
+    }[mode] || mode);
 
     const normalizeRanking = (ranking = []) => {
         const cleaned = ranking.map((m) => String(m || '').trim().toUpperCase());
-        const uniqueValid = cleaned.filter(
-            (m, idx) => TRANSPORT_MODES.includes(m) && cleaned.indexOf(m) === idx
-        );
-        return uniqueValid;
+        return cleaned.filter((m, idx) => TRANSPORT_MODES.includes(m) && cleaned.indexOf(m) === idx);
     };
 
     const buildRankByModeFromRanking = (ranking) => ({
-        RIDESHARE: ranking.includes('RIDESHARE') ? ranking.indexOf('RIDESHARE') + 1 : '',
+        RIDESHARE:        ranking.includes('RIDESHARE')        ? ranking.indexOf('RIDESHARE') + 1        : '',
         PERSONAL_VEHICLE: ranking.includes('PERSONAL_VEHICLE') ? ranking.indexOf('PERSONAL_VEHICLE') + 1 : '',
-        BUS: ranking.includes('BUS') ? ranking.indexOf('BUS') + 1 : '',
-        TRAIN: ranking.includes('TRAIN') ? ranking.indexOf('TRAIN') + 1 : '',
-        FLIGHT: ranking.includes('FLIGHT') ? ranking.indexOf('FLIGHT') + 1 : '',
+        BUS:              ranking.includes('BUS')              ? ranking.indexOf('BUS') + 1              : '',
+        TRAIN:            ranking.includes('TRAIN')            ? ranking.indexOf('TRAIN') + 1            : '',
+        FLIGHT:           ranking.includes('FLIGHT')           ? ranking.indexOf('FLIGHT') + 1           : '',
     });
 
     const normalizeRankByMode = (raw = {}) => {
         const normalized = {};
         for (const mode of TRANSPORT_MODES) {
             const value = raw?.[mode];
-            if (value === '' || value == null) {
-                normalized[mode] = '';
-                continue;
-            }
+            if (value === '' || value == null) { normalized[mode] = ''; continue; }
             const n = Number(value);
             normalized[mode] = Number.isInteger(n) && n >= 1 && n <= 5 ? n : '';
         }
@@ -389,10 +265,7 @@ export default function TripDetails() {
     };
 
     const handleRankSelectChange = (mode, value) => {
-        if (value === '') {
-            setRankByMode((prev) => ({ ...prev, [mode]: '' }));
-            return;
-        }
+        if (value === '') { setRankByMode((prev) => ({ ...prev, [mode]: '' })); return; }
         const nextRank = Number(value);
         if (!Number.isInteger(nextRank) || nextRank < 1 || nextRank > 5) return;
         setRankByMode((prev) => ({ ...prev, [mode]: nextRank }));
@@ -400,30 +273,17 @@ export default function TripDetails() {
 
     const handleSavePreferences = async () => {
         if (!hasCollaborators || !dbUser?._id) return;
-        setIsSavingPreference(true);
-        setPreferenceError('');
+        setIsSavingPreference(true); setPreferenceError('');
         try {
             const tripId = id || tripIdStr;
             const uid = mongoIdString(dbUser._id);
             await saveMyRoutePreference(tripId, rankByMode, uid);
             const latest = await getRoutePreferences(tripId, uid);
             setGroupSummary(latest.groupSummary || null);
-            if (latest?.myPreference?.rankByMode) {
-                setRankByMode(normalizeRankByMode(latest.myPreference.rankByMode));
-            } else if (latest?.myPreference?.ranking) {
-                const normalized = normalizeRanking(latest.myPreference.ranking);
-                setRankByMode(buildRankByModeFromRanking(normalized));
-            } else {
-                setRankByMode({
-                    RIDESHARE: '',
-                    PERSONAL_VEHICLE: '',
-                    BUS: '',
-                    TRAIN: '',
-                    FLIGHT: '',
-                });
-            }
+            if (latest?.myPreference?.rankByMode) setRankByMode(normalizeRankByMode(latest.myPreference.rankByMode));
+            else if (latest?.myPreference?.ranking) setRankByMode(buildRankByModeFromRanking(normalizeRanking(latest.myPreference.ranking)));
+            else setRankByMode({ RIDESHARE: '', PERSONAL_VEHICLE: '', BUS: '', TRAIN: '', FLIGHT: '' });
         } catch (err) {
-            console.error('Error saving route preferences:', err);
             setPreferenceError(err?.response?.data?.error || 'Could not save preferences right now.');
         } finally {
             setIsSavingPreference(false);
@@ -434,26 +294,32 @@ export default function TripDetails() {
         e.preventDefault();
         setInviteFeedback(null);
         const email = inviteEmail.trim();
-        if (!email) {
-            setInviteFeedback({ type: 'error', text: 'Enter an email address.' });
-            return;
-        }
+        if (!email) { setInviteFeedback({ type: 'error', text: 'Enter an email address.' }); return; }
         setInviteSending(true);
         try {
-            const apiTripId = id || tripIdStr;
+            const apiTripId = id || mongoIdString(trip._id);
             await sendTripInvitation(apiTripId, email, dbUser._id);
             setInviteEmail('');
             setInviteLoadError(null);
             const list = await listTripInvitations(apiTripId, dbUser._id);
             setTripInvitations(Array.isArray(list) ? list : []);
         } catch (err) {
-            const msg =
-                err?.response?.data?.error ||
-                err?.message ||
-                'Could not send the invitation. Please try again.';
+            const msg = err?.response?.data?.error || err?.message || 'Could not send the invitation. Please try again.';
             setInviteFeedback({ type: 'error', text: msg });
         } finally {
             setInviteSending(false);
+        }
+    };
+
+    const invitationActivityText = (inv) => {
+        const email = inv.inviteeEmail || 'Unknown';
+        const when = new Date(inv.updatedAt || inv.createdAt).toLocaleString();
+        switch (inv.status) {
+            case 'pending':  return `Invitation sent to ${email} — ${when}`;
+            case 'accepted': return `${email} accepted the invitation — ${when}`;
+            case 'declined': return `${email} declined the invitation — ${when}`;
+            case 'revoked':  return `Invitation to ${email} was revoked — ${when}`;
+            default:         return `${email} — ${inv.status} — ${when}`;
         }
     };
 
@@ -464,12 +330,7 @@ export default function TripDetails() {
         const avgScores = TRANSPORT_MODES.map((m) => avgForMode(m));
         const minAvg = Math.min(...avgScores);
         const maxAvg = Math.max(...avgScores);
-        return {
-            responseCount,
-            avgForMode,
-            maxAvg,
-            avgSpan: maxAvg - minAvg,
-        };
+        return { responseCount, avgForMode, maxAvg, avgSpan: maxAvg - minAvg };
     };
 
     const renderGroupSummaryBars = (summary, model) => (
@@ -483,19 +344,16 @@ export default function TripDetails() {
                 })
                 .map((mode) => {
                     const avg = model.avgForMode(mode);
-                    const pct =
-                        model.avgSpan === 0 ? 100 : Math.round((100 * (model.maxAvg - avg)) / model.avgSpan);
+                    const pct = model.avgSpan === 0 ? 100 : Math.round((100 * (model.maxAvg - avg)) / model.avgSpan);
                     const isTopPick = (summary.tiedModes || []).includes(mode);
                     return (
                         <div key={mode} className="group-transport-bar-row" role="listitem">
                             <span className="group-transport-bar-label">{modeLabel(mode)}</span>
                             <div className="group-transport-bar-track" aria-hidden="true">
                                 <div
-                                    className={
-                                        isTopPick
-                                            ? 'group-transport-bar-fill group-transport-bar-fill--top'
-                                            : 'group-transport-bar-fill'
-                                    }
+                                    className={isTopPick
+                                        ? 'group-transport-bar-fill group-transport-bar-fill--top'
+                                        : 'group-transport-bar-fill'}
                                     style={{ width: `${pct}%` }}
                                 />
                             </div>
@@ -511,10 +369,7 @@ export default function TripDetails() {
                 <div key={mode} className="group-transport-bar-row" role="listitem">
                     <span className="group-transport-bar-label">{modeLabel(mode)}</span>
                     <div className="group-transport-bar-track" aria-hidden="true">
-                        <div
-                            className="group-transport-bar-fill group-transport-bar-fill--empty"
-                            style={{ width: '0%' }}
-                        />
+                        <div className="group-transport-bar-fill group-transport-bar-fill--empty" style={{ width: '0%' }} />
                     </div>
                 </div>
             ))}
@@ -525,31 +380,20 @@ export default function TripDetails() {
         if (!hasCollaborators) return null;
         const model = groupSummary ? buildGroupSummaryModel(groupSummary) : null;
         const tied = groupSummary?.tiedModes || [];
-        const summaryMeta =
-            model && groupSummary
-                ? (() => {
-                      const n = model.responseCount;
-                      const nLabel = `${n} ${n === 1 ? 'response' : 'responses'}`;
-                      if (tied.length > 1) {
-                          return `${nLabel} · Tie: ${tied.map((m) => modeLabel(m)).join(', ')}`;
-                      }
-                      return `${nLabel} · Top: ${modeLabel(groupSummary.topMode)}`;
-                  })()
-                : 'No responses yet';
-
+        const summaryMeta = model && groupSummary
+            ? (() => {
+                const n = model.responseCount;
+                const nLabel = `${n} ${n === 1 ? 'response' : 'responses'}`;
+                if (tied.length > 1) return `${nLabel} · Tie: ${tied.map((m) => modeLabel(m)).join(', ')}`;
+                return `${nLabel} · Top: ${modeLabel(groupSummary.topMode)}`;
+            })()
+            : 'No responses yet';
         const detailsKey = `gs-${groupSummary?.submissionsCount ?? 0}-${groupSummary?.topMode ?? 'none'}`;
-
         return (
-            <details
-                key={detailsKey}
-                className="trip-route-preference-group-details"
-                defaultOpen
-            >
+            <details key={detailsKey} className="trip-route-preference-group-details" defaultOpen>
                 <summary className="trip-route-preference-group-summary">
                     <span className="trip-route-preference-group-summary-title">
-                        <span className="trip-route-preference-group-chevron" aria-hidden>
-                            ▼
-                        </span>
+                        <span className="trip-route-preference-group-chevron" aria-hidden>▼</span>
                         Group summary
                     </span>
                     <span className="trip-route-preference-group-summary-meta">{summaryMeta}</span>
@@ -563,48 +407,180 @@ export default function TripDetails() {
         );
     };
 
-    return (
-        <div className="details-container">
-            <div className="top-nav">
-                <button
-                    className="back-button"
-                    onClick={() => navigate('/my-trips')}
-                >
-                    ← Back
-                </button>
+    if (loading) {
+        return (
+            <div className="td-shell">
+                <div className="td-loading">
+                    <div className="td-loading-dot" />
+                    <div className="td-loading-dot" />
+                    <div className="td-loading-dot" />
+                </div>
+            </div>
+        );
+    }
+    if (!dbUser?._id) return <div className="td-shell td-empty"><p>Sign in to view this trip.</p></div>;
+    if (!trip)        return <div className="td-shell td-empty"><p>Trip not found.</p></div>;
 
-                {isTripOwner && (
+    const currentTotal = trip.routes ? calculateTotalCost(trip.routes) : 0;
+    const sortedRoutes = trip.routes
+        ? [...trip.routes].sort((a, b) =>
+            new Date(a.departAt?.$date || a.departAt) - new Date(b.departAt?.$date || b.departAt))
+        : [];
+
+    const tripIdStr = mongoIdString(trip._id);
+    const isTripOwner = mongoIdString(trip.owner) === mongoIdString(dbUser?._id);
+    const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
+
+    const renderTimeline = () => (
+        <div className="td-tab-content">
+            <div className="td-content-header">
+                <h2>Timeline</h2>
+                {hasCollaborators && (
                     <button
-                        className="edit-trip-button"
-                        onClick={() => navigate(`/edit-trip/${id}`)}
+                        type="button"
+                        className="trip-route-preference-open"
+                        onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
                     >
-                        Edit Trip Details
+                        Group Transport Preferences
                     </button>
                 )}
             </div>
-            
-            <div className="details-header">
-                <div className="header-main">
-                    <h1>{trip.name}</h1>
+            {sortedRoutes.length === 0 ? (
+                <div className="td-empty-state">
+                    <span className="td-empty-icon">◈</span>
+                    <p>No routes added to this trip yet.</p>
                 </div>
-                
-                <div className="header-stats">
-                    <p className="trip-desc">{trip.description}</p>
-                    <div className="trip-dates"><strong>Dates: </strong>{new Date(trip.startDate).toLocaleDateString('en-US', { timeZone: 'UTC' })} - {new Date(trip.endDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</div>
-                    <div className="trip-budget"><strong>Budget:</strong> ${trip.budget?.toFixed(2) || 'N/A'}</div>
-                    <div className={`trip-cost ${currentTotal > trip.budget ? 'over-budget' : ''}`}>
-                        <strong>Total Cost:</strong> ${currentTotal?.toFixed(2) || 'N/A'} {/* using currentTotal for live updates, but can use trip.totalCost instead */}
-                    </div>
+            ) : (
+                <div className="td-timeline">
+                    {sortedRoutes.map((route, index) => {
+                        const currentDate = formatDate(route.departAt);
+                        const previousDate = index > 0 ? formatDate(sortedRoutes[index - 1].departAt) : null;
+                        const isSameDay = currentDate === previousDate;
+                        return (
+                            <div key={index} className={`td-timeline-entry${isSameDay ? ' same-day' : ''}`}>
+                                <div className="td-timeline-date-circle">
+                                    {!isSameDay ? currentDate : ''}
+                                </div>
+                                <div className="td-route-card">
+                                    <div className="td-route-info">
+                                        <h3>{getRouteTitle(route)}</h3>
+                                        <p>{getRouteMetaLine(route)}</p>
+                                        <p>{getRouteTimeLine(route)}</p>
+                                    </div>
+                                    <div className="td-route-actions">
+                                        <button
+                                            className="td-btn-view"
+                                            onClick={() => navigate('/view-route-details', {
+                                                state: { selectedRoute: route, fromTripDetails: true, tripId: trip._id }
+                                            })}
+                                        >
+                                            View Details
+                                        </button>
+                                        {isTripOwner && (
+                                            <button
+                                                className="td-btn-delete"
+                                                onClick={() => { setRouteToDelete(route); setShowConfirm(true); }}
+                                            >
+                                                Delete Route
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-            </div>
+            )}
+        </div>
+    );
 
-            {isTripOwner && (
-                <section className="invite-collaborators" aria-labelledby="invite-collaborators-heading">
-                    <h2 id="invite-collaborators-heading">Invite collaborators</h2>
-                    <form className="invite-collaborators-form" onSubmit={handleSendInvite}>
-                        <label htmlFor="collaborator-email" className="visually-hidden">
-                            Collaborator email
-                        </label>
+    const renderRoutes = () => (
+        <div className="td-tab-content">
+            <div className="td-content-header">
+                <h2>Routes</h2>
+                {hasCollaborators && (
+                    <button
+                        type="button"
+                        className="trip-route-preference-open"
+                        onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
+                    >
+                        Group Transport Preferences
+                    </button>
+                )}
+            </div>
+            {sortedRoutes.length === 0 ? (
+                <div className="td-empty-state">
+                    <span className="td-empty-icon">⇢</span>
+                    <p>No routes added to this trip yet.</p>
+                </div>
+            ) : (
+                <div className="td-routes-list">
+                    {sortedRoutes.map((route, index) => (
+                        <div key={index} className="td-route-row">
+                            <div className="td-route-row-info">
+                                <span className="td-route-row-date">{formatDate(route.departAt)}</span>
+                                <div>
+                                    <h3 className="td-route-title">{getRouteTitle(route)}</h3>
+                                    <p className="td-route-meta">{getRouteMetaLine(route)} · {getRouteTimeLine(route)}</p>
+                                </div>
+                            </div>
+                            <div className="td-route-actions">
+                                <button
+                                    className="td-btn-view"
+                                    onClick={() => navigate('/view-route-details', {
+                                        state: { selectedRoute: route, fromTripDetails: true, tripId: trip._id }
+                                    })}
+                                >
+                                    View Details
+                                </button>
+                                {isTripOwner && (
+                                    <button
+                                        className="td-btn-delete"
+                                        onClick={() => { setRouteToDelete(route); setShowConfirm(true); }}
+                                    >
+                                        Delete Route
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
+    const renderComingSoon = (icon, label) => (
+        <div className="td-tab-content">
+            <div className="td-content-header"><h2>{label}</h2></div>
+            <div className="td-empty-state td-empty-state--soon">
+                <span className="td-empty-icon">{icon}</span>
+                <p className="td-coming-soon-label">{label}</p>
+                <p className="td-coming-soon-sub">Coming soon</p>
+            </div>
+        </div>
+    );
+
+    const renderCollaboration = () => (
+        <div className="td-tab-content">
+            <div className="td-content-header"><h2>Collaboration</h2></div>
+
+            {hasCollaborators && (
+                <div style={{ marginBottom: '20px' }}>
+                    <button
+                        type="button"
+                        className="trip-route-preference-open"
+                        onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
+                    >
+                        Group Transport Preferences
+                    </button>
+                </div>
+            )}
+
+            {isTripOwner ? (
+                <section className="td-invite-section" aria-labelledby="invite-heading">
+                    <h3 className="td-section-heading" id="invite-heading">Invite Collaborators</h3>
+                    <form className="td-invite-form" onSubmit={handleSendInvite}>
+                        <label htmlFor="collaborator-email" className="visually-hidden">Collaborator email</label>
                         <input
                             id="collaborator-email"
                             type="email"
@@ -612,44 +588,33 @@ export default function TripDetails() {
                             autoComplete="email"
                             placeholder="name@example.com"
                             value={inviteEmail}
-                            onChange={(e) => {
-                                setInviteEmail(e.target.value);
-                                if (inviteFeedback) setInviteFeedback(null);
-                            }}
+                            onChange={(e) => { setInviteEmail(e.target.value); if (inviteFeedback) setInviteFeedback(null); }}
                             disabled={inviteSending}
-                            className="invite-collaborators-input"
+                            className="td-invite-input"
                         />
-                        <button
-                            type="submit"
-                            className="invite-collaborators-submit"
-                            disabled={inviteSending}
-                        >
+                        <button type="submit" className="td-invite-submit" disabled={inviteSending}>
                             {inviteSending ? 'Sending…' : 'Send invitation'}
                         </button>
                     </form>
                     {inviteFeedback?.type === 'error' && (
-                        <p className="invite-collaborators-message invite-collaborators-message--error" role="alert">
-                            {inviteFeedback.text}
-                        </p>
+                        <p className="td-invite-error" role="alert">{inviteFeedback.text}</p>
                     )}
 
                     <details className="invite-activity-details" defaultOpen>
                         <summary className="invite-activity-summary">
                             Invitation activity
-                            {tripInvitations.length > 0 ? (
+                            {tripInvitations.length > 0 && (
                                 <span className="invite-activity-count">({tripInvitations.length})</span>
-                            ) : null}
+                            )}
                         </summary>
                         <div className="invite-activity-body">
                             {inviteLoadError && (
-                                <p className="invite-collaborators-message invite-collaborators-message--error" role="alert">
-                                    {inviteLoadError}
-                                </p>
+                                <p className="td-invite-error" role="alert">{inviteLoadError}</p>
                             )}
-                            {!inviteLoadError && tripInvitations.length === 0 ? (
+                            {!inviteLoadError && tripInvitations.length === 0 && (
                                 <p className="invite-activity-empty">No invitation activity yet.</p>
-                            ) : null}
-                            {!inviteLoadError && tripInvitations.length > 0 ? (
+                            )}
+                            {!inviteLoadError && tripInvitations.length > 0 && (
                                 <ul className="invite-activity-list">
                                     {tripInvitations.map((inv) => (
                                         <li key={mongoIdString(inv._id)} className="invite-activity-item">
@@ -657,119 +622,197 @@ export default function TripDetails() {
                                         </li>
                                     ))}
                                 </ul>
-                            ) : null}
+                            )}
                         </div>
                     </details>
                 </section>
-            )}
-
-            <div className="details-content">
-                <div className="details-content-header">
-                    <h2 id="trip-routes-heading">Routes</h2>
-                    {hasCollaborators && (
-                        <button
-                            type="button"
-                            className="trip-route-preference-open"
-                            onClick={() => {
-                                setPreferenceError('');
-                                setShowPreferencesModal(true);
-                            }}
-                            aria-describedby="trip-routes-heading"
-                        >
-                            Group Transport Preferences
-                        </button>
-                    )}
+            ) : (
+                <div className="td-empty-state">
+                    <span className="td-empty-icon">⌘</span>
+                    <p>You're a collaborator on this trip.</p>
                 </div>
+            )}
+        </div>
+    );
 
-                {sortedRoutes && sortedRoutes.length > 0 ? (
-                    <div className="routes-list">
-                        <div className="routes-list">
-                            {sortedRoutes.map((route, index) => {
-                                const currentDate = formatDate(route.departAt);
-                                const previousDate = index > 0 ? formatDate(sortedRoutes[index - 1].departAt) : null;
-                                const isSameDay = currentDate === previousDate;
+    const tabContent = {
+        timeline:       renderTimeline,
+        routes:         renderRoutes,
+        accommodations: () => renderComingSoon('⌂', 'Accommodations'),
+        map:            () => renderComingSoon('◎', 'Map'),
+        collaboration:  renderCollaboration,
+        changelog:      () => renderComingSoon('◷', 'Changelog'),
+    };
 
-                                return (
-                                    <div key={index} className={`route-row ${isSameDay ? 'same-day' : ''}`}>
-                                        <div className="route-date-circle">
-                                            {!isSameDay ? currentDate : ""}
-                                        </div>
+    // ── render ────────────────────────────────────────────────────────────────
 
-                                        <div className="route-card">
-                                            <div className="route-info">
-                                                <h3>{getRouteTitle(route)}</h3>
-                                                <p>{getRouteMetaLine(route)}</p>
-                                                <p>{getRouteTimeLine(route)}</p>
-                                            </div>
+    return (
+        <div className="td-shell">
+            {/* ── Sidebar ── */}
+            <aside className={`td-sidebar ${sidebarOpen ? 'td-sidebar--open' : 'td-sidebar--closed'}`}>
+                <button
+                    className="td-sidebar-toggle"
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    aria-label="Toggle sidebar"
+                >
+                    {sidebarOpen ? '◀' : '▶'}
+                </button>
 
-                                            <div className="route-actions">
-                                                <button
-                                                    className="view-details-button"
-                                                    onClick={() => navigate('/view-route-details', { 
-                                                        state: { selectedRoute: route, fromTripDetails: true, tripId: trip._id } 
-                                                    })}
-                                                >
-                                                    View Details
-                                                </button>
+                {sidebarOpen && (
+                    <>
+                        <div className="td-sidebar-actions">
+                            <div className="td-dropdown">
+                                <button
+                                    className="td-sidebar-action-btn"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowAddMenu(prev => !prev);
+                                    }}
+                                >
+                                    <span className="td-sidebar-action-icon">＋</span>
+                                    <span>Add Items</span>
+                                </button>
 
-                                                {isTripOwner && (
-                                                    <button
-                                                        className="delete-route-button"
-                                                        onClick={() => {
-                                                            setRouteToDelete(route);
-                                                            setShowConfirm(true);
-                                                        }}
-                                                    >
-                                                        Delete Route
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
+                                {showAddMenu && (
+                                    <div className="td-dropdown-menu">
+                                        <button
+                                            className="td-dropdown-item"
+                                            onClick={() => navigate(`/add-route/${id}`)}
+                                        >
+                                            Add Route
+                                        </button>
+                                        <button
+                                            className="td-dropdown-item"
+                                            onClick={() => navigate(`/add-accommodation/${id}`)}
+                                        >
+                                            Add Accommodation
+                                        </button>
+                                        <button
+                                            className="td-dropdown-item"
+                                            onClick={() => navigate(`/add-activity/${id}`)}
+                                        >
+                                            Add Activity
+                                        </button>
                                     </div>
-                                );
-                            })}
+                                )}
+                            </div>
+                            {isTripOwner && (
+                                <button
+                                    className="td-sidebar-action-btn td-sidebar-action-btn--outline"
+                                    onClick={() => navigate(`/edit-trip/${id}`)}
+                                >
+                                    <span className="td-sidebar-action-icon">✎</span>
+                                    <span>Edit Trip</span>
+                                </button>
+                            )}
+                            {isTripOwner && (
+                                <button
+                                    className="td-sidebar-action-btn td-sidebar-action-btn--outline"
+                                    onClick={() => setActiveTab('collaboration')}
+                                >
+                                    <span className="td-sidebar-action-icon">✉</span>
+                                    <span>Invite Friends</span>
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="td-sidebar-divider" />
+
+                        <nav className="td-sidebar-nav" aria-label="Trip sections">
+                            {TABS.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    className={`td-sidebar-tab${activeTab === tab.id ? ' td-sidebar-tab--active' : ''}`}
+                                    onClick={() => setActiveTab(tab.id)}
+                                >
+                                    <span className="td-sidebar-tab-icon">{tab.icon}</span>
+                                    <span>{tab.label}</span>
+                                </button>
+                            ))}
+                        </nav>
+                    </>
+                )}
+
+                {!sidebarOpen && (
+                    <nav className="td-sidebar-nav td-sidebar-nav--collapsed" aria-label="Trip sections">
+                        {TABS.map((tab) => (
+                            <button
+                                key={tab.id}
+                                className={`td-sidebar-tab td-sidebar-tab--icon-only${activeTab === tab.id ? ' td-sidebar-tab--active' : ''}`}
+                                onClick={() => setActiveTab(tab.id)}
+                                title={tab.label}
+                            >
+                                {tab.icon}
+                            </button>
+                        ))}
+                    </nav>
+                )}
+            </aside>
+
+            {/* ── Main ── */}
+            <main className="td-main">
+                <button className="td-back-btn" onClick={() => navigate('/my-trips')}>← Back</button>
+
+                {/* Trip Header — always visible */}
+                <header className="td-trip-header">
+                    <h1 className="td-trip-name">{trip.name}</h1>
+                    {trip.description && <p className="td-trip-desc">{trip.description}</p>}
+                    <div className="td-trip-meta-row">
+                        <span>
+                            <strong>Dates:</strong>&nbsp;
+                            {new Date(trip.startDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                            {' – '}
+                            {new Date(trip.endDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                        </span>
+                        <span>
+                            <strong>Budget:</strong>&nbsp;${trip.budget?.toFixed(2) || 'N/A'}
+                        </span>
+                        <span className={currentTotal > trip.budget ? 'td-trip-meta-over' : ''}>
+                            <strong>Total Cost:</strong>&nbsp;${currentTotal.toFixed(2)}
+                            {currentTotal > trip.budget && ' ⚠ Over budget'}
+                        </span>
+                    </div>
+                </header>
+
+                {/* Tab content — no tab bar visible here */}
+                <div className="td-content-area">
+                    {(tabContent[activeTab] || (() => null))()}
+                </div>
+            </main>
+
+            {/* ── Delete Route Confirm ── */}
+            {showConfirm && (
+                <div className="td-modal-overlay" onClick={() => setShowConfirm(false)}>
+                    <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Confirm Delete</h3>
+                        <p>Delete "{routeToDelete?.name || getRouteTitle(routeToDelete)}"?</p>
+                        <div className="td-modal-actions">
+                            <button
+                                className="td-modal-btn td-modal-btn--danger"
+                                onClick={async () => {
+                                    const tripId = typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
+                                    await deleteRoute(tripId, routeToDelete._id, dbUser._id);
+                                    const updatedTrip = await getTripById(tripId, dbUser._id);
+                                    setTrip(updatedTrip);
+                                    setShowConfirm(false);
+                                    window.dispatchEvent(new Event('refreshNotifications'));
+                                }}
+                            >
+                                Confirm
+                            </button>
+                            <button className="td-modal-btn td-modal-btn--cancel" onClick={() => setShowConfirm(false)}>
+                                Cancel
+                            </button>
                         </div>
                     </div>
-                ) : (
-                    <p>No routes added to this trip yet.</p>
-                )}
-            </div>
-            
-            {/* Delete Route Confirmation Popup */}
-            {showConfirm && (
-                <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 999 }} >
-                <div style={{ background: "white", padding: "20px", borderRadius: "8px", width: "300px", textAlign: "center", zIndex: 1000 }} >
-                    <h3>Confirm Delete</h3>
-                    <p>Delete “{routeToDelete?.name}”?</p>
-
-                    <button style={{ background: "#e63946", color: "white", padding: "10px", border: "none", borderRadius: "6px", marginRight: "10px", cursor: "pointer" }}
-onClick={async () => {
-    const tripId = typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
-    await deleteRoute(tripId, routeToDelete._id, dbUser._id);
-    const updatedTrip = await getTripById(tripId, dbUser._id);
-    setTrip(updatedTrip);
-    setShowConfirm(false);
-    window.dispatchEvent(new Event('refreshNotifications'));
-}}
-                    >
-                    Confirm
-                    </button>
-
-                    <button style={{ padding: "10px", border: "1px solid #ccc", borderRadius: "6px", cursor: "pointer" }} onClick={() => setShowConfirm(false)}
-                    >
-                    Cancel
-                    </button>
-                </div>
                 </div>
             )}
 
+            {/* ── Transport Preferences Modal ── */}
             {hasCollaborators && showPreferencesModal && (
                 <div
                     className="trip-route-preference-modal-overlay"
-                    onClick={() => {
-                        if (isSavingPreference) return;
-                        setShowPreferencesModal(false);
-                    }}
+                    onClick={() => { if (isSavingPreference) return; setShowPreferencesModal(false); }}
                 >
                     <section className="trip-route-preference-panel" onClick={(e) => e.stopPropagation()}>
                         <button
@@ -782,7 +825,7 @@ onClick={async () => {
                         </button>
                         <div className="trip-route-preference-header">
                             <h2>Mode of Transport Preference</h2>
-                            {isLoadingPreferenceData ? <p>Loading...</p> : null}
+                            {isLoadingPreferenceData && <p>Loading...</p>}
                         </div>
                         <p className="trip-route-preference-help">
                             Rank transport modes from highest to lowest preference.
@@ -791,25 +834,20 @@ onClick={async () => {
                             {TRANSPORT_MODES.map((mode) => (
                                 <li key={mode} className="trip-route-preference-item">
                                     <div className="trip-route-preference-buttons">
-                                            <label htmlFor={`rank-${mode}`} className="visually-hidden">
-                                                Rank for {modeLabel(mode)}
-                                            </label>
-                                            <select
-                                                id={`rank-${mode}`}
-                                                value={rankByMode[mode]}
-                                                onChange={(e) => handleRankSelectChange(mode, e.target.value)}
-                                                disabled={isSavingPreference}
-                                            >
-                                                <option value="">--</option>
-                                                {[1, 2, 3, 4, 5].map((rank) => (
-                                                    <option
-                                                        key={`${mode}-${rank}`}
-                                                        value={rank}
-                                                    >
-                                                        {rank}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                        <label htmlFor={`rank-${mode}`} className="visually-hidden">
+                                            Rank for {modeLabel(mode)}
+                                        </label>
+                                        <select
+                                            id={`rank-${mode}`}
+                                            value={rankByMode[mode]}
+                                            onChange={(e) => handleRankSelectChange(mode, e.target.value)}
+                                            disabled={isSavingPreference}
+                                        >
+                                            <option value="">--</option>
+                                            {[1, 2, 3, 4, 5].map((rank) => (
+                                                <option key={`${mode}-${rank}`} value={rank}>{rank}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <span>{modeLabel(mode)}</span>
                                 </li>
@@ -826,10 +864,10 @@ onClick={async () => {
                             </button>
                         </div>
                         {renderModalGroupSummary()}
-                        {preferenceError ? <p className="trip-route-preference-error">{preferenceError}</p> : null}
+                        {preferenceError && <p className="trip-route-preference-error">{preferenceError}</p>}
                     </section>
                 </div>
             )}
         </div>
-    )
+    );
 }
