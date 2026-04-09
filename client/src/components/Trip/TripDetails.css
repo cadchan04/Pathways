@@ -537,7 +537,8 @@
 
     text-align: left;
     cursor: pointer;
-
+    padding-top: 10px;
+    padding-bottom: 10px;
     transition: all var(--td-transition);
 }
 
