@@ -554,7 +554,7 @@
 
 /* Timeline Card Warning */
 .td-route-card--warning,
-.td-route-row--warning {
+.td-route-card--warning {
     border-left: 5px solid #b4b4b4 !important;
 }
 
