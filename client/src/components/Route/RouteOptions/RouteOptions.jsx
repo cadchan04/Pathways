@@ -134,7 +134,7 @@ export default function RouteOptions() {
     const filteredRoutes = applyRouteFilters(routes, filters);
   
     return filteredRoutes.filter(route => {
-      if (selectedProviders.length === 0) return true;
+      if (selectedProviders.length === 0) return false;
   
       const routeProviders = route.legs.flatMap(leg => {
         if (Array.isArray(leg.provider)) return leg.provider;
@@ -782,8 +782,7 @@ export default function RouteOptions() {
       {!loading && !error && routes.length === 0 && <p>No matching routes found.</p>}
 
       {/* Change to displayedRoutes when filtering/sorting is implemented */}
-      {displayedRoutes.length == 0 && !loading && !error ? (<p>No matching routes found.</p>) : null}
-      {!loading && !error && displayedRoutes.length > 0 && ( 
+      {!loading && !error && routes.length > 0 && ( 
         <div className="route-options-layout">
           <aside className="provider-sidebar">
             <h3>Filter by Provider</h3>
@@ -801,7 +800,11 @@ export default function RouteOptions() {
                 ))}
               </div>
           </aside>
-          {displayedRoutes.length > 0 && (
+          {displayedRoutes.length == 0 ? (
+            <div className="route-options-list">
+               <p>No matching routes found.</p>
+            </div>
+          ) : (
             <main className="route-options-list">
               {displayedRoutes.map((route, index) => {
                 console.log(`Rendering Route ${index + 1}:`, route);
@@ -811,18 +814,6 @@ export default function RouteOptions() {
                   {/* Left Column: Mode and Provider */}
                   <div className="route-main-info">
                     <h2>
-                      {/* {route.legs.map((leg) => {
-                          // If there are segments, repeat the mode N times
-                          if (leg.segments && leg.segments.length === 2) {
-                            return Array(leg.segments.length)
-                              .fill(leg.transportationMode)
-                              .join(" → ");
-                          } else if (leg.segments && leg.segments.length > 2) {
-                            return `${leg.transportationMode} → ... → ${leg.transportationMode}`;
-                          }
-                          // Otherwise, just show the mode once
-                          return leg.transportationMode;
-                        })} */}
                       {(() => {
                         const modes = route.legs.map(l => l.transportationMode)
 
