@@ -546,7 +546,43 @@ export default function TripDetails() {
                 </div>
             ) : (
                 <div className="td-routes-list">
-                    {sortedRoutes.map((route, index) => (
+                    {sortedRoutes.map((route, index) => {
+                        const outOfRange = isRouteOutOfRange(route);
+
+                        return (
+                            <div key={index} className={`td-route-row${isRouteOutOfRange(route) ? ' td-route-row--warning' : ''}`}>
+                                <div className="td-route-row-info">
+                                    <span className="td-route-row-date">{formatDate(route.departAt)}</span>
+                                    <div>
+                                        <h3 className="td-route-title">
+                                            {outOfRange && <span title="Outside trip dates">⚠️ </span>}
+                                            {getRouteTitle(route)}
+                                        </h3>
+                                        <p className="td-route-meta">{getRouteMetaLine(route)} · {getRouteTimeLine(route)}</p>
+                                    </div>
+                                </div>
+                                <div className="td-route-actions">
+                                    <button
+                                        className="td-btn-view"
+                                        onClick={() => navigate('/view-route-details', {
+                                            state: { selectedRoute: route, fromTripDetails: true, tripId: trip._id }
+                                        })}
+                                    >
+                                        View Details
+                                    </button>
+                                    {isTripOwner && (
+                                        <button
+                                            className="td-btn-delete"
+                                            onClick={() => { setRouteToDelete(route); setShowConfirm(true); }}
+                                        >
+                                            Delete Route
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {/* {sortedRoutes.map((route, index) => (
                         <div key={index} className="td-route-row">
                             <div className="td-route-row-info">
                                 <span className="td-route-row-date">{formatDate(route.departAt)}</span>
@@ -574,7 +610,7 @@ export default function TripDetails() {
                                 )}
                             </div>
                         </div>
-                    ))}
+                    ))} */}
                 </div>
             )}
         </div>
