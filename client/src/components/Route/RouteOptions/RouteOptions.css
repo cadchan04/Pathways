@@ -548,6 +548,10 @@
   color: #333;
 }
 
+.route-modal-secondary:hover {
+  background-color: #d0d0d0;
+}
+
 .route-modal-trip-list {
   list-style: none;
   margin: 0 0 0.75rem;

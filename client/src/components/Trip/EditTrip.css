@@ -88,8 +88,7 @@ input, textarea {
 }
 
 .duplicate-trip-button:hover:not(:disabled) {
-    background-color: #d5e4e9;
-    color: #2c454d;
+    background-color: #348ea8;
 }
 
 .duplicate-trip-button:disabled {

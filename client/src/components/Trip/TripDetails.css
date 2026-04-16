@@ -551,3 +551,20 @@
     background: var(--td-accent);
     color: #fff;
 }
+
+/* Timeline Card Warning */
+.td-route-card--warning,
+.td-route-row--warning {
+    border-left: 5px solid #b4b4b4 !important;
+}
+
+.td-route-card--warning h3, 
+.td-route-row--warning .td-route-title {
+    color: #b4b4b4;
+}
+
+/* Warning emoji spacing */
+h3 span[title="Outside trip dates"] {
+    margin-right: 4px;
+    font-size: 1.1rem;
+}
