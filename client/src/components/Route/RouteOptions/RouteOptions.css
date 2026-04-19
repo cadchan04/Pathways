@@ -611,7 +611,6 @@
 
 .provider-mode-label {
   font-size: 1.05rem;
-  text-decoration: underline;
   margin-bottom: 5px;
 }
 
@@ -648,4 +647,30 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+select, option {
+  font-family: inherit;
+}
+
+.route-options-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.route-sort-select, 
+.route-sort-direction-button
+{
+  height: 32px;
+  padding: 6px;
+  border: 1px solid #c8d4db;
+  border-radius: 6px;
+  background: none;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+
+.route-sort-direction-button:hover {
+  background: #3fa8c6;
 }
