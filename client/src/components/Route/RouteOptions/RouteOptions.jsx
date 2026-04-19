@@ -13,7 +13,8 @@ import {
   getRouteFilterErrors,
   getRouteModeSummary,
   getRouteProviderSummary,
-  getRouteStopCount
+  getRouteStopCount,
+  sortRoutes
 } from '../routeUtils'
 
 
@@ -74,6 +75,7 @@ export default function RouteOptions() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [pendingTripId, setPendingTripId] = useState(null);
   const [comparisonRoutes, setComparisonRoutes] = useState([null, null])
+  const [sortBy, setSortBy] = useState({ key: 'duration', order: 'asc' })
   const [filters, setFilters] = useState({
     travelTime: {
       min: '',
@@ -132,8 +134,9 @@ export default function RouteOptions() {
   // Only display the routes of the selected providers and by filter options
   const displayedRoutes = useMemo(() => {
     const filteredRoutes = applyRouteFilters(routes, filters);
+    const sortedRoutes = sortRoutes(filteredRoutes, sortBy);
   
-    return filteredRoutes.filter(route => {
+    return sortedRoutes.filter(route => {
       if (selectedProviders.length === 0) return false;
   
       const routeProviders = route.legs.flatMap(leg => {
@@ -143,7 +146,7 @@ export default function RouteOptions() {
   
       return routeProviders.every(p => selectedProviders.includes(p));
     });
-  }, [routes, filters, selectedProviders]);
+  }, [routes, filters, selectedProviders, sortBy]);
 
   useEffect(() => {
     console.log(location.state?.isRegenerating ? "Loading regenerated routes..." : "Loading routes...")
@@ -697,6 +700,32 @@ export default function RouteOptions() {
           <h1>Route Suggestions</h1>
           <p>{originName.split(",").slice(0, 2).join(",")} to {destinationName.split(",").slice(0, 2).join(",")} on {departDate}</p>
           <p>MPG: {mpg}</p>
+          <div className="route-options-sort">
+            <label htmlFor="sort-by">Sort by: </label>
+            <select
+              className="route-sort-select"
+              id="sort-by"
+              value={`${sortBy.key}`}
+              onChange={(e) => {
+                setSortBy({ key: e.target.value, order: sortBy.order })
+              }}
+            >
+              <option value="totalDuration">Duration </option>
+              <option value="totalDistance">Distance</option>
+              <option value="totalCost">Cost</option>
+              <option value="legs.length">Stops</option>
+            </select>
+            <button 
+              className= "route-sort-direction-button" 
+              onClick={() => {
+                  setSortBy({
+                    key: sortBy.key,
+                    order: sortBy.order === 'asc' ? 'desc' : 'asc'
+                  })
+              }}> 
+            {sortBy.order === 'asc' ? '▲' : '▼'}
+            </button>
+          </div>
         </div>
 
         <div className="header-right">

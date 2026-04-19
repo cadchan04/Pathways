@@ -168,6 +168,35 @@ export const applyRouteFilters = (routes = [], filters = {}) => {
   })
 }
 
+export const sortRoutes = (routes = [], sortBy = {}) => {
+  const { key, order } = sortBy
+  if (!key || !order) return routes
+
+  if (key === 'legs.length') {
+    return [...routes].sort((a, b) => {
+      const valueA = a.legs?.length || 0
+      const valueB = b.legs?.length || 0
+
+      if (order === 'asc') {
+        return valueA - valueB
+      }
+
+      return valueB - valueA
+    })
+  }
+
+  return [...routes].sort((a, b) => {
+    const valueA = Number(a[key]) || 0
+    const valueB = Number(b[key]) || 0
+
+    if (order === 'asc') {
+      return valueA - valueB
+    }
+
+    return valueB - valueA
+  })
+}
+
 // displays time in user's local timezone (not sure if that will matter for flights)
 export const formatTimeRange = (departureTime, arrivalTime) => {
   const departure = new Date(departureTime)
