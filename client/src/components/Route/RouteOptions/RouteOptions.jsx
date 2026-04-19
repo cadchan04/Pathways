@@ -134,7 +134,7 @@ export default function RouteOptions() {
     const filteredRoutes = applyRouteFilters(routes, filters);
   
     return filteredRoutes.filter(route => {
-      if (selectedProviders.length === 0) return true;
+      if (selectedProviders.length === 0) return false;
   
       const routeProviders = route.legs.flatMap(leg => {
         if (Array.isArray(leg.provider)) return leg.provider;
@@ -217,38 +217,53 @@ export default function RouteOptions() {
 
   // Load providers for all routes after they are fetched
   useEffect(() => {
+    if (providers && Object.keys(providers).length > 0) return
     if (!routes.length) return;
 
     let isMounted = true;
 
     const loadProviders = async () => {
+      const providerModes = {};
       const providerSet = new Set();
       
       routes.forEach(route => {
         route.legs.forEach(leg => {
-          // Check if provider is an array, then add each item individually
+          const mode = leg.transportationMode || 'Unknown Mode';
+          
+          // Create a set for this mode if it doesn't exist
+          if (!providerModes[mode]) {
+              providerModes[mode] = new Set(); 
+          }
+
+          const addProvider = (p) => {
+            // Add provider to set of all providers and add to this mode's provider set
+            providerSet.add(p);
+            providerModes[mode].add(p);
+          }
+
           if (Array.isArray(leg.provider)) {
-            leg.provider.forEach(p => providerSet.add(p));
+            leg.provider.forEach(p => addProvider(p));
           } else if (leg.provider) {
-            // Fallback if it's just a single string
-            providerSet.add(leg.provider);
+            addProvider(leg.provider);
           }
         });
       });
 
       if (isMounted) {
-        // Convert to array and sort alphabetically for a better UI experience
-        const providerArray = Array.from(providerSet).sort();
-        setProviders(providerArray);
-        setSelectedProviders(providerArray) // Initially select all providers
-        console.log("Extracted providers:", providerArray);
+        const formattedProviders = {};
+        Object.keys(providerModes).forEach(mode => {
+          formattedProviders[mode] = Array.from(providerModes[mode]).sort();
+        });
+        setProviders(formattedProviders);
+        setSelectedProviders(Array.from(providerSet).sort());
+        //console.log("Extracted providers:", providerArray);
       }
     };
 
     loadProviders();
 
     return () => { isMounted = false; };
-  }, [routes]);
+  }, [routes, providers]);
 
   useEffect(() => {
     if (!showAddRouteModal || modalStep !== 'choose-trip') return
@@ -782,26 +797,34 @@ export default function RouteOptions() {
       {!loading && !error && routes.length === 0 && <p>No matching routes found.</p>}
 
       {/* Change to displayedRoutes when filtering/sorting is implemented */}
-      {displayedRoutes.length == 0 && !loading && !error ? (<p>No matching routes found.</p>) : null}
-      {!loading && !error && displayedRoutes.length > 0 && ( 
+      {!loading && !error && routes.length > 0 && ( 
         <div className="route-options-layout">
           <aside className="provider-sidebar">
             <h3>Filter by Provider</h3>
               <div className="provider-checklist-scroll">
-                {/* We use Object.keys(providers) from your earlier useEffect state */}
-                {providers.map((name) => (
-                  <div key={name} className="checklist-item">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedProviders.includes(name)}
-                      onChange={() => handleProviderToggle(name)} 
-                    />
-                    <label htmlFor={`provider-${name}`}>{name}</label>
-                  </div>
-                ))}
+                  {Object.entries(providers).map(( [mode, providerList] ) => (
+                    <div key={mode} className="provider-mode-group">
+                      <h4 className="provider-mode-label">{mode}</h4>
+                      {providerList.map((name) => (
+                        <div key={name} className="checklist-item">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedProviders.includes(name)}
+                            onChange={() => handleProviderToggle(name)} 
+                            id={`provider-${name}`}
+                          />
+                          <label htmlFor={`provider-${name}`}>{name}</label>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
               </div>
           </aside>
-          {displayedRoutes.length > 0 && (
+          {displayedRoutes.length == 0 ? (
+            <div className="route-options-list">
+               <p>No matching routes found.</p>
+            </div>
+          ) : (
             <main className="route-options-list">
               {displayedRoutes.map((route, index) => {
                 console.log(`Rendering Route ${index + 1}:`, route);
@@ -811,18 +834,6 @@ export default function RouteOptions() {
                   {/* Left Column: Mode and Provider */}
                   <div className="route-main-info">
                     <h2>
-                      {/* {route.legs.map((leg) => {
-                          // If there are segments, repeat the mode N times
-                          if (leg.segments && leg.segments.length === 2) {
-                            return Array(leg.segments.length)
-                              .fill(leg.transportationMode)
-                              .join(" → ");
-                          } else if (leg.segments && leg.segments.length > 2) {
-                            return `${leg.transportationMode} → ... → ${leg.transportationMode}`;
-                          }
-                          // Otherwise, just show the mode once
-                          return leg.transportationMode;
-                        })} */}
                       {(() => {
                         const modes = route.legs.map(l => l.transportationMode)
 

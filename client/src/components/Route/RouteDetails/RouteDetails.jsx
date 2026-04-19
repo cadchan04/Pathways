@@ -154,7 +154,10 @@ export default function RouteDetails() {
 
     const getTimeDate = (isoString) => {
         if (!isoString) return "N/A";
-        return isoString.split('T')[0].substring(5, 10).split('-').join('/');
+        return new Date(isoString).toLocaleDateString([], {
+            month: 'numeric',
+            day: 'numeric',
+        });
     };
     
     const formatTimeAndDate = (isoString) => {
@@ -313,6 +316,7 @@ export default function RouteDetails() {
                                                     )}
                                                     {transferMinutes === null && (
                                                         <>
+                                                            <span className="path-date">{getTimeDate(seg.departAt)}</span>
                                                             <span className="path-time">{formatTime(seg.departAt)}</span>
                                                             <span className="path-address">{seg.origin.name}</span>
                                                         </>
@@ -326,6 +330,7 @@ export default function RouteDetails() {
 
                                             {index === leg.segments.length - 1 && (
                                                 <div className="path-node">
+                                                    <span className="path-date">{getTimeDate(seg.arriveAt)}</span>
                                                     <span className="path-time">{formatTime(seg.arriveAt)}</span>
                                                     <span className="path-address">{seg.destination.name}</span>
                                                 </div>
