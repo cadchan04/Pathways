@@ -609,6 +609,12 @@
   color: #c0392b;
 }
 
+.provider-mode-label {
+  font-size: 1.05rem;
+  text-decoration: underline;
+  margin-bottom: 5px;
+}
+
 .provider-checklist-scroll {
   max-height: 400px;
   overflow-y: auto;
@@ -619,7 +625,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   cursor: pointer;
   transition: color 0.2s;
 }
@@ -632,7 +638,7 @@
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #3fa8c6; /* Matches your brand color */
+  accent-color: #3fa8c6; 
 }
 
 .checklist-item label {
