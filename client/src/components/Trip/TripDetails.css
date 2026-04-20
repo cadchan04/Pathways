@@ -568,3 +568,146 @@ h3 span[title="Outside trip dates"] {
     margin-right: 4px;
     font-size: 1.1rem;
 }
+
+/* Packing list */
+.td-packing-count {
+    font-size: .85rem;
+    color: var(--td-text-muted);
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    background: var(--td-accent-light);
+    color: var(--td-accent);
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+.td-packing-add-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.td-packing-input,
+.td-packing-edit-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--td-border-mid);
+    border-radius: var(--td-radius);
+    font-size: .95rem;
+    font-family: inherit;
+    color: var(--td-text-primary);
+    background: var(--td-surface);
+    outline: none;
+    transition: border-color var(--td-transition), box-shadow var(--td-transition);
+}
+
+.td-packing-input:focus,
+.td-packing-edit-input:focus {
+    border-color: var(--td-accent);
+    box-shadow: 0 0 0 2px rgba(63,168,198,.2);
+}
+
+.td-packing-add-btn {
+    padding: 10px 20px;
+    background: var(--td-accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--td-radius);
+    font-weight: 600;
+    font-size: .9rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background var(--td-transition);
+}
+
+.td-packing-add-btn:hover { background: var(--td-accent-dark); }
+
+.td-packing-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.td-packing-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 12px 16px;
+    background: var(--td-surface);
+    border: 1px solid var(--td-border);
+    border-left: 4px solid var(--td-accent);
+    border-radius: var(--td-radius-lg);
+    box-shadow: var(--td-shadow-sm);
+    transition: transform var(--td-transition), border-color var(--td-transition), background var(--td-transition);
+}
+
+.td-packing-item:hover { transform: translateX(3px); }
+
+.td-packing-item--checked {
+    background: var(--td-accent-lighter);
+    border-left-color: var(--td-border-mid);
+}
+
+.td-packing-checkbox {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--td-accent);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.td-packing-item-text {
+    flex: 1;
+    font-size: .95rem;
+    color: var(--td-text-primary);
+}
+
+.td-packing-item--checked .td-packing-item-text {
+    text-decoration: line-through;
+    color: var(--td-text-muted);
+}
+
+.td-packing-edit-btn,
+.td-packing-delete-btn,
+.td-packing-save-btn,
+.td-packing-cancel-btn {
+    padding: 5px 12px;
+    border-radius: var(--td-radius);
+    border: none;
+    font-size: .78rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background var(--td-transition), color var(--td-transition);
+}
+
+.td-packing-edit-btn {
+    background: transparent;
+    color: var(--td-accent);
+    border: 1px solid var(--td-accent);
+}
+.td-packing-edit-btn:hover { background: var(--td-accent); color: #fff; }
+
+.td-packing-delete-btn {
+    background: transparent;
+    color: var(--td-danger-hover);
+    border: 1px solid var(--td-danger-hover);
+}
+.td-packing-delete-btn:hover { background: var(--td-danger-hover); color: #fff; }
+
+.td-packing-save-btn {
+    background: var(--td-accent);
+    color: #fff;
+    border: 1px solid var(--td-accent);
+}
+.td-packing-save-btn:hover { background: var(--td-accent-dark); }
+
+.td-packing-cancel-btn {
+    background: transparent;
+    color: var(--td-text-muted);
+    border: 1px solid var(--td-border-mid);
+}
+.td-packing-cancel-btn:hover { background: var(--td-border); }

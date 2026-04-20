@@ -236,4 +236,24 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
     }
 });
 
+router.patch('/:tripId/packing-list', async (req, res) => {
+    try {
+      const { tripId } = req.params
+      const { packingList } = req.body
+  
+      const trip = await Trip.findByIdAndUpdate(
+        tripId,
+        { $set: { packingList } },
+        { new: true }
+      )
+  
+      if (!trip) return res.status(404).json({ error: 'Trip not found' })
+  
+      res.json({ packingList: trip.packingList })
+    } catch (err) {
+      console.error('Error updating packing list:', err)
+      res.status(500).json({ error: 'Could not update packing list' })
+    }
+  });
+  
 module.exports = router;

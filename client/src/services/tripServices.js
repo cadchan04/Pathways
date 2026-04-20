@@ -76,3 +76,12 @@ export const deleteTripById = async (tripId, userId) => {
         throw err;
     }
 };
+
+export const updatePackingList = async (tripId, packingList, userId) => {
+    const response = await axios.patch(
+      `/api/trips/${tripId}/packing-list`,
+      { packingList },
+      { headers: { 'user-id': userId } }
+    )
+    return response.data
+  }

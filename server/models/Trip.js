@@ -18,7 +18,14 @@ const TripSchema = new mongoose.Schema({
         message: { type: String },
         createdAt: { type: Date, default: Date.now },
         read: { type: Boolean, default: false }
-    }]
+    }],
+    packingList: [
+        {
+          id: { type: String, required: true },
+          text: { type: String, required: true },
+          checked: { type: Boolean, default: false }
+        }
+    ]
 });
 
 // calculate total cost from routes

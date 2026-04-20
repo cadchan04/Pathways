@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getTripById } from '../../services/tripServices';
 import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
 import { getRoutePreferences, saveMyRoutePreference } from '../../services/routePreferenceServices';
 import { useUser } from '../../../context/useUser';
+import { getTripById, updatePackingList } from '../../services/tripServices';
 
 import './TripDetails.css';
 
@@ -22,6 +22,7 @@ const TABS = [
     { id: 'map',            label: 'Map',             icon: '◎' },
     { id: 'collaboration',  label: 'Collaboration',   icon: '⌘' },
     { id: 'changelog',      label: 'Changelog',       icon: '◷' },
+    { id: 'packinglist',    label: 'Packing List',  icon: '✓' },
 ];
 
 const toYYYYMMDD = (dateValue) => {
@@ -63,6 +64,12 @@ export default function TripDetails() {
     const [preferenceError, setPreferenceError] = useState('');
     const [groupSummary, setGroupSummary] = useState(null);
     const [showPreferencesModal, setShowPreferencesModal] = useState(false);
+
+    const [packingItems, setPackingItems] = useState([])
+    const [newItemText, setNewItemText] = useState('')
+    const [editingItemId, setEditingItemId] = useState(null)
+    const [editingItemText, setEditingItemText] = useState('')
+    const packingInputRef = useRef(null)
 
     const TRANSPORT_MODES = ['RIDESHARE', 'PERSONAL_VEHICLE', 'BUS', 'TRAIN', 'FLIGHT'];
     const [rankByMode, setRankByMode] = useState({
@@ -195,8 +202,69 @@ export default function TripDetails() {
         return () => window.removeEventListener('click', handleClick);
     }, [showAddMenu]);
 
+    // Initialize from trip data when it loads
+    useEffect(() => {
+        if (trip?.packingList) {
+            setPackingItems(trip.packingList)
+        }
+    }, [trip]);
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
+    const handleAddPackingItem = () => {
+        const text = newItemText.trim()
+        if (!text) return
+        const updatedItems = [...packingItems, { id: crypto.randomUUID(), text, checked: false }]
+        setPackingItems(updatedItems)
+        savePackingList(updatedItems)
+        setNewItemText('')
+      }
+      
+      const handleTogglePackingItem = (id) => {
+        const updatedItems = packingItems.map((item) =>
+          item.id === id ? { ...item, checked: !item.checked } : item
+        )
+        setPackingItems(updatedItems)
+        savePackingList(updatedItems)
+      }
+      
+      const handleDeletePackingItem = (id) => {
+        const updatedItems = packingItems.filter((item) => item.id !== id)
+        setPackingItems(updatedItems)
+        savePackingList(updatedItems)
+      }
+      
+      // keep these two unchanged
+      const handleStartEditPackingItem = (item) => {
+        setEditingItemId(item.id)
+        setEditingItemText(item.text)
+      }
+      
+      const handleSaveEditPackingItem = (id) => {
+        const text = editingItemText.trim()
+        if (!text) return
+        const updatedItems = packingItems.map((item) =>
+          item.id === id ? { ...item, text } : item
+        )
+        setPackingItems(updatedItems)
+        savePackingList(updatedItems)
+        setEditingItemId(null)
+        setEditingItemText('')
+      }
+      
+      const handleCancelEditPackingItem = () => {
+        setEditingItemId(null)
+        setEditingItemText('')
+      }
+
+      const savePackingList = async (updatedItems) => {
+        try {
+          await updatePackingList(mongoIdString(trip._id), updatedItems, mongoIdString(dbUser._id))
+        } catch (err) {
+          console.error('Failed to save packing list:', err)
+        }
+      }
+    
     const calculateTotalCost = (routes) =>
         routes.reduce((total, route) => total + (Number(route.totalCost) || 0), 0);
 
@@ -430,6 +498,77 @@ export default function TripDetails() {
             </details>
         );
     };
+
+    const renderPackingList = () => (
+        <div className="td-tab-content">
+          <div className="td-content-header">
+            <h2>Packing List</h2>
+            <span className="td-packing-count">
+              {packingItems.filter((i) => i.checked).length}/{packingItems.length} packed
+            </span>
+          </div>
+      
+          <div className="td-packing-add-row">
+            <input
+              ref={packingInputRef}
+              type="text"
+              className="td-packing-input"
+              placeholder="Add an item…"
+              value={newItemText}
+              onChange={(e) => setNewItemText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddPackingItem() }}
+            />
+            <button className="td-packing-add-btn" onClick={handleAddPackingItem}>
+              Add
+            </button>
+          </div>
+      
+          {packingItems.length === 0 ? (
+            <div className="td-empty-state">
+              <span className="td-empty-icon">✓</span>
+              <p>No items yet. Add something above.</p>
+            </div>
+          ) : (
+            <ul className="td-packing-list">
+              {packingItems.map((item) => (
+                <li key={item.id} className={`td-packing-item${item.checked ? ' td-packing-item--checked' : ''}`}>
+                  <input
+                    type="checkbox"
+                    className="td-packing-checkbox"
+                    checked={item.checked}
+                    onChange={() => handleTogglePackingItem(item.id)}
+                    aria-label={`Mark ${item.text} as ${item.checked ? 'unpacked' : 'packed'}`}
+                  />
+      
+                  {editingItemId === item.id ? (
+                    <>
+                      <input
+                        type="text"
+                        className="td-packing-edit-input"
+                        value={editingItemText}
+                        onChange={(e) => setEditingItemText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEditPackingItem(item.id)
+                          if (e.key === 'Escape') handleCancelEditPackingItem()
+                        }}
+                        autoFocus
+                      />
+                      <button className="td-packing-save-btn" onClick={() => handleSaveEditPackingItem(item.id)}>Save</button>
+                      <button className="td-packing-cancel-btn" onClick={handleCancelEditPackingItem}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="td-packing-item-text">{item.text}</span>
+                      <button className="td-packing-edit-btn" onClick={() => handleStartEditPackingItem(item)}>Edit</button>
+                      <button className="td-packing-delete-btn" onClick={() => handleDeletePackingItem(item.id)}>Delete</button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+    )
 
     if (loading) {
         return (
@@ -709,6 +848,7 @@ export default function TripDetails() {
         map:            () => renderComingSoon('◎', 'Map'),
         collaboration:  renderCollaboration,
         changelog:      () => renderComingSoon('◷', 'Changelog'),
+        packinglist:    renderPackingList,
     };
 
     // ── render ────────────────────────────────────────────────────────────────
