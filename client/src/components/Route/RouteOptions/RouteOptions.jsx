@@ -17,7 +17,43 @@ import {
   sortRoutes
 } from '../routeUtils'
 
+// Loading Bar
+const LOADING_STEPS = [
+  { id: 'init',    message: 'Initializing route search…', weight: 8  },
+  { id: 'flight',  message: 'Gathering flight data…', weight: 20 },
+  { id: 'train',   message: 'Checking train schedules…', weight: 15 },
+  { id: 'bus',     message: 'Loading bus routes…', weight: 15 },
+  { id: 'drive',   message: 'Calculating driving options…', weight: 12 },
+  { id: 'multi',   message: 'Building multimodal routes…', weight: 18 },
+]
 
+// Pre-compute cumulative progress thresholds from weights
+const totalWeight = LOADING_STEPS.reduce((s, step) => s + step.weight, 0)
+let cumulative = 0
+const STEP_THRESHOLDS = LOADING_STEPS.map((step) => {
+  cumulative += step.weight
+  return { ...step, threshold: Math.round((cumulative / totalWeight) * 95) } // cap at 95 until done
+})
+
+function RouteLoadingBar({ progress, stepMessage, stepIcon }) {
+  return (
+    <div className="route-loading-container" role="status" aria-live="polite">
+      <div className="route-loading-header">
+        <span className="route-loading-icon">{stepIcon}</span>
+        <p className="route-loading-message">{stepMessage}</p>
+      </div>
+ 
+      <div className="route-loading-track" aria-label={`Loading ${progress}%`}>
+        <div
+          className="route-loading-fill"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+ 
+      <p className="route-loading-pct">{progress}%</p>
+    </div>
+  )
+}
 
 const formatDuration = (minutes) => {
   const hours = Math.floor(minutes / 60)
@@ -95,6 +131,10 @@ export default function RouteOptions() {
     }
   })
 
+  // Progress bar
+  const [loadingProgress, setLoadingProgress] = useState(0)
+  const [loadingStepIndex, setLoadingStepIndex] = useState(0)
+  const progressIntervalRef = useRef(null)
 
   const navigate = useNavigate();
   const comparisonPanelRef = useRef(null)
@@ -117,6 +157,41 @@ export default function RouteOptions() {
   const destinationLng = parseFloat(searchParams.get('destinationLng'))
   const filterErrors = getRouteFilterErrors(filters)
 
+  const startProgressSimulation = () => {
+    setLoadingProgress(0)
+    setLoadingStepIndex(0)
+ 
+    // Advance the progress bar at a steady tick; step message follows thresholds
+    progressIntervalRef.current = setInterval(() => {
+      setLoadingProgress((prev) => {
+        const next = prev + 1
+        if (next >= 95) {
+          clearInterval(progressIntervalRef.current)
+          return 95 // hold at 95 until real data arrives
+        }
+ 
+        // Advance step message when we cross a threshold
+        setLoadingStepIndex((currentStep) => {
+          const nextStep = STEP_THRESHOLDS.findIndex((s) => next <= s.threshold)
+          return nextStep === -1 ? STEP_THRESHOLDS.length - 1 : nextStep
+        })
+ 
+        return next
+      })
+    }, 180) // ~8 seconds to reach 95%
+  }
+ 
+  const finishProgress = () => {
+    clearInterval(progressIntervalRef.current)
+    setLoadingProgress(100)
+    setLoadingStepIndex(STEP_THRESHOLDS.length - 1)
+    // Small delay so the user sees "100%" before the bar disappears
+    setTimeout(() => setLoading(false), 400)
+  }
+ 
+  useEffect(() => {
+    return () => clearInterval(progressIntervalRef.current) // cleanup on unmount
+  }, [])
 
   // Handing the toggling of providers from the sidebar
   const handleProviderToggle = (name) => {
@@ -166,6 +241,7 @@ export default function RouteOptions() {
       
       try {
         setLoading(true)
+        startProgressSimulation()
 
         const mpgNumber = mpg.trim() !== '' ? Number(mpg) : undefined
 
@@ -206,13 +282,15 @@ export default function RouteOptions() {
         })
 
         setRoutes(sortedRoutes)
+        finishProgress()
 
       } catch (requestError) {
+        clearInterval(progressIntervalRef.current)
         const message = requestError.response?.data?.error || 'Could not load route suggestions.'
         setError(message)
-      } finally {
+      } /*finally {
         setLoading(false)
-      }
+      }*/
     }
 
     loadSuggestions()
@@ -693,6 +771,8 @@ export default function RouteOptions() {
     )
   }
 
+  const currentStep = STEP_THRESHOLDS[loadingStepIndex] || STEP_THRESHOLDS[0]
+
   return (
     <section className="route-options-page">
       <header className="route-options-header">
@@ -758,6 +838,19 @@ export default function RouteOptions() {
           )}
         </div>
       </header>
+
+      {loading && !error && !location.state?.isRegenerating && (
+        <RouteLoadingBar
+          progress={loadingProgress}
+          stepMessage={currentStep.message}
+          stepIcon={currentStep.icon}
+        />
+      )}
+ 
+      {loading && location.state?.isRegenerating && <p>Loading route suggestions...</p>}
+ 
+      {!loading && error && <p className="route-options-error">{error}</p>}
+      {!loading && !error && routes.length === 0 && <p>No matching routes found.</p>}
       
       {hasComparison && (
         <section ref={comparisonPanelRef} className="route-comparison-panel" aria-label="Route comparison">
