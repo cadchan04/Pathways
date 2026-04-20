@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { getSearchLocations } from '../../../services/routeServices'
 import { getTodayDateString, validateCreateRouteInput } from '../routeUtils'
 import './CreateRoute.css'
@@ -55,6 +55,9 @@ export default function CreateRoute() {
   const [departDate, setDepartDate] = useState('')
   const [errors, setErrors] = useState({})
   const [requestError, setRequestError] = useState('')
+
+  const location = useLocation()
+  const preselectedTripId = location.state?.tripId || null
 
   useEffect(() => {
     const trimmed = originText.trim()
@@ -165,7 +168,7 @@ export default function CreateRoute() {
       mpg: Number(mpg) || 25
     })
 
-    navigate(`/route-options?${query.toString()}`)
+    navigate(`/route-options?${query.toString()}`, { state: { tripId: preselectedTripId } })
   }
 
   return (

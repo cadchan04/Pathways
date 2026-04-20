@@ -138,6 +138,8 @@ export default function RouteOptions() {
 
   const navigate = useNavigate();
   const comparisonPanelRef = useRef(null)
+  const preselectedTripId = location.state?.tripId || null
+  console.log('preselectedTripId:', preselectedTripId)
 
   // Something like this
   //const [modeFilter, setModeFilter] = useState('All')
@@ -428,6 +430,10 @@ export default function RouteOptions() {
   }
 
   const handleAddRoute = (route) => {
+    if (preselectedTripId) {
+      handleConfirmAddToTrip(preselectedTripId, route)
+      return
+    }
     setRouteToAdd(route)
     setShowAddRouteModal(true)
     setModalStep('choose-action')
@@ -435,8 +441,8 @@ export default function RouteOptions() {
     setSubmitError('')
   }
 
-  const handleConfirmAddToTrip = async (tripId) => {
-    if (!routeToAdd) return
+  const handleConfirmAddToTrip = async (tripId, route = routeToAdd) => {
+    if (!route) return
     if (!dbUser?._id) {
       setSubmitError('Your profile is still loading. Please try again.')
       return
@@ -445,7 +451,7 @@ export default function RouteOptions() {
     // perform date validation checks of route before adding to trip
     const selectedTrip = trips.find(t => t._id === tripId);
     if (selectedTrip && selectedTrip.startDate && selectedTrip.endDate) {
-      const routeDate = new Date(routeToAdd.departAt).setHours(0,0,0,0);
+      const routeDate = new Date(route.departAt).setHours(0,0,0,0);
       const tripStart = new Date(selectedTrip.startDate).setHours(0,0,0,0);
       const tripEnd = new Date(selectedTrip.endDate).setHours(0,0,0,0);
 
@@ -459,7 +465,7 @@ export default function RouteOptions() {
     setIsSubmitting(true)
     setSubmitError('')
     try {
-      await addRoute(tripId, buildRoutePayload(routeToAdd), dbUser._id)
+      await addRoute(tripId, buildRoutePayload(route), dbUser._id)
       closeAddRouteModal()
       navigate(`/view-trip-details/${tripId}`)
     } catch (err) {
