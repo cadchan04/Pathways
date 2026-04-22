@@ -23,3 +23,14 @@ export const getAccommodations = async (tripId) => {
         throw err;
     }
 };
+
+// delete an accommodation by its ID
+export const deleteAccommodation = async (tripId, accId) => {
+    try {
+        const response = await axios.delete(`${API_URL}/api/trips/${tripId}/accommodations/${accId}`);
+        return response.data;
+    } catch (err) {
+        console.error("Error deleting accommodation:", err);
+        throw err;
+    }
+}

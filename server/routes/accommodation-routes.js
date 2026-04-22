@@ -69,4 +69,21 @@ router.get('/', async (req, res) => {
     }
 });
 
+// DELETE method to remove an accommodation by its ID
+router.delete('/:accId', async (req, res) => {
+    const { accId } = req.params;
+
+    try {
+        const deletedAcc = await Accommodation.findByIdAndDelete(accId);
+
+        if (!deletedAcc) {
+            return res.status(404).json({ error: 'Accommodation not found' });
+        }
+
+        res.json({ message: 'Accommodation deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

@@ -17,6 +17,11 @@
     transition: all 0.2s ease;
 }
 
+.acc-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
 .acc-card--warning {
     border-left: 5px solid #b4b4b4 !important;
 }
