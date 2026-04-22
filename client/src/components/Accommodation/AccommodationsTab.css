@@ -1,0 +1,393 @@
+.accommodations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.acc-card {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-left: 6px solid #307bac;
+    gap: 30px;
+    transition: all 0.2s ease;
+}
+
+.acc-card--warning {
+    border-left: 5px solid #b4b4b4 !important;
+}
+
+/* Info */
+.acc-col-main {
+    flex: 2;
+    padding-right: 25px;
+    border-right: 1px solid #eee;
+}
+
+.acc-header-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.acc-type-tag {
+    background-color: #f1f3f5;
+    color: #495057;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+
+.acc-col-main h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #1a1a1a;
+}
+
+.acc-address {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 0;
+}
+
+.acc-notes-preview {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: #999;
+    margin-top: 6px;
+}
+
+/* Date Runway */
+.acc-col-dates {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 240px;
+    padding-left: 10px;
+}
+
+.acc-date-block {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    min-width: 70px;
+}
+
+.acc-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    color: #888;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.acc-date-block strong {
+    font-size: 1.1rem;
+    color: #1a1a1a;
+}
+
+.acc-subtext {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.acc-date-divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.acc-line {
+    height: 2px;
+    background: #e0e0e0;
+    width: 100%;
+    position: relative;
+}
+
+.acc-nights {
+    font-size: 0.7rem;
+    background: #f8f9fa;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid #e0e0e0;
+    margin-top: 4px;
+    white-space: nowrap;
+}
+
+/* Meta */
+.acc-col-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 150px;
+    padding: 0 20px;
+    border-left: 1px solid #eee;
+    border-right: 1px solid #eee;
+}
+
+.acc-meta-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.85rem;
+}
+
+.acc-status-pill {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 4px;
+    border-radius: 6px;
+    margin-top: 4px;
+}
+
+.acc-status-pill.paid {
+    background: #e6f4ea;
+    color: #1e7e34;
+}
+
+.acc-status-pill.unpaid {
+    background: #fceaea;
+    color: #d32f2f;
+}
+
+/* Actions */
+.acc-col-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.td-button-view,
+.td-button-delete {
+    box-sizing: border-box;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 2.5rem; padding: 0 1.25rem; margin: 0;
+    line-height: 1.25; font-size: .8rem; font-weight: 600;
+    font-family: inherit; border-radius: var(--td-radius);
+    cursor: pointer; transition: background var(--td-transition), color var(--td-transition);
+    width: 100%; min-width: 0;
+}
+
+.td-button-view {
+    background-color: transparent; color: var(--td-accent);
+    border: 2px solid var(--td-accent);
+}
+
+.td-button-view:hover {
+    background-color: var(--td-accent);
+    color: white;
+}
+
+.td-button-delete {
+    background-color: transparent; color: var(--td-danger-hover);
+    border: 2px solid var(--td-danger-hover);
+}
+
+.td-button-delete:hover {
+    background-color: var(--td-danger-hover);
+    color: white;
+}
+
+/* Modal Overlay */
+.acc-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+/* Modal Card */
+.acc-modal-card {
+    background: white;
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    border-radius: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.acc-modal-header {
+    padding: 24px;
+    border-bottom: 1px solid #eee;
+    position: relative;
+}
+
+.acc-modal-header h2 {
+    margin: 8px 0 0 0;
+    font-size: 1.5rem;
+}
+
+.acc-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #999;
+}
+
+.acc-modal-close:hover {
+    background-color: transparent;
+    color: #666;
+}
+
+/* Body Content */
+.acc-modal-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.acc-modal-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: #307bac;
+    letter-spacing: 1px;
+}
+
+.acc-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.acc-modal-section p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.acc-modal-empty {
+    color: #bbb;
+    font-style: italic;
+    font-weight: 400;
+}
+
+.acc-modal-notes {
+    min-height: 50px;
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #555;
+    border-left: 4px solid #ddd;
+    line-height: 1.4;
+}
+
+/* Links */
+.acc-modal-body a {
+    color: #307bac;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.acc-modal-body a:hover {
+    text-decoration: underline;
+}
+
+.acc-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Action Menu Container */
+.acc-menu-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* Three-Dots Button */
+.acc-menu-trigger {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #888;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+    line-height: 1;
+}
+
+.acc-menu-trigger:hover {
+    background: #f0f0f0;
+    color: #1a1a1a;
+}
+
+/* Floating Dropdown */
+.acc-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border: 1px solid #eee;
+    z-index: 100;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+    overflow: hidden;
+    animation: fadeInScale 0.15s ease-out;
+}
+
+@keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.acc-dropdown button {
+    background: none;
+    border: none;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+}
+
+.acc-dropdown button:hover {
+    background: #f8f9fa;
+    color: #307bac;
+}
+
+.acc-dropdown .delete-option {
+    color: #d32f2f;
+}
+
+.acc-dropdown .delete-option:hover {
+    background: #fff5f5;
+    color: #d32f2f;
+}
