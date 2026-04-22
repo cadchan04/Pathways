@@ -16,6 +16,7 @@ Equivalent manual steps:
 npm install
 npm install --prefix server
 npm install --prefix client
+npm install jspdf html2canvas
 ```
 
 ## Environment variables
