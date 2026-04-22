@@ -554,7 +554,8 @@
 
 /* Timeline Card Warning */
 .td-route-card--warning,
-.td-route-row--warning {
+.td-route-row--warning,
+.td-acc-card.td-route-card--warning {
     border-left: 5px solid #b4b4b4 !important;
 }
 
@@ -567,4 +568,26 @@
 h3 span[title="Outside trip dates"] {
     margin-right: 4px;
     font-size: 1.1rem;
+}
+
+/* ══════════════════════════════════════════════
+      ACCOMMODATIONS
+   ══════════════════════════════════════════════ */
+.td-acc-card {
+    border-left: 6px solid #1a4a73 !important; /* Darker Blue */
+}
+
+.td-acc-type-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    background: #d9e6f2;
+    color: #1a4a73;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+}
+
+.td-route-info h3 {
+    margin-bottom: 4px;
 }

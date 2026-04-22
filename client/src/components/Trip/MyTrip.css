@@ -52,6 +52,14 @@
     transform: translateX(4px);
 }
 
+.trip-info {
+    flex: 0.67;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
 .trip-info h3, 
 .trip-info p, 
 .trip-dates {
@@ -62,11 +70,20 @@
 .trip-info h3 {
     font-size: 1.5rem;
     margin-bottom: 4px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
 }
 
 .trip-info p {
     color: #666;
     margin-bottom: 12px;
+    font-size: 0.9rem;
+    color: #666;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .trip-dates {

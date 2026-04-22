@@ -13,6 +13,7 @@ import RouteOptions from "../components/Route/RouteOptions/RouteOptions"
 import RouteDetails from "../components/Route/RouteDetails/RouteDetails.jsx";
 import EditProfile from "../components/Account/EditProfile.jsx";
 import InvitationsPage from "../components/Invitations/InvitationsPage.jsx";
+import CreateAccommodation from "../components/Accommodation/CreateAccommodation.jsx";
 
 export default function AppRoutes() {
   return (
@@ -36,6 +37,7 @@ export default function AppRoutes() {
       <Route path="/route-options" element={<ProtectedRoute><RouteOptions /></ProtectedRoute>} />
       <Route path="/view-route-details" element={<ProtectedRoute><RouteDetails /></ProtectedRoute>} />
       <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+      <Route path="/add-accommodation/:tripId" element={<ProtectedRoute><CreateAccommodation /></ProtectedRoute>} />
 
       {/* 404 fallback */}
       <Route path="*" element={<h1>404: Page Not Found</h1>} />
