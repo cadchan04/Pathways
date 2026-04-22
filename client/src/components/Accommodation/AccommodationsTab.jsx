@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import './AccommodationsTab.css';
@@ -8,10 +8,21 @@ export default function AccommodationsTab({
     accommodations = [],
     isOwner,
     tripDates = { start: null, end: null },
-    onOpenModal
+    onOpenModal,
+    onDelete
 }) {
     const navigate = useNavigate();
     const [activeMenuId, setActiveMenuId] = useState(null);
+    const deletingId = useState(null);
+
+    // sort accommodations by check-in date
+    const sortedAccommodations = useMemo(() => {
+        return [...accommodations].sort((a, b) => {
+            const dateA = new Date(a.checkInDate?.$date || a.checkInDate);
+            const dateB = new Date(b.checkInDate?.$date || b.checkInDate);
+            return dateA - dateB;
+        });
+    }, [accommodations]);
 
     // --- outside click handler for dropdowns ---
     useEffect(() => {
@@ -46,8 +57,8 @@ export default function AccommodationsTab({
         return startsTooEarly || endsTooLate;
     };
 
-    const handleDelete = (accId) => {
-        console.log("Delete triggered for:", accId);
+    const handleDelete = async (acc) => {
+        onDelete(acc);
     };
 
     const toggleMenu = (e, id) => {
@@ -57,17 +68,21 @@ export default function AccommodationsTab({
 
     return (
         <div className="accommodations-tab">
-            <h2>Accommodations</h2>
+            <div className="td-content-header">
+                <h2>Accommodations</h2>
+            </div>
 
-            {accommodations.length === 0 ? (
-                <div className="td-empty-state">
-                    <span className="td-empty-icon">⌂</span>
-                    <p>No accommodations added yet.</p>
-                </div>
-            ) : (
-                <div>
-                    {accommodations.map((acc) => {
+            <div className="accommodations-list">
+                {sortedAccommodations.length === 0 ? (
+                    <div className="td-empty-state">
+                        <span className="td-empty-icon">⌂</span>
+                        <p>No accommodations added yet.</p>
+                    </div>
+                ) : (
+                    sortedAccommodations.map((acc) => {
                         const warning = isOutOfRange(acc.checkInDate, acc.checkOutDate);
+                        const nights = Math.ceil((new Date(acc.checkOutDate) - new Date(acc.checkInDate)) / (1000 * 60 * 60 * 24));
+                        
                         return (
                             <div key={acc._id} className={`acc-card ${warning ? 'acc-card--warning' : ''}`}>
 
@@ -91,7 +106,7 @@ export default function AccommodationsTab({
                                     <div className="acc-date-divider">
                                         <div className="acc-line"></div>
                                         <span className="acc-nights">
-                                            {Math.ceil((new Date(acc.checkOutDate) - new Date(acc.checkInDate)) / (1000 * 60 * 60 * 24))} nights
+                                            {nights} {nights === 1 ? 'night' : 'nights'}
                                         </span>
                                     </div>
                                     <div className="acc-date-block">
@@ -137,9 +152,10 @@ export default function AccommodationsTab({
                                                         </button>
                                                         <button 
                                                             className="delete-option" 
-                                                            onClick={() => handleDelete(acc._id)}
+                                                            onClick={() => handleDelete(acc)}
+                                                            disabled={deletingId === acc._id}
                                                         >
-                                                            Delete
+                                                            {deletingId === acc._id ? 'Deleting...' : 'Delete'}
                                                         </button>
                                                     </>
                                                 )}
@@ -149,9 +165,9 @@ export default function AccommodationsTab({
                                 </div>
                             </div>
                         );
-                    })}
-                </div>
-            )}
+                    })
+                )}
+            </div>
         </div>
     )
 }

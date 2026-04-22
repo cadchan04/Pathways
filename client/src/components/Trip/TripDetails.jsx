@@ -4,7 +4,7 @@ import { getTripById } from '../../services/tripServices';
 import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
 import { getRoutePreferences, saveMyRoutePreference } from '../../services/routePreferenceServices';
-import { getAccommodations } from '../../services/accommodationServices';
+import { getAccommodations, deleteAccommodation } from '../../services/accommodationServices';
 import { useUser } from '../../../context/useUser';
 import AccommodationsTab from '../Accommodation/AccommodationsTab';
 
@@ -58,6 +58,9 @@ export default function TripDetails() {
 
     const [showConfirm, setShowConfirm] = useState(false);
     const [routeToDelete, setRouteToDelete] = useState(null);
+
+    const [showAccConfirm, setShowAccConfirm] = useState(false);
+    const [accToDelete, setAccToDelete] = useState(null);
 
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteSending, setInviteSending] = useState(false);
@@ -200,25 +203,6 @@ export default function TripDetails() {
     
         return () => window.removeEventListener('click', handleClick);
     }, [showAddMenu]);
-
-    // useEffect(() => {
-    //     const fetchAccommodations = async () => {
-    //         if (!trip || !dbUser?._id) return;
-
-    //         try {
-    //             setLoading(true);
-    //             const accData = await getAccommodations(mongoIdString(trip._id));
-    //             setAccommodations(accData);
-    //         } catch (err) {
-    //             console.error("Error fetching accommodations:", err);
-    //         } finally {
-    //             setLoading(false);
-    //         }
-    //     };
-
-    //     fetchAccommodations();
-        
-    // }, [trip, dbUser?._id]);
 
     const loadAllData = async () => {
         if (!id || !dbUser?._id) return;
@@ -402,6 +386,11 @@ export default function TripDetails() {
     const handleCloseAccModal = () => {
         setSelectedAcc(null);
         setShowAccModal(false);
+    };
+
+    const handleDeleteAcc = async (accId) => {
+        setAccToDelete(accId);
+        setShowAccConfirm(true);
     };
 
     const invitationActivityText = (inv) => {
@@ -867,6 +856,7 @@ export default function TripDetails() {
             isOwner={isTripOwner}
             tripDates={{ start: trip?.startDate, end: trip?.endDate }}
             onOpenModal={handleOpenAccModal}
+            onDelete={handleDeleteAcc}
         />
     );
 
@@ -1005,7 +995,7 @@ export default function TripDetails() {
                                         </button>
                                         <button
                                             className="td-dropdown-item"
-                                            onClick={() => navigate(`/add-accommodation`, { state: { tripId: trip._id } })}
+                                            onClick={() => navigate(`/add-accommodation/${trip._id}`, { state: { tripId: trip._id } })}
                                         >
                                             Add Accommodation
                                         </button>
@@ -1256,6 +1246,40 @@ export default function TripDetails() {
                         <footer className="acc-modal-footer">
                             <button className="td-btn-secondary" onClick={handleCloseAccModal}>Close</button>
                         </footer>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Delete Accommodation Confirm ── */}
+            {showAccConfirm && (
+                <div className="td-modal-overlay" onClick={() => setShowAccConfirm(false)}>
+                    <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Confirm Delete</h3>
+                        <p>Delete stay at "<strong>{accToDelete?.name}</strong>"?</p>
+                        <div className="td-modal-actions">
+                            <button
+                                className="td-modal-btn td-modal-btn--danger"
+                                onClick={async () => {
+                                    try {
+                                        await deleteAccommodation(id, accToDelete._id);
+                                        setAccommodations(prev => prev.filter(a => a._id !== accToDelete._id));
+                                        setShowAccConfirm(false);
+                                        setAccToDelete(null);
+                                    } catch (err) {
+                                        console.error("Failed to delete accommodation:", err);
+                                        alert("Could not delete accommodation. Please try again.");
+                                    }
+                                }}
+                            >
+                                Confirm
+                            </button>
+                            <button 
+                                className="td-modal-btn td-modal-btn--cancel" 
+                                onClick={() => setShowAccConfirm(false)}
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
