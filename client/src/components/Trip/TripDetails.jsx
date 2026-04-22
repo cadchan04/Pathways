@@ -6,6 +6,9 @@ import { getRoutePreferences, saveMyRoutePreference } from '../../services/route
 import { useUser } from '../../../context/useUser';
 import { getTripById, updatePackingList } from '../../services/tripServices';
 
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
 import './TripDetails.css';
 
 function mongoIdString(value) {
@@ -65,11 +68,16 @@ export default function TripDetails() {
     const [groupSummary, setGroupSummary] = useState(null);
     const [showPreferencesModal, setShowPreferencesModal] = useState(false);
 
+    // Packing list
     const [packingItems, setPackingItems] = useState([])
     const [newItemText, setNewItemText] = useState('')
     const [editingItemId, setEditingItemId] = useState(null)
     const [editingItemText, setEditingItemText] = useState('')
     const packingInputRef = useRef(null)
+
+    // PDF Export
+    const timelineRef = useRef(null);
+    const packingRef = useRef(null);
 
     const TRANSPORT_MODES = ['RIDESHARE', 'PERSONAL_VEHICLE', 'BUS', 'TRAIN', 'FLIGHT'];
     const [rankByMode, setRankByMode] = useState({
@@ -570,6 +578,41 @@ export default function TripDetails() {
         </div>
     )
 
+    const handleExportPDF = async () => {
+        if (!timelineRef.current || !packingRef.current) return;
+    
+        const pdf = new jsPDF('p', 'mm', 'a4');
+    
+        // Helper to convert HTML → image
+        const renderSection = async (element) => {
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+            });
+            return canvas.toDataURL('image/png');
+        };
+    
+        // --- Page 1: Timeline ---
+        const timelineImg = await renderSection(timelineRef.current);
+    
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const imgProps = pdf.getImageProperties(timelineImg);
+        const imgHeight = (imgProps.height * pageWidth) / imgProps.width;
+    
+        pdf.addImage(timelineImg, 'PNG', 0, 0, pageWidth, imgHeight);
+    
+        // --- Page 2: Packing List ---
+        pdf.addPage();
+    
+        const packingImg = await renderSection(packingRef.current);
+        const packingProps = pdf.getImageProperties(packingImg);
+        const packingHeight = (packingProps.height * pageWidth) / packingProps.width;
+    
+        pdf.addImage(packingImg, 'PNG', 0, 0, pageWidth, packingHeight);
+    
+        pdf.save(`${trip.name}-trip.pdf`);
+    };
+
     if (loading) {
         return (
             <div className="td-shell">
@@ -921,6 +964,15 @@ export default function TripDetails() {
                                     <span>Invite Friends</span>
                                 </button>
                             )}
+                            {isTripOwner && (
+                                <button
+                                    className="td-sidebar-action-btn td-sidebar-action-btn--outline"
+                                    onClick={handleExportPDF}
+                                >
+                                    <span className="td-sidebar-action-icon">📄</span>
+                                    <span>Export Trip</span>
+                                </button>
+                            )}
                         </div>
 
                         <div className="td-sidebar-divider" />
@@ -1075,6 +1127,42 @@ export default function TripDetails() {
                     </section>
                 </div>
             )}
+
+            {/* ── Hidden PDF Render (DO NOT REMOVE) ── */}
+<div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+    
+    {/* Timeline PDF */}
+    <div ref={timelineRef} className="td-pdf-section">
+        <div className="td-pdf-header">
+            <h1>{trip.name}</h1>
+            {trip.description && <p>{trip.description}</p>}
+            <p>
+                {new Date(trip.startDate).toLocaleDateString()} –{' '}
+                {new Date(trip.endDate).toLocaleDateString()}
+            </p>
+            <p>Budget: ${trip.budget?.toFixed(2) || 'N/A'}</p>
+        </div>
+
+        {/* reuse your timeline UI */}
+        {renderTimeline()}
+    </div>
+
+    {/* Packing List PDF */}
+    <div ref={packingRef} className="td-pdf-section">
+        <div className="td-pdf-header">
+            <h1>Packing List</h1>
+        </div>
+
+        <ul className="td-pdf-packing-list">
+            {packingItems.map(item => (
+                <li key={item.id}>
+                    <input type="checkbox" checked={item.checked} readOnly />
+                    {item.text}</li>
+            ))}
+        </ul>
+    </div>
+
+</div>
         </div>
     );
 }

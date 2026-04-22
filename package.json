@@ -16,6 +16,8 @@
   "dependencies": {
     "axios": "^1.13.5",
     "express": "^5.2.1",
-    "express-openid-connect": "^2.19.4"
+    "express-openid-connect": "^2.19.4",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1"
   }
 }
