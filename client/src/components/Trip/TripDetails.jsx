@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
 import { getRoutePreferences, saveMyRoutePreference } from '../../services/routePreferenceServices';
+import { getAccommodations, deleteAccommodation } from '../../services/accommodationServices';
 import { useUser } from '../../../context/useUser';
+import AccommodationsTab from '../Accommodation/AccommodationsTab';
 import { getTripById, updatePackingList } from '../../services/tripServices';
 
 import jsPDF from 'jspdf';
@@ -22,6 +24,7 @@ const TABS = [
     { id: 'timeline',       label: 'Timeline',       icon: '◈' },
     { id: 'routes',         label: 'Routes',          icon: '⇢' },
     { id: 'accommodations', label: 'Accommodations',  icon: '⌂' },
+    { id: 'activities',     label: 'Activities',      icon: '☼' },
     { id: 'map',            label: 'Map',             icon: '◎' },
     { id: 'collaboration',  label: 'Collaboration',   icon: '⌘' },
     { id: 'changelog',      label: 'Changelog',       icon: '◷' },
@@ -49,13 +52,19 @@ export default function TripDetails() {
     const { dbUser } = useUser();
 
     const [trip, setTrip] = useState(null);
+    const [accommodations, setAccommodations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [activeTab, setActiveTab] = useState('timeline');
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const [selectedAcc, setSelectedAcc] = useState(null);
+    const [showAccModal, setShowAccModal] = useState(false);
 
     const [showConfirm, setShowConfirm] = useState(false);
     const [routeToDelete, setRouteToDelete] = useState(null);
+
+    const [showAccConfirm, setShowAccConfirm] = useState(false);
+    const [accToDelete, setAccToDelete] = useState(null);
 
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteSending, setInviteSending] = useState(false);
@@ -210,6 +219,27 @@ export default function TripDetails() {
         return () => window.removeEventListener('click', handleClick);
     }, [showAddMenu]);
 
+    const loadAllData = async () => {
+        if (!id || !dbUser?._id) return;
+
+        try {
+            const [tripData, accData] = await Promise.all([
+                getTripById(id, dbUser._id),
+                getAccommodations(id)
+            ]);
+
+            setTrip(tripData);
+            setAccommodations(accData);
+
+        } catch (err) {
+            console.error("Error refreshing data:", err);
+        }
+    };
+
+    useEffect(() => {
+        loadAllData();
+    }, [id, dbUser?._id]);
+
     // Initialize from trip data when it loads
     useEffect(() => {
         if (trip?.packingList) {
@@ -276,12 +306,25 @@ export default function TripDetails() {
     const calculateTotalCost = (routes) =>
         routes.reduce((total, route) => total + (Number(route.totalCost) || 0), 0);
 
-    const formatDate = (dateObj) => {
-        const dateString = dateObj?.$date || dateObj;
-        if (!dateString) return 'MM/DD';
-        const date = new Date(dateString);
-        return `${date.getMonth() + 1}/${date.getDate()}`;
+    const formatDate = (dateInput) => {
+        const date = (dateInput instanceof Date) 
+            ? dateInput 
+            : new Date(dateInput?.$date || dateInput);
+
+        if (isNaN(date.getTime())) return 'MM/DD';
+
+        const month = date.getUTCMonth() + 1;
+        const day = date.getUTCDate();
+        
+        return `${month}/${day}`;
     };
+    /* original formatDate() function below */
+    // const formatDate = (dateObj) => {
+    //     const dateString = dateObj?.$date || dateObj;
+    //     if (!dateString) return 'MM/DD';
+    //     const date = new Date(dateString);
+    //     return `${date.getMonth() + 1}/${date.getDate()}`;
+    // };
 
     const formatTime = (dateObj) => {
         const dateString = dateObj?.$date || dateObj;
@@ -411,6 +454,21 @@ export default function TripDetails() {
         }
     };
 
+    const handleOpenAccModal = (acc) => {
+        setSelectedAcc(acc);
+        setShowAccModal(true);
+    };
+
+    const handleCloseAccModal = () => {
+        setSelectedAcc(null);
+        setShowAccModal(false);
+    };
+
+    const handleDeleteAcc = async (accId) => {
+        setAccToDelete(accId);
+        setShowAccConfirm(true);
+    };
+
     const invitationActivityText = (inv) => {
         const email = inv.inviteeEmail || 'Unknown';
         const when = new Date(inv.updatedAt || inv.createdAt).toLocaleString();
@@ -432,6 +490,128 @@ export default function TripDetails() {
         const maxAvg = Math.max(...avgScores);
         return { responseCount, avgForMode, maxAvg, avgSpan: maxAvg - minAvg };
     };
+
+    // const sortedRoutes = trip.routes
+    //     ? [...trip.routes].sort((a, b) =>
+    //         new Date(a.departAt?.$date || a.departAt) - new Date(b.departAt?.$date || b.departAt))
+    //     : [];
+
+    // memorize sorted routes, only re-sort if routes array changes
+    const sortedRoutes = useMemo(() => {
+        if (!trip?.routes) return [];
+        
+        return [...trip.routes].sort((a, b) => {
+            const dateA = new Date(a.departAt?.$date || a.departAt);
+            const dateB = new Date(b.departAt?.$date || b.departAt);
+            return dateA - dateB;
+        });
+    }, [trip?.routes]);
+
+    const timelineItems = useMemo(() => {
+        // format routes
+        const routeItems = (sortedRoutes || []).map(route => ({
+            ...route,
+            itemType: 'route',
+            sortDate: new Date(route.departAt?.$date || route.departAt)
+        }));
+
+        // format accommodations
+        const accItems = (accommodations || []).flatMap(acc => {
+            const cleanDate = (dateStr) => dateStr ? dateStr.split('T')[0] : null; // take only the YYYY-MM-DD part of the string
+            const cleanTime = (timeStr) => timeStr || '00:00';
+
+            const dateIn = cleanDate(acc.checkInDate);
+            const dateOut = cleanDate(acc.checkOutDate);
+
+            return [
+                {
+                    ...acc,
+                    itemType: 'accommodation-checkin',
+                    sortDate: dateIn ? new Date(`${dateIn}T${cleanTime(acc.checkInTime)}:00`) : new Date() // force into UTC date
+                },
+                {
+                    ...acc,
+                    itemType: 'accommodation-checkout',
+                    sortDate: dateOut ? new Date(`${dateOut}T${cleanTime(acc.checkOutTime)}:00`) : new Date() // force into UTC date
+                }
+            ];
+        });
+
+        // TODO: format activities
+
+        return [...routeItems, ...accItems].sort((a, b) => a.sortDate - b.sortDate);
+    }, [sortedRoutes, accommodations]);
+
+    // ── helpers for rendering ───────────────────────────────────────────────────────────────
+    const renderRouteCard = (route, index, isSameDay, currentDate) => {
+        const outOfRange = isRouteOutOfRange({ departAt: route.sortDate });
+
+        return (
+            <div key={`route-${route._id}-${index}`} className={`td-timeline-entry${isSameDay ? ' same-day' : ''}`}>
+                <div className="td-timeline-date-circle">
+                    {!isSameDay ? currentDate : ''}
+                </div>
+
+                <div className={`td-route-card ${outOfRange ? 'td-route-card--warning' : ''}`}>
+                    <div className="td-route-info">
+                        <h3>
+                            {outOfRange && <span title="Outside trip dates">⚠️ </span>}
+                            {getRouteTitle(route)}
+                        </h3>
+                        <p>{getRouteMetaLine(route)}</p>
+                        <p>{getRouteTimeLine(route)}</p>
+                    </div>
+                    <div className="td-route-actions">
+                        <button
+                            className="td-btn-view"
+                            onClick={() => navigate('/view-route-details', {
+                                state: { selectedRoute: route, fromTripDetails: true, tripId: trip._id }
+                            })}
+                        >
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderAccommodationCard = (acc, index, isSameDay, currentDate) => {
+        const isCheckIn = acc.itemType === 'accommodation-checkin';
+        const outOfRange = isRouteOutOfRange({ departAt: acc.sortDate });
+
+        return (
+            <div key={`acc-${acc._id}-${acc.itemType}`} className={`td-timeline-entry${isSameDay ? ' same-day' : ''}`}>
+                <div className="td-timeline-date-circle">
+                    {!isSameDay ? currentDate : ''}
+                </div>
+
+                <div className={`td-route-card td-acc-card ${outOfRange ? 'td-route-card--warning' : ''}`}>
+                    <div className="td-route-info">
+                        <div className="td-acc-badge-row">
+                            {outOfRange && <span>⚠️ </span>}
+                            <span className="td-acc-type-badge">{acc.type}</span>
+                        </div>
+                        <h3>
+                            {isCheckIn ? '🏨 Check-in: ' : '🏨 Check-out: '}
+                            {acc.name}
+                        </h3>
+                        <p>🕒 {isCheckIn ? `Check-in starts: ${acc.checkInTime}` : `Check-out by: ${acc.checkOutTime}`}</p>
+                    </div>
+                    <div className="td-route-actions">
+                        <button
+                            className="td-btn-view"
+                            onClick={() => handleOpenAccModal(acc)}
+                        >
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // ── rendering ───────────────────────────────────────────────────────────────
 
     const renderGroupSummaryBars = (summary, model) => (
         <div className="group-transport-bars" role="list">
@@ -628,84 +808,137 @@ export default function TripDetails() {
     if (!trip)        return <div className="td-shell td-empty"><p>Trip not found.</p></div>;
 
     const currentTotal = trip.routes ? calculateTotalCost(trip.routes) : 0;
-    const sortedRoutes = trip.routes
-        ? [...trip.routes].sort((a, b) =>
-            new Date(a.departAt?.$date || a.departAt) - new Date(b.departAt?.$date || b.departAt))
-        : [];
+    // moved sortedRoutes up to a useMemo, so it doesn't need to be re-calculated on every render
+    // const sortedRoutes = trip.routes
+    //     ? [...trip.routes].sort((a, b) =>
+    //         new Date(a.departAt?.$date || a.departAt) - new Date(b.departAt?.$date || b.departAt))
+    //     : [];
 
     const tripIdStr = mongoIdString(trip._id);
     const isTripOwner = mongoIdString(trip.owner) === mongoIdString(dbUser?._id);
     const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
 
-    const renderTimeline = () => (
-        <div className="td-tab-content">
-            <div className="td-content-header">
-                <h2>Timeline</h2>
-                {hasCollaborators && (
-                    <button
-                        type="button"
-                        className="trip-route-preference-open"
-                        onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
-                    >
-                        Group Transport Preferences
-                    </button>
-                )}
-            </div>
-            {sortedRoutes.length === 0 ? (
-                <div className="td-empty-state">
-                    <span className="td-empty-icon">◈</span>
-                    <p>No routes added to this trip yet.</p>
+    const renderTimelineMult = () => {
+        if (timelineItems.length === 0) {
+            return (
+                <div className="td-tab-content">
+                    <div className="td-empty-state">
+                        <span className="td-empty-icon">◈</span>
+                        <p>Your timeline is empty!</p>
+                    </div>
                 </div>
-            ) : (
+            );
+        }
+
+        return (
+            <div className="td-tab-content">
+                <div className="td-content-header">
+                    <h2>Timeline</h2>
+                    {hasCollaborators && (
+                        <button
+                            type="button"
+                            className="trip-route-preference-open"
+                            onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
+                        >
+                            Group Transport Preferences
+                        </button>
+                    )}
+                </div>
+
                 <div className="td-timeline">
-                    {sortedRoutes.map((route, index) => {
-                        const currentDate = formatDate(route.departAt);
-                        const previousDate = index > 0 ? formatDate(sortedRoutes[index - 1].departAt) : null;
+                    {timelineItems.map((item, index) => {
+                        const currentDate = formatDate(item.sortDate);
+                        const previousDate = index > 0 ? formatDate(timelineItems[index - 1].sortDate) : null;
                         const isSameDay = currentDate === previousDate;
-                        const outOfRange = isRouteOutOfRange(route);
 
-                        return (
-                            <div key={index} className={`td-timeline-entry${isSameDay ? ' same-day' : ''}`}>
-                                <div className="td-timeline-date-circle">
-                                    {!isSameDay ? currentDate : ''}
-                                </div>
-
-                                <div className={`td-route-card ${outOfRange ? 'td-route-card--warning' : ''}`}>
-                                    <div className="td-route-info">
-                                        <h3>
-                                            {outOfRange && <span title="Outside trip dates">⚠️ </span>}
-                                            {getRouteTitle(route)}
-                                        </h3>
-                                        <p>{getRouteMetaLine(route)}</p>
-                                        <p>{getRouteTimeLine(route)}</p>
-                                    </div>
-
-                                    <div className="td-route-actions">
-                                        <button
-                                            className="td-btn-view"
-                                            onClick={() => navigate('/view-route-details', {
-                                                state: { selectedRoute: route, fromTripDetails: true, tripId: trip._id }
-                                            })}
-                                        >
-                                            View Details
-                                        </button>
-                                        {isTripOwner && (
-                                            <button
-                                                className="td-btn-delete"
-                                                onClick={() => { setRouteToDelete(route); setShowConfirm(true); }}
-                                            >
-                                                Delete Route
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
+                        // TODO: add other timeline items such as activities
+                        switch (item.itemType) {
+                            case 'route':
+                                return renderRouteCard(item, index, isSameDay, currentDate);
+                            
+                            case 'accommodation-checkin':
+                            case 'accommodation-checkout':
+                                return renderAccommodationCard(item, index, isSameDay, currentDate);
+                            
+                            default:
+                                return null;
+                        }
                     })}
                 </div>
-            )}
-        </div>
-    );
+            </div>
+        );
+    };
+
+    /* original renderTimeline function before adding accommodations and timelineItems */
+    // const renderTimeline = () => (
+    //     <div className="td-tab-content">
+    //         <div className="td-content-header">
+    //             <h2>Timeline</h2>
+    //             {hasCollaborators && (
+    //                 <button
+    //                     type="button"
+    //                     className="trip-route-preference-open"
+    //                     onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
+    //                 >
+    //                     Group Transport Preferences
+    //                 </button>
+    //             )}
+    //         </div>
+    //         {sortedRoutes.length === 0 ? (
+    //             <div className="td-empty-state">
+    //                 <span className="td-empty-icon">◈</span>
+    //                 <p>No routes added to this trip yet.</p>
+    //             </div>
+    //         ) : (
+    //             <div className="td-timeline">
+    //                 {sortedRoutes.map((route, index) => {
+    //                     const currentDate = formatDate(route.departAt);
+    //                     const previousDate = index > 0 ? formatDate(sortedRoutes[index - 1].departAt) : null;
+    //                     const isSameDay = currentDate === previousDate;
+    //                     const outOfRange = isRouteOutOfRange(route);
+
+    //                     return (
+    //                         <div key={index} className={`td-timeline-entry${isSameDay ? ' same-day' : ''}`}>
+    //                             <div className="td-timeline-date-circle">
+    //                                 {!isSameDay ? currentDate : ''}
+    //                             </div>
+
+    //                             <div className={`td-route-card ${outOfRange ? 'td-route-card--warning' : ''}`}>
+    //                                 <div className="td-route-info">
+    //                                     <h3>
+    //                                         {outOfRange && <span title="Outside trip dates">⚠️ </span>}
+    //                                         {getRouteTitle(route)}
+    //                                     </h3>
+    //                                     <p>{getRouteMetaLine(route)}</p>
+    //                                     <p>{getRouteTimeLine(route)}</p>
+    //                                 </div>
+
+    //                                 <div className="td-route-actions">
+    //                                     <button
+    //                                         className="td-btn-view"
+    //                                         onClick={() => navigate('/view-route-details', {
+    //                                             state: { selectedRoute: route, fromTripDetails: true, tripId: trip._id }
+    //                                         })}
+    //                                     >
+    //                                         View Details
+    //                                     </button>
+    //                                     {isTripOwner && (
+    //                                         <button
+    //                                             className="td-btn-delete"
+    //                                             onClick={() => { setRouteToDelete(route); setShowConfirm(true); }}
+    //                                         >
+    //                                             Delete Route
+    //                                         </button>
+    //                                     )}
+    //                                 </div>
+    //                             </div>
+    //                         </div>
+    //                     );
+    //                 })}
+    //             </div>
+    //         )}
+    //     </div>
+    // );
 
     const renderRoutes = () => (
         <div className="td-tab-content">
@@ -798,6 +1031,17 @@ export default function TripDetails() {
         </div>
     );
 
+    const renderAccommodations = () => (
+        <AccommodationsTab
+            tripId={id}
+            accommodations={accommodations}
+            isOwner={isTripOwner}
+            tripDates={{ start: trip?.startDate, end: trip?.endDate }}
+            onOpenModal={handleOpenAccModal}
+            onDelete={handleDeleteAcc}
+        />
+    );
+
     const renderComingSoon = (icon, label) => (
         <div className="td-tab-content">
             <div className="td-content-header"><h2>{label}</h2></div>
@@ -885,9 +1129,10 @@ export default function TripDetails() {
     );
 
     const tabContent = {
-        timeline:       renderTimeline,
+        timeline:       renderTimelineMult,
         routes:         renderRoutes,
-        accommodations: () => renderComingSoon('⌂', 'Accommodations'),
+        accommodations: renderAccommodations,
+        activities:     () => renderComingSoon('☼', 'Activities'),
         map:            () => renderComingSoon('◎', 'Map'),
         collaboration:  renderCollaboration,
         changelog:      () => renderComingSoon('◷', 'Changelog'),
@@ -933,7 +1178,7 @@ export default function TripDetails() {
                                         </button>
                                         <button
                                             className="td-dropdown-item"
-                                            onClick={() => navigate(`/add-accommodation`, { state: { tripId: trip._id } })}
+                                            onClick={() => navigate(`/add-accommodation/${trip._id}`, { state: { tripId: trip._id } })}
                                         >
                                             Add Accommodation
                                         </button>
@@ -1128,6 +1373,109 @@ export default function TripDetails() {
                 </div>
             )}
 
+            {/* Accommodation Details Modal */}
+            {showAccModal && selectedAcc && (
+                <div className="acc-modal-overlay" onClick={handleCloseAccModal}>
+                    <div className="acc-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <header className="acc-modal-header">
+                            <span className="acc-type-tag">{selectedAcc.type}</span>
+                            <h2>{selectedAcc.name}</h2>
+                            <button className="acc-modal-close" onClick={handleCloseAccModal}>✕</button>
+                        </header>
+
+                        <div className="acc-modal-body">
+                            <section className="acc-modal-section">
+                                <h4>Booking Information</h4>
+                                <div className="acc-modal-grid">
+                                    <p><strong>Confirmation #:</strong> {selectedAcc.confirmationNumber}</p>
+                                    <p><strong>Status: </strong> 
+                                        <span className={`acc-status-pill ${selectedAcc.isPaid ? 'paid' : 'unpaid'}`}>
+                                            {selectedAcc.isPaid ? 'Paid' : 'Unpaid'}
+                                        </span>
+                                    </p>
+                                    <p><strong>Total Cost:</strong> {selectedAcc.cost ? `$${selectedAcc.cost.toFixed(2)}` : 'N/A'}</p>
+                                </div>
+                            </section>
+
+                            <section className="acc-modal-section">
+                                <h4>Stay Information</h4>
+                                <p><strong>📍 Address:</strong> {selectedAcc.address}</p>
+                                <div className="acc-modal-grid">
+                                    <p><strong>📅 Check-in:</strong> {new Date(selectedAcc.checkInDate).toLocaleDateString('en-US', { timeZone: 'UTC' })} @ {selectedAcc.checkInTime}</p>
+                                    <p><strong>📅 Check-out:</strong> {new Date(selectedAcc.checkOutDate).toLocaleDateString('en-US', { timeZone: 'UTC' })} @ {selectedAcc.checkOutTime}</p>
+                                </div>
+                            </section>
+
+                            <section className="acc-modal-section">
+                                <h4>Contact & Links</h4>
+                                <div className="acc-modal-grid">
+                                    <p>
+                                        <strong>📞 Phone:</strong> {selectedAcc.phoneNumber 
+                                            ? <a href={`tel:${selectedAcc.phoneNumber}`}>{selectedAcc.phoneNumber}</a> 
+                                            : <span className="acc-modal-empty">N/A</span>}
+                                    </p>
+                                    <p>
+                                        <strong>✉️ Email:</strong> {selectedAcc.email 
+                                            ? <a href={`mailto:${selectedAcc.email}`}>{selectedAcc.email}</a> 
+                                            : <span className="acc-modal-empty">N/A</span>}
+                                    </p>
+                                    <p>
+                                        <strong>🌐 Website:</strong> {selectedAcc.website 
+                                            ? <a href={selectedAcc.website} target="_blank" rel="noreferrer">Visit Site</a> 
+                                            : <span className="acc-modal-empty">N/A</span>}
+                                    </p>
+                                </div>
+                            </section>
+
+                            <section className="acc-modal-section">
+                                <h4>Notes</h4>
+                                <div className="acc-modal-notes">
+                                    {selectedAcc.notes || "No additional notes for this stay."}
+                                </div>
+                            </section>
+                        </div>
+
+                        <footer className="acc-modal-footer">
+                            <button className="td-btn-secondary" onClick={handleCloseAccModal}>Close</button>
+                        </footer>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Delete Accommodation Confirm ── */}
+            {showAccConfirm && (
+                <div className="td-modal-overlay" onClick={() => setShowAccConfirm(false)}>
+                    <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Confirm Delete</h3>
+                        <p>Delete stay at "<strong>{accToDelete?.name}</strong>"?</p>
+                        <div className="td-modal-actions">
+                            <button
+                                className="td-modal-btn td-modal-btn--danger"
+                                onClick={async () => {
+                                    try {
+                                        await deleteAccommodation(id, accToDelete._id);
+                                        setAccommodations(prev => prev.filter(a => a._id !== accToDelete._id));
+                                        setShowAccConfirm(false);
+                                        setAccToDelete(null);
+                                    } catch (err) {
+                                        console.error("Failed to delete accommodation:", err);
+                                        alert("Could not delete accommodation. Please try again.");
+                                    }
+                                }}
+                            >
+                                Confirm
+                            </button>
+                            <button 
+                                className="td-modal-btn td-modal-btn--cancel" 
+                                onClick={() => setShowAccConfirm(false)}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Hidden PDF Render (DO NOT REMOVE) ── */}
 <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
     
@@ -1144,7 +1492,7 @@ export default function TripDetails() {
         </div>
 
         {/* reuse your timeline UI */}
-        {renderTimeline()}
+        {renderTimelineMult()}
     </div>
 
     {/* Packing List PDF */}

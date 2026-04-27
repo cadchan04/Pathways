@@ -18,6 +18,7 @@ const {
   tripInvitationsRouter,
   invitationsRouter,
 } = require('./routes/invitation-routes.js');
+const accommodationRoutes = require('./routes/accommodation-routes.js');
 
 const app = express();
 
@@ -57,6 +58,7 @@ app.use('/api/invitations', invitationsRouter);
 app.use('/api/trips', tripRoute); // trip route functions
 app.use('/api/user', userRoute);
 app.use('/api/push', pushRoutes);
+app.use('/api/trips/:tripId/accommodations', accommodationRoutes);
 
 mongoose.connect(process.env.MONGO_URI, { dbName: 'pathways' })
   .then(() => {
