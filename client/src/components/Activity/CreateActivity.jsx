@@ -16,7 +16,7 @@ export default function CreateActivity() {
 
     const [formData, setFormData] = useState({
         name: '',
-        type: 'Attraction',
+        activityType: 'Sightseeing',
         address: '',
         phoneNumber: '',
         email: '',
@@ -65,6 +65,7 @@ export default function CreateActivity() {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
+        console.log("Constructed new activity object:", newActivity);
 
         try {
             const savedActivity = await createActivity(tripId, newActivity);

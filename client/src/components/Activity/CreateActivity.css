@@ -16,14 +16,14 @@
     background-color: #f8f9fa;
 }
 
-.create-accommodation-container h1 {
+.create-activity-container h1 {
     margin-bottom: 24px;
     font-weight: 700;
     color: #1a1a1a;
     font-size: 2rem;
 }
 
-.create-accommodation-form {
+.create-activity-form {
     appearance: none;
     display: flex;
     flex-direction: column;
@@ -38,7 +38,7 @@
     box-sizing: border-box;
 }
 
-.create-accommodation-form select:hover {
+.create-activity-form select:hover {
     border-color: #c0c0c0;
 }
 
@@ -56,9 +56,9 @@
     margin-left: 4px;
 }
 
-.create-accommodation-form input,
-.create-accommodation-form select,
-.create-accommodation-form textarea {
+.create-activity-form input,
+.create-activity-form select,
+.create-activity-form textarea {
     padding: 12px 16px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
@@ -68,15 +68,15 @@
     background-color: white;
 }
 
-.create-accommodation-form input:focus,
-.create-accommodation-form select:focus,
-.create-accommodation-form textarea:focus {
+.create-activity-form input:focus,
+.create-activity-form select:focus,
+.create-activity-form textarea:focus {
     outline: none;
     border-color: #307bac;
     box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
 }
 
-.create-accommodation-form textarea {
+.create-activity-form textarea {
     min-height: 100px;
     resize: vertical;
 }
@@ -131,7 +131,7 @@
     width: 100%;
 }
 
-.create-accommodation-form button[type="submit"] {
+.create-activity-form button[type="submit"] {
     padding: 14px;
     background-color: #307bac;
     color: white;
@@ -144,15 +144,15 @@
     margin-top: 10px;
 }
 
-.create-accommodation-form button[type="submit"]:hover {
+.create-activity-form button[type="submit"]:hover {
     background-color: #25638d;
 }
 
-.create-accommodation-form button[type="submit"]:active {
+.create-activity-form button[type="submit"]:active {
     transform: scale(0.98);
 }
 
-.create-accommodation-form button[type="button"] {
+.create-activity-form button[type="button"] {
     padding: 12px;
     background-color: rgb(170, 170, 170);
     color: white;
@@ -163,7 +163,7 @@
     transition: all 0.2s;
 }
 
-.create-accommodation-form button[type="button"]:hover {
+.create-activity-form button[type="button"]:hover {
     color: #1a1a1a;
     text-decoration: underline;
     background-color: #f0f0f0;

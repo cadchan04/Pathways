@@ -9,7 +9,7 @@ router.post('/', async (req, res) => {
 
     const {
         name,
-        type,
+        activityType,
         address,
         phoneNumber,
         email,
@@ -28,7 +28,7 @@ router.post('/', async (req, res) => {
 
     const newActivity = new Activity({
         name,
-        type,
+        activityType,
         address,
         phoneNumber,
         email,
@@ -48,6 +48,22 @@ router.post('/', async (req, res) => {
     } catch (err) {
         console.error("Mongoose Save Error:", err.message);
         res.status(400).json({ error: err.message });
+    }
+});
+
+router.get('/', async (req, res) => {
+    const { tripId } = req.params;
+
+    if (!tripId) {
+        return res.status(400).json({ error: 'Missing tripId parameter' });
+    }
+
+    try {
+        const activities = await Activity.find({ tripId });
+        res.json(activities);
+    } catch (err) {
+        console.error("Mongoose Find Error:", err.message);
+        res.status(500).json({ error: 'Server error while fetching activities' });
     }
 });
 

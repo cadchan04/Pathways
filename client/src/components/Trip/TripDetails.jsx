@@ -4,8 +4,10 @@ import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
 import { getRoutePreferences, saveMyRoutePreference } from '../../services/routePreferenceServices';
 import { getAccommodations, deleteAccommodation } from '../../services/accommodationServices';
+import { getActivities } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
 import AccommodationsTab from '../Accommodation/AccommodationsTab';
+import ActivitiesTab from '../Activity/ActivitiesTab';
 import { getTripById, updatePackingList, duplicateTrip, leaveTrip } from '../../services/tripServices';
 import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../collaboration/tripCollaboration';
 
@@ -54,6 +56,7 @@ export default function TripDetails() {
 
     const [trip, setTrip] = useState(null);
     const [accommodations, setAccommodations] = useState([]);
+    const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [activeTab, setActiveTab] = useState('timeline');
@@ -66,6 +69,9 @@ export default function TripDetails() {
 
     const [showAccConfirm, setShowAccConfirm] = useState(false);
     const [accToDelete, setAccToDelete] = useState(null);
+
+    const [showActivitiesConfirm, setShowActivitiesConfirm] = useState(false);
+    const [activityToDelete, setActivityToDelete] = useState(null);
 
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('viewer');
@@ -227,13 +233,15 @@ export default function TripDetails() {
         if (!id || !dbUser?._id) return;
 
         try {
-            const [tripData, accData] = await Promise.all([
+            const [tripData, accData, activityData] = await Promise.all([
                 getTripById(id, dbUser._id),
-                getAccommodations(id, dbUser._id)
+                getAccommodations(id, dbUser._id),
+                getActivities(id)
             ]);
 
             setTrip(tripData);
             setAccommodations(accData);
+            setActivities(activityData);
 
         } catch (err) {
             console.error("Error refreshing data:", err);
@@ -570,9 +578,14 @@ export default function TripDetails() {
         });
 
         // TODO: format activities
+        const activityItems = (activities || []).map(activity => ({
+            ...activity,
+            itemType: 'activity',
+            sortDate: new Date(activity.activityDate?.$date || activity.activityDate)
+        }));
 
-        return [...routeItems, ...accItems].sort((a, b) => a.sortDate - b.sortDate);
-    }, [sortedRoutes, accommodations]);
+        return [...routeItems, ...accItems, ...activityItems].sort((a, b) => a.sortDate - b.sortDate);
+    }, [sortedRoutes, accommodations, activities]);
 
     // ── helpers for rendering ───────────────────────────────────────────────────────────────
     const renderRouteCard = (route, index, isSameDay, currentDate) => {
@@ -1090,6 +1103,15 @@ export default function TripDetails() {
         />
     );
 
+    const renderActivities = () => (
+        <ActivitiesTab
+            tripId={id}
+            activities={activities}
+            isOwner={isTripOwner}
+            tripDates={{ start: trip?.startDate, end: trip?.endDate }}
+        />
+    );
+
     const renderComingSoon = (icon, label) => (
         <div className="td-tab-content">
             <div className="td-content-header"><h2>{label}</h2></div>
@@ -1196,7 +1218,7 @@ export default function TripDetails() {
         timeline:       renderTimelineMult,
         routes:         renderRoutes,
         accommodations: renderAccommodations,
-        activities:     () => renderComingSoon('☼', 'Activities'),
+        activities:     renderActivities,
         map:            () => renderComingSoon('◎', 'Map'),
         collaboration:  renderCollaboration,
         changelog:      () => renderComingSoon('◷', 'Changelog'),
