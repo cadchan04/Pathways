@@ -1249,7 +1249,7 @@ export default function TripDetails() {
                                         </button>
                                         <button
                                             className="td-dropdown-item"
-                                            onClick={() => navigate(`/add-activity`, { state: { tripId: trip._id } })}
+                                            onClick={() => navigate(`/add-activity/${trip._id}`, { state: { tripId: trip._id } })}
                                         >
                                             Add Activity
                                         </button>
