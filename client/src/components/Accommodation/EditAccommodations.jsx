@@ -1,42 +1,42 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createAccommodation } from '../../services/accommodationServices';
+import { getAccommodationById, updateAccommodation } from '../../services/accommodationServices';
 import { useUser } from '../../../context/useUser';
-import { getTodayDateString, isDateBeforeToday } from '../Route/routeUtils';
 
-import './CreateAccommodation.css';
+import './EditAccommodations.css';
 
-export default function CreateAccommodation() {
+export default function EditAccommodations() {
     const navigate = useNavigate();
-    const { tripId } = useParams();
+    const { tripId, accId } = useParams();
     const { dbUser } = useUser();
-    const today = getTodayDateString();
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [formData, setFormData] = useState({
-        name: '',
-        type: 'Hotel',
-        address: '',
-        phoneNumber: '',
-        email: '',
-        website: '',
-        checkInDate: '',
-        checkInTime: '15:00',
-        checkOutDate: '',
-        checkOutTime: '10:00',
-        confirmationNumber: '',
-        cost: '',
-        isPaid: false,
-        notes: ''
-    });
+    const [formData, setFormData] = useState(null);
+
+    useEffect(() => {
+        console.log("EditAccommodations mounted with tripId:", tripId, "and accId:", accId);
+        const fetchAccommodation = async () => {
+            try {
+                const acc = await getAccommodationById(tripId, accId, dbUser._id);
+                console.log("Fetched accommodation for editing:", acc);
+                setFormData({
+                    ...acc,
+                    checkInDate: acc.checkInDate ? new Date(acc.checkInDate).toISOString().split('T')[0] : '',
+                    checkOutDate: acc.checkOutDate ? new Date(acc.checkOutDate).toISOString().split('T')[0] : '',
+                });
+            } catch (err) {
+                console.error("Error fetching accommodation:", err);
+            }
+        };
+
+        if (tripId && accId) {
+            fetchAccommodation();
+        }
+    }, [tripId, accId, dbUser]);
 
     const validateDates = () => {
         const newErrors = {};
-
-        if (formData.checkInDate && isDateBeforeToday(formData.checkInDate, today)) {
-            newErrors.checkInDate = 'Check-in date cannot be in the past.';
-        }
 
         if (formData.checkInDate && formData.checkOutDate && formData.checkOutDate < formData.checkInDate) {
             newErrors.checkOutDate = 'Check-out date cannot be before check-in date.';
@@ -47,6 +47,7 @@ export default function CreateAccommodation() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log("Submitting accommodation with form data:", formData);
 
         const dateErrors = validateDates();
         if (Object.keys(dateErrors).length > 0) {
@@ -59,17 +60,17 @@ export default function CreateAccommodation() {
             return;
         }
 
-        const newAccommodation = {
+        const updatedAccommodation = {
             ...formData,
             tripId: tripId,
             owner: dbUser._id,
             cost: formData.cost === '' ? null : Number(formData.cost),
-            createdAt: new Date().toISOString(),
+            createdAt: formData.createdAt,
             updatedAt: new Date().toISOString()
         };
 
         try {
-            const savedAccommodation = await createAccommodation(tripId, newAccommodation, dbUser._id);
+            const savedAccommodation = await updateAccommodation(tripId, accId, updatedAccommodation, dbUser._id);
             
             if (savedAccommodation) {
                 console.log("Accommodation saved to MongoDB via service");
@@ -77,12 +78,12 @@ export default function CreateAccommodation() {
             }
 
         } catch (err) {
-            console.error("Error creating accommodation:", err);
-            setErrors({ submit: err.response?.data?.error || "Failed to create accommodation." });
+            console.error("Error updating accommodation:", err);
+            setErrors({ submit: err.response?.data?.error || "Failed to update accommodation." });
         } finally {
             setIsSubmitting(false);
         }
-    }
+    };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -100,10 +101,14 @@ export default function CreateAccommodation() {
         }));
     };
 
+    if (!formData) {
+        return <div className="edit-accommodations-container"><p>Loading accommodation details...</p></div>;
+    }
+
     return (
-        <div className="create-accommodation-container">
-            <h2>Add Accommodation</h2>
-            <form onSubmit={handleSubmit} className="create-trip-form">
+        <div className="edit-accommodation-container">
+            <h1>Edit Accommodation</h1>
+            <form onSubmit={handleSubmit} className="edit-accommodation-form">
                 {/* --- Basic Information --- */}
                 <div className="form-row">
                     <div className="form-group" style={{ flex: 2 }}>
@@ -268,13 +273,13 @@ export default function CreateAccommodation() {
 
                 <div className="form-actions">
                     <button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Creating...' : 'Create'}
+                        {isSubmitting ? 'Updating...' : 'Save Changes'}
                     </button>
                     <button type="button" className="btn-secondary" onClick={() => navigate(`/view-trip-details/${tripId}`, { state: { activeTab: 'accommodations' } })}>
                         Cancel
                     </button>
                 </div>
-            </form> 
+            </form>
         </div>
-    );
+    )
 }

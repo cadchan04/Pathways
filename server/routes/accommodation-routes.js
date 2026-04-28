@@ -124,6 +124,80 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET method to retrieve a specific accommodation
+router.get('/:accId', async (req, res) => {
+    const { tripId, accId } = req.params;
+    const userId = readUserId(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'userId is required' });
+    }
+
+    if (!tripId || !accId) {
+        return res.status(400).json({ error: 'Missing tripId or accId parameters' });
+    }
+
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+        return res.status(404).json({ error: 'Trip not found' });
+    }
+    if (!canViewTrip(trip, userId)) {
+        return res.status(403).json({ error: 'You do not have permission to view accommodations on this trip' });
+    }
+
+
+    try {
+        const accommodation = await Accommodation.findOne({ _id: accId, tripId });
+
+        if (!accommodation) {
+            return res.status(404).json({ error: 'Accommodation not found' });
+        }
+
+        res.json(accommodation);
+    } catch (err) {
+        console.error("Mongoose Find Error:", err.message);
+        res.status(500).json({ error: 'Server error while fetching accommodation' });
+    }
+});
+
+// PUT method to update an accommodation
+router.put('/:accId', async (req, res) => {
+    const { tripId, accId } = req.params;
+    const updateData = req.body;
+    const userId = readUserId(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'userId is required' });
+    }
+
+    if (!tripId || !accId) {
+        return res.status(400).json({ error: 'Missing tripId or accId parameters' });
+    }
+
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+        return res.status(404).json({ error: 'Trip not found' });
+    }
+    if (!canEditTrip(trip, userId)) {
+        return res.status(403).json({ error: 'You do not have permission to edit accommodations on this trip' });
+    }
+
+    try {
+        const updatedAccommodation = await Accommodation.findOneAndUpdate(
+            { _id: accId, tripId },
+            updateData,
+            { returnDocument: 'after' }
+        );
+
+        if (!updatedAccommodation) {
+            return res.status(404).json({ error: 'Accommodation not found' });
+        }
+
+        res.json(updatedAccommodation);
+    } catch (err) {
+        console.error("Mongoose Update Error:", err.message);
+        res.status(400).json({ error: err.message });
+    }
+});
+
 // DELETE method to remove an accommodation by its ID
 router.delete('/:accId', async (req, res) => {
     const { tripId, accId } = req.params;
