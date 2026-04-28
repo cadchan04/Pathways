@@ -64,8 +64,8 @@ export default function ActivitiesTab({
         return startsTooEarly || endsTooLate;
     };
 
-    const handleDelete = async (acc) => {
-        onDelete(acc);
+    const handleDelete = async (activity) => {
+        onDelete(activity);
     };
 
     const toggleMenu = (e, id) => {
@@ -86,6 +86,22 @@ export default function ActivitiesTab({
         return `${month}/${day}`;
     };
 
+    const caclulateDuration = (startTime, endTime) => {
+        if (!startTime || !endTime) return '';
+
+        const [startHour, startMin] = startTime.split(':').map(Number);
+        const [endHour, endMin] = endTime.split(':').map(Number);
+
+        let totalStartMins = startHour * 60 + startMin;
+        let totalEndMins = endHour * 60 + endMin;
+
+        const durationMins = totalEndMins - totalStartMins;
+        const durationHrs = Math.floor(durationMins / 60);
+        const remainingMins = durationMins % 60;
+
+        return `${durationHrs} ${durationHrs === 1 ? 'hr' : 'hrs'}${remainingMins > 0 ? ` ${remainingMins}m` : ''}`;
+    }
+
     return (
         <div className="activities-tab">
             <div className="td-content-header">
@@ -103,9 +119,7 @@ export default function ActivitiesTab({
                         const warning = isOutOfRange(activity.activityDate);
                         const startTime = activity.startTime.split(':')[0] > 12 ? activity.startTime.split(':')[0] - 12 + ":" + activity.startTime.split(':')[1] + " PM" : activity.startTime + " AM";
                         const endTime = activity.endTime.split(':')[0] > 12 ? activity.endTime.split(':')[0] - 12 + ":" + activity.endTime.split(':')[1] + " PM" : activity.endTime + " AM";
-                        const durationHrs = Number(endTime.split(':')[0]) - Number(startTime.split(':')[0]);
-                        const durationMins = Number(activity.endTime.split(':')[1]) - Number(activity.startTime.split(':')[1]);
-                        const duration = durationHrs + (durationMins > 0 ? 0.5 : 0);
+                        const duration = caclulateDuration(activity.startTime, activity.endTime);
                         
                         return (
                             <div key={activity._id} className={`activity-card ${warning ? 'activity-card--warning' : ''}`}>
@@ -129,7 +143,7 @@ export default function ActivitiesTab({
                                     <div className="activity-date-divider">
                                         <div className="activity-line"></div>
                                         <span className="activity-nights">
-                                            {durationHrs} {durationHrs === 1 ? 'hr' : 'hrs'}{" "}{durationMins}{'m'}
+                                            {duration}
                                         </span>
                                     </div>
                                     <div className="activity-date-block">

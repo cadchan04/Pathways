@@ -4,7 +4,7 @@ import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
 import { getRoutePreferences, saveMyRoutePreference } from '../../services/routePreferenceServices';
 import { getAccommodations, deleteAccommodation } from '../../services/accommodationServices';
-import { getActivities } from '../../services/activityServices';
+import { getActivities, deleteActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
 import AccommodationsTab from '../Accommodation/AccommodationsTab';
 import ActivitiesTab from '../Activity/ActivitiesTab';
@@ -70,7 +70,7 @@ export default function TripDetails() {
     const [showAccConfirm, setShowAccConfirm] = useState(false);
     const [accToDelete, setAccToDelete] = useState(null);
 
-    const [showActivitiesConfirm, setShowActivitiesConfirm] = useState(false);
+    const [showActivityConfirm, setShowActivityConfirm] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
 
     const [inviteEmail, setInviteEmail] = useState('');
@@ -507,6 +507,11 @@ export default function TripDetails() {
         setAccToDelete(accId);
         setShowAccConfirm(true);
     };
+
+    const handleDeleteActivity = async (activityId) => {
+        setActivityToDelete(activityId);
+        setShowActivityConfirm(true);
+    }
 
     const invitationActivityText = (inv) => {
         const email = inv.inviteeEmail || 'Unknown';
@@ -1109,6 +1114,7 @@ export default function TripDetails() {
             activities={activities}
             isOwner={isTripOwner}
             tripDates={{ start: trip?.startDate, end: trip?.endDate }}
+            onDelete={handleDeleteActivity}
         />
     );
 
@@ -1592,41 +1598,74 @@ export default function TripDetails() {
                 </div>
             )}
 
+            {/* ── Delete Activites Confirm ── */}
+            {showActivityConfirm && (
+                <div className="td-modal-overlay" onClick={() => setShowActivityConfirm(false)}>
+                    <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Confirm Delete</h3>
+                        <p>Delete Activity: "<strong>{activityToDelete?.name}</strong>"?</p>
+                        <div className="td-modal-actions">
+                            <button
+                                className="td-modal-btn td-modal-btn--danger"
+                                onClick={async () => {
+                                    try {
+                                        await deleteActivity(id, activityToDelete._id);
+                                        setActivities(prev => prev.filter(a => a._id !== activityToDelete._id));
+                                        setShowActivityConfirm(false);
+                                        setActivityToDelete(null);
+                                    } catch (err) {
+                                        console.error("Failed to delete activity:", err);
+                                        alert("Could not delete activity. Please try again.");
+                                    }
+                                }}
+                            >
+                                Confirm
+                            </button>
+                            <button 
+                                className="td-modal-btn td-modal-btn--cancel" 
+                                onClick={() => setShowActivityConfirm(false)}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Hidden PDF Render (DO NOT REMOVE) ── */}
-<div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+            <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
     
-    {/* Timeline PDF */}
-    <div ref={timelineRef} className="td-pdf-section">
-        <div className="td-pdf-header">
-            <h1>{trip.name}</h1>
-            {trip.description && <p>{trip.description}</p>}
-            <p>
-                {new Date(trip.startDate).toLocaleDateString()} –{' '}
-                {new Date(trip.endDate).toLocaleDateString()}
-            </p>
-            <p>Budget: ${trip.budget?.toFixed(2) || 'N/A'}</p>
-        </div>
+                {/* Timeline PDF */}
+                <div ref={timelineRef} className="td-pdf-section">
+                    <div className="td-pdf-header">
+                        <h1>{trip.name}</h1>
+                        {trip.description && <p>{trip.description}</p>}
+                        <p>
+                            {new Date(trip.startDate).toLocaleDateString()} –{' '}
+                            {new Date(trip.endDate).toLocaleDateString()}
+                        </p>
+                        <p>Budget: ${trip.budget?.toFixed(2) || 'N/A'}</p>
+                    </div>
 
-        {/* reuse your timeline UI */}
-        {renderTimelineMult()}
-    </div>
+                    {/* reuse your timeline UI */}
+                    {renderTimelineMult()}
+                </div>
 
-    {/* Packing List PDF */}
-    <div ref={packingRef} className="td-pdf-section">
-        <div className="td-pdf-header">
-            <h1>Packing List</h1>
-        </div>
+                {/* Packing List PDF */}
+                <div ref={packingRef} className="td-pdf-section">
+                    <div className="td-pdf-header">
+                        <h1>Packing List</h1>
+                    </div>
 
-        <ul className="td-pdf-packing-list">
-            {packingItems.map(item => (
-                <li key={item.id}>
-                    <input type="checkbox" checked={item.checked} readOnly />
-                    {item.text}</li>
-            ))}
-        </ul>
-    </div>
-
-</div>
+                    <ul className="td-pdf-packing-list">
+                        {packingItems.map(item => (
+                            <li key={item.id}>
+                                <input type="checkbox" checked={item.checked} readOnly />
+                                {item.text}</li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
         </div>
     );
 }

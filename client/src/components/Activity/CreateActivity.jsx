@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
-import { getTodayDateString, isDateBeforeToday } from '../Route/routeUtils';
+import { getTodayDateString } from '../Route/routeUtils';
 
 import './CreateActivity.css';
 
@@ -30,10 +30,6 @@ export default function CreateActivity() {
 
     const validateDates = () => {
         const newErrors = {};
-
-        if (formData.activityDate && isDateBeforeToday(formData.activityDate, today)) {
-            newErrors.activityDate = 'Activity date cannot be in the past.';
-        }
 
         if (formData.activityDate && formData.endTime && formData.endTime < formData.startTime) {
             newErrors.endTime = 'End time cannot be before start time.';
@@ -170,6 +166,7 @@ export default function CreateActivity() {
                             type="date"
                             name="activityDate"
                             value={formData.activityDate}
+                            min={today}
                             required
                             onChange={handleChange} 
                         />

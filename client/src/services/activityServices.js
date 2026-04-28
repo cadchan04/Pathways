@@ -43,3 +43,13 @@ export const updateActivity = async (tripId, activityId, activityData) => {
         throw err;
     }
 };
+
+export const deleteActivity = async (tripId, activityId) => {
+    try {
+        const response = await axios.delete(`${API_URL}/api/trips/${tripId}/activities/${activityId}`);
+        return response.data;
+    } catch (err) {
+        console.error("Error deleting activity:", err);
+        throw err;
+    }
+};

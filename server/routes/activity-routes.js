@@ -114,4 +114,25 @@ router.put('/:activityId', async (req, res) => {
     }
 });
 
+router.delete('/:activityId', async (req, res) => {
+    const { tripId, activityId } = req.params;
+
+    if (!tripId || !activityId) {
+        return res.status(400).json({ error: 'Missing tripId or activityId parameters' });
+    }
+
+    try {
+        const deletedActivity = await Activity.findOneAndDelete({ _id: activityId, tripId });
+
+        if (!deletedActivity) {
+            return res.status(404).json({ error: 'Activity not found' });
+        }
+
+        res.json({ message: 'Activity deleted successfully' });
+    } catch (err) {
+        console.error("Mongoose Delete Error:", err.message);
+        res.status(500).json({ error: 'Server error while deleting activity' });
+    }
+});
+
 module.exports = router;

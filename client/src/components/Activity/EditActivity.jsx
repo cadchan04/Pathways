@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getActivityById, updateActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
-import { getTodayDateString, isDateBeforeToday } from '../Route/routeUtils';
+import { getTodayDateString } from '../Route/routeUtils';
 
 import './EditActivity.css';
 
