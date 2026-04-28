@@ -39,7 +39,21 @@ export const getTripById = async (id, userId) => {
     }
 };
 
-// duplicate an existing trip (owner only)
+export const leaveTrip = async (tripId, userId) => {
+    try {
+        const response = await axios.post(
+            `${API_URL}/api/trips/${tripId}/leave`,
+            {},
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error leaving trip ${tripId}:`, err);
+        throw err;
+    }
+};
+
+// duplicate an existing trip (owner or collaborator)
 export const duplicateTrip = async (tripId, userId) => {
     try {
         const response = await axios.post(`${API_URL}/api/trips/${tripId}/duplicate`, {}, {
@@ -52,7 +66,7 @@ export const duplicateTrip = async (tripId, userId) => {
     }
 };
 
-// update a single trip by ID (owner only on server)
+// update a single trip by ID (owner or editor)
 export const updateTrip = async (id, tripData, userId) => {
     try {
         const response = await axios.put(`${API_URL}/api/trips/${id}`, tripData, {
@@ -79,9 +93,9 @@ export const deleteTripById = async (tripId, userId) => {
 
 export const updatePackingList = async (tripId, packingList, userId) => {
     const response = await axios.patch(
-      `/api/trips/${tripId}/packing-list`,
-      { packingList },
-      { headers: { 'user-id': userId } }
-    )
-    return response.data
-  }
+        `${API_URL}/api/trips/${tripId}/packing-list`,
+        { packingList },
+        { params: { userId } }
+    );
+    return response.data;
+};

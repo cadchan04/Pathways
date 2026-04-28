@@ -48,7 +48,7 @@ export const getRoutes = async (tripId, userId) => {
     .catch(err => console.error(err))
 }
 
-// delete a route from a trip (owner only)
+// delete a route from a trip (owner or editor)
 export const deleteRoute = async (tripId, routeId, userId) => {
   return await axios.delete(`${API_URL}/api/trips/${tripId}/routes/${routeId}/`, {
     params: { userId },
@@ -71,8 +71,10 @@ export const getLegs = async (tripId, routeId, userId) => {
 }
 
 // Update a route with new route data (e.g. after regenerating)
-export const updateRoute = async (tripId, routeId, route) => {
-  return await axios.put(`${API_URL}/api/trips/${tripId}/routes/${routeId}/update/`, route)
+export const updateRoute = async (tripId, routeId, route, userId) => {
+  return await axios.put(`${API_URL}/api/trips/${tripId}/routes/${routeId}/update/`, route, {
+    params: { userId },
+  })
     .then(res => res.data)
     .catch(err => console.error(err))
 }

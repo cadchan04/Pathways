@@ -73,6 +73,10 @@
     font-weight: 700;
     color: #1a1a1a;
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .trip-info p {
@@ -237,4 +241,35 @@
 
 .create-button:hover {
     background-color: #348ea8;
+}
+
+.trip-badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.trip-shared-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #e8f4f8;
+    color: #2c6f82;
+}
+
+.trip-role-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #eef2f6;
+    color: #4a5568;
 }

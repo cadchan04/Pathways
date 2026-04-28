@@ -6,7 +6,8 @@ import { getRoutePreferences, saveMyRoutePreference } from '../../services/route
 import { getAccommodations, deleteAccommodation } from '../../services/accommodationServices';
 import { useUser } from '../../../context/useUser';
 import AccommodationsTab from '../Accommodation/AccommodationsTab';
-import { getTripById, updatePackingList } from '../../services/tripServices';
+import { getTripById, updatePackingList, duplicateTrip, leaveTrip } from '../../services/tripServices';
+import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../collaboration/tripCollaboration';
 
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -67,7 +68,10 @@ export default function TripDetails() {
     const [accToDelete, setAccToDelete] = useState(null);
 
     const [inviteEmail, setInviteEmail] = useState('');
+    const [inviteRole, setInviteRole] = useState('viewer');
     const [inviteSending, setInviteSending] = useState(false);
+    const [sidebarDuplicating, setSidebarDuplicating] = useState(false);
+    const [sidebarLeaving, setSidebarLeaving] = useState(false);
     const [inviteFeedback, setInviteFeedback] = useState(null);
     const [tripInvitations, setTripInvitations] = useState([]);
     const [inviteLoadError, setInviteLoadError] = useState(null);
@@ -134,7 +138,7 @@ export default function TripDetails() {
 
     useEffect(() => {
         if (!trip || !dbUser?._id) return;
-        const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
+        const hasCollaborators = hasCollaboratorsOnTrip(trip);
         if (!hasCollaborators) {
             setGroupSummary(null); setPreferenceError('');
             setRankByMode({ RIDESHARE: '', PERSONAL_VEHICLE: '', BUS: '', TRAIN: '', FLIGHT: '' });
@@ -168,7 +172,7 @@ export default function TripDetails() {
 
     useEffect(() => {
         if (!trip || !dbUser?._id) return;
-        const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
+        const hasCollaborators = hasCollaboratorsOnTrip(trip);
         if (!hasCollaborators) return;
         const onVisible = () => {
             if (document.visibilityState !== 'visible') return;
@@ -183,7 +187,7 @@ export default function TripDetails() {
 
     useEffect(() => {
         if (!showPreferencesModal || !trip || !dbUser?._id) return;
-        const hc = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
+        const hc = hasCollaboratorsOnTrip(trip);
         if (!hc) return;
         let cancelled = false;
         (async () => {
@@ -225,7 +229,7 @@ export default function TripDetails() {
         try {
             const [tripData, accData] = await Promise.all([
                 getTripById(id, dbUser._id),
-                getAccommodations(id)
+                getAccommodations(id, dbUser._id)
             ]);
 
             setTrip(tripData);
@@ -415,7 +419,7 @@ export default function TripDetails() {
     };
 
     const handleSavePreferences = async () => {
-        if (!hasCollaborators || !dbUser?._id) return;
+        if (!trip || !hasCollaboratorsOnTrip(trip) || !dbUser?._id) return;
         setIsSavingPreference(true); setPreferenceError('');
         try {
             const tripId = id || tripIdStr;
@@ -441,8 +445,9 @@ export default function TripDetails() {
         setInviteSending(true);
         try {
             const apiTripId = id || mongoIdString(trip._id);
-            await sendTripInvitation(apiTripId, email, dbUser._id);
+            await sendTripInvitation(apiTripId, email, dbUser._id, inviteRole);
             setInviteEmail('');
+            setInviteRole('viewer');
             setInviteLoadError(null);
             const list = await listTripInvitations(apiTripId, dbUser._id);
             setTripInvitations(Array.isArray(list) ? list : []);
@@ -451,6 +456,32 @@ export default function TripDetails() {
             setInviteFeedback({ type: 'error', text: msg });
         } finally {
             setInviteSending(false);
+        }
+    };
+
+    const handleSidebarDuplicate = async () => {
+        if (!dbUser?._id || !trip?._id) return;
+        setSidebarDuplicating(true);
+        try {
+            await duplicateTrip(mongoIdString(trip._id), dbUser._id);
+            navigate('/my-trips');
+        } catch (e) {
+            console.error('Duplicate trip:', e);
+        } finally {
+            setSidebarDuplicating(false);
+        }
+    };
+
+    const handleLeaveTrip = async () => {
+        if (!dbUser?._id || !trip?._id) return;
+        setSidebarLeaving(true);
+        try {
+            await leaveTrip(mongoIdString(trip._id), dbUser._id);
+            navigate('/my-trips');
+        } catch (e) {
+            console.error('Leave trip:', e);
+        } finally {
+            setSidebarLeaving(false);
         }
     };
 
@@ -472,9 +503,10 @@ export default function TripDetails() {
     const invitationActivityText = (inv) => {
         const email = inv.inviteeEmail || 'Unknown';
         const when = new Date(inv.updatedAt || inv.createdAt).toLocaleString();
+        const roleLabel = inv.role === 'editor' ? 'Editor' : 'Viewer';
         switch (inv.status) {
-            case 'pending':  return `Invitation sent to ${email} — ${when}`;
-            case 'accepted': return `${email} accepted the invitation — ${when}`;
+            case 'pending':  return `Invitation sent to ${email} (${roleLabel}) — ${when}`;
+            case 'accepted': return `${email} accepted the invitation as ${roleLabel} — ${when}`;
             case 'declined': return `${email} declined the invitation — ${when}`;
             case 'revoked':  return `Invitation to ${email} was revoked — ${when}`;
             default:         return `${email} — ${inv.status} — ${when}`;
@@ -657,7 +689,7 @@ export default function TripDetails() {
     );
 
     const renderModalGroupSummary = () => {
-        if (!hasCollaborators) return null;
+        if (!trip || !hasCollaboratorsOnTrip(trip)) return null;
         const model = groupSummary ? buildGroupSummaryModel(groupSummary) : null;
         const tied = groupSummary?.tiedModes || [];
         const summaryMeta = model && groupSummary
@@ -687,7 +719,9 @@ export default function TripDetails() {
         );
     };
 
-    const renderPackingList = () => (
+    const renderPackingList = () => {
+        const canPack = canEditTripAsUser(trip, dbUser?._id);
+        return (
         <div className="td-tab-content">
           <div className="td-content-header">
             <h2>Packing List</h2>
@@ -695,7 +729,8 @@ export default function TripDetails() {
               {packingItems.filter((i) => i.checked).length}/{packingItems.length} packed
             </span>
           </div>
-      
+
+          {canPack && (
           <div className="td-packing-add-row">
             <input
               ref={packingInputRef}
@@ -710,24 +745,29 @@ export default function TripDetails() {
               Add
             </button>
           </div>
-      
+          )}
+
           {packingItems.length === 0 ? (
             <div className="td-empty-state">
               <span className="td-empty-icon">✓</span>
-              <p>No items yet. Add something above.</p>
+              <p>{canPack ? 'No items yet. Add something above.' : 'No packing items yet.'}</p>
             </div>
           ) : (
             <ul className="td-packing-list">
               {packingItems.map((item) => (
                 <li key={item.id} className={`td-packing-item${item.checked ? ' td-packing-item--checked' : ''}`}>
-                  <input
-                    type="checkbox"
-                    className="td-packing-checkbox"
-                    checked={item.checked}
-                    onChange={() => handleTogglePackingItem(item.id)}
-                    aria-label={`Mark ${item.text} as ${item.checked ? 'unpacked' : 'packed'}`}
-                  />
-      
+                  {canPack ? (
+                    <input
+                      type="checkbox"
+                      className="td-packing-checkbox"
+                      checked={item.checked}
+                      onChange={() => handleTogglePackingItem(item.id)}
+                      aria-label={`Mark ${item.text} as ${item.checked ? 'unpacked' : 'packed'}`}
+                    />
+                  ) : (
+                    <span className="td-packing-checkbox-static" aria-hidden>{item.checked ? '☑' : '☐'}</span>
+                  )}
+
                   {editingItemId === item.id ? (
                     <>
                       <input
@@ -741,14 +781,18 @@ export default function TripDetails() {
                         }}
                         autoFocus
                       />
-                      <button className="td-packing-save-btn" onClick={() => handleSaveEditPackingItem(item.id)}>Save</button>
-                      <button className="td-packing-cancel-btn" onClick={handleCancelEditPackingItem}>Cancel</button>
+                      <button type="button" className="td-packing-save-btn" onClick={() => handleSaveEditPackingItem(item.id)}>Save</button>
+                      <button type="button" className="td-packing-cancel-btn" onClick={handleCancelEditPackingItem}>Cancel</button>
                     </>
                   ) : (
                     <>
                       <span className="td-packing-item-text">{item.text}</span>
-                      <button className="td-packing-edit-btn" onClick={() => handleStartEditPackingItem(item)}>Edit</button>
-                      <button className="td-packing-delete-btn" onClick={() => handleDeletePackingItem(item.id)}>Delete</button>
+                      {canPack && (
+                        <>
+                          <button type="button" className="td-packing-edit-btn" onClick={() => handleStartEditPackingItem(item)}>Edit</button>
+                          <button type="button" className="td-packing-delete-btn" onClick={() => handleDeletePackingItem(item.id)}>Delete</button>
+                        </>
+                      )}
                     </>
                   )}
                 </li>
@@ -756,7 +800,8 @@ export default function TripDetails() {
             </ul>
           )}
         </div>
-    )
+        );
+    };
 
     const handleExportPDF = async () => {
         if (!timelineRef.current || !packingRef.current) return;
@@ -815,8 +860,11 @@ export default function TripDetails() {
     //     : [];
 
     const tripIdStr = mongoIdString(trip._id);
-    const isTripOwner = mongoIdString(trip.owner) === mongoIdString(dbUser?._id);
-    const hasCollaborators = Array.isArray(trip?.collaboratorIds) && trip.collaboratorIds.length > 0;
+    const tripRole = tripRoleForUser(trip, dbUser?._id);
+    const isTripOwner = tripRole === 'owner';
+    const canEditTripPage = canEditTripAsUser(trip, dbUser?._id);
+    const isTripCollaborator = tripRole === 'viewer' || tripRole === 'editor';
+    const hasCollaborators = hasCollaboratorsOnTrip(trip);
 
     const renderTimelineMult = () => {
         if (timelineItems.length === 0) {
@@ -985,7 +1033,7 @@ export default function TripDetails() {
                                     >
                                         View Details
                                     </button>
-                                    {isTripOwner && (
+                                    {canEditTripPage && (
                                         <button
                                             className="td-btn-delete"
                                             onClick={() => { setRouteToDelete(route); setShowConfirm(true); }}
@@ -1035,7 +1083,7 @@ export default function TripDetails() {
         <AccommodationsTab
             tripId={id}
             accommodations={accommodations}
-            isOwner={isTripOwner}
+            canEdit={canEditTripPage}
             tripDates={{ start: trip?.startDate, end: trip?.endDate }}
             onOpenModal={handleOpenAccModal}
             onDelete={handleDeleteAcc}
@@ -1085,6 +1133,18 @@ export default function TripDetails() {
                             disabled={inviteSending}
                             className="td-invite-input"
                         />
+                        <label htmlFor="invite-role" className="visually-hidden">Access level</label>
+                        <select
+                            id="invite-role"
+                            className="td-invite-role"
+                            value={inviteRole}
+                            onChange={(e) => setInviteRole(e.target.value)}
+                            disabled={inviteSending}
+                            aria-label="Collaborator access level"
+                        >
+                            <option value="viewer">Viewer</option>
+                            <option value="editor">Editor</option>
+                        </select>
                         <button type="submit" className="td-invite-submit" disabled={inviteSending}>
                             {inviteSending ? 'Sending…' : 'Send invitation'}
                         </button>
@@ -1122,7 +1182,11 @@ export default function TripDetails() {
             ) : (
                 <div className="td-empty-state">
                     <span className="td-empty-icon">⌘</span>
-                    <p>You're a collaborator on this trip.</p>
+                    <p>
+                        {tripRole === 'viewer'
+                            ? 'You’re a viewer on this trip — you can browse and join transport preferences, but only editors can change trip details.'
+                            : 'You’re an editor on this trip — you can edit routes, accommodations, and trip details. Only the owner can invite others or delete the trip.'}
+                    </p>
                 </div>
             )}
         </div>
@@ -1156,6 +1220,7 @@ export default function TripDetails() {
                 {sidebarOpen && (
                     <>
                         <div className="td-sidebar-actions">
+                            {canEditTripPage && (
                             <div className="td-dropdown">
                                 <button
                                     className="td-sidebar-action-btn"
@@ -1191,9 +1256,11 @@ export default function TripDetails() {
                                     </div>
                                 )}
                             </div>
-                            {isTripOwner && (
+                            )}
+                            {canEditTripPage && (
                                 <button
                                     className="td-sidebar-action-btn td-sidebar-action-btn--outline"
+                                    type="button"
                                     onClick={() => navigate(`/edit-trip/${id}`)}
                                 >
                                     <span className="td-sidebar-action-icon">✎</span>
@@ -1203,21 +1270,43 @@ export default function TripDetails() {
                             {isTripOwner && (
                                 <button
                                     className="td-sidebar-action-btn td-sidebar-action-btn--outline"
+                                    type="button"
                                     onClick={() => setActiveTab('collaboration')}
                                 >
                                     <span className="td-sidebar-action-icon">✉</span>
                                     <span>Invite Friends</span>
                                 </button>
                             )}
-                            {isTripOwner && (
+                            {(isTripOwner || isTripCollaborator) && (
                                 <button
                                     className="td-sidebar-action-btn td-sidebar-action-btn--outline"
-                                    onClick={handleExportPDF}
+                                    type="button"
+                                    onClick={handleSidebarDuplicate}
+                                    disabled={sidebarDuplicating || sidebarLeaving}
                                 >
-                                    <span className="td-sidebar-action-icon">📄</span>
-                                    <span>Export Trip</span>
+                                    <span className="td-sidebar-action-icon">⎘</span>
+                                    <span>{sidebarDuplicating ? 'Duplicating…' : 'Duplicate Trip'}</span>
                                 </button>
                             )}
+                            {isTripCollaborator && (
+                                <button
+                                    className="td-sidebar-action-btn td-sidebar-action-btn--outline td-sidebar-action-btn--danger"
+                                    type="button"
+                                    onClick={handleLeaveTrip}
+                                    disabled={sidebarLeaving || sidebarDuplicating}
+                                >
+                                    <span className="td-sidebar-action-icon">⊘</span>
+                                    <span>{sidebarLeaving ? 'Removing…' : 'Remove'}</span>
+                                </button>
+                            )}
+                            <button
+                                className="td-sidebar-action-btn td-sidebar-action-btn--outline"
+                                type="button"
+                                onClick={handleExportPDF}
+                            >
+                                <span className="td-sidebar-action-icon">📄</span>
+                                <span>Export Trip</span>
+                            </button>
                         </div>
 
                         <div className="td-sidebar-divider" />
@@ -1260,6 +1349,11 @@ export default function TripDetails() {
                 {/* Trip Header — always visible */}
                 <header className="td-trip-header">
                     <h1 className="td-trip-name">{trip.name}</h1>
+                    {tripRole && tripRole !== 'owner' && (
+                        <p className="td-trip-role-line">
+                            You’re a <strong>{tripRole === 'editor' ? 'editor' : 'viewer'}</strong> on this trip
+                        </p>
+                    )}
                     {trip.description && <p className="td-trip-desc">{trip.description}</p>}
                     <div className="td-trip-meta-row">
                         <span>
@@ -1453,7 +1547,7 @@ export default function TripDetails() {
                                 className="td-modal-btn td-modal-btn--danger"
                                 onClick={async () => {
                                     try {
-                                        await deleteAccommodation(id, accToDelete._id);
+                                        await deleteAccommodation(id, accToDelete._id, mongoIdString(dbUser._id));
                                         setAccommodations(prev => prev.filter(a => a._id !== accToDelete._id));
                                         setShowAccConfirm(false);
                                         setAccToDelete(null);

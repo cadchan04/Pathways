@@ -6,7 +6,8 @@ import './AccommodationsTab.css';
 export default function AccommodationsTab({
     // tripId,
     accommodations = [],
-    isOwner,
+    /** Owner or editor */
+    canEdit = false,
     tripDates = { start: null, end: null },
     onOpenModal,
     onDelete
@@ -145,7 +146,7 @@ export default function AccommodationsTab({
                                             <div className="acc-dropdown">
                                                 <button onClick={() => onOpenModal(acc)}>View Details</button>
                                                 
-                                                {isOwner && (
+                                                {canEdit && (
                                                     <>
                                                         <button onClick={() => navigate(`/edit-accommodation/${acc._id}`)}>
                                                             Edit

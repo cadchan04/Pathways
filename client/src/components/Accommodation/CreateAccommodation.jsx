@@ -69,7 +69,7 @@ export default function CreateAccommodation() {
         };
 
         try {
-            const savedAccommodation = await createAccommodation(tripId, newAccommodation);
+            const savedAccommodation = await createAccommodation(tripId, newAccommodation, dbUser._id);
             
             if (savedAccommodation) {
                 console.log("Accommodation saved to MongoDB via service");

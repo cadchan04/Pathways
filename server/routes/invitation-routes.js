@@ -7,8 +7,8 @@ const {
   userIdString,
   normalizeEmail,
   canManageTrip,
-  canViewTrip,
   readUserId,
+  isCollaborator,
 } = require("../collaboration/tripAccess");
 
 function escapeRegex(str) {
@@ -26,7 +26,7 @@ async function findUserByEmailNormalized(email) {
 // GET /api/trips/:tripId/invitations
 // list all invitations (owner only)
 // POST /api/trips/:tripId/invitations
-// body: { email }
+// body: { email, role: viewer or editor }
 // query: userId (owner)
 const tripInvitationsRouter = express.Router({ mergeParams: true });
 
@@ -101,12 +101,15 @@ tripInvitationsRouter.post("/", async (req, res) => {
       return res.status(400).json({ error: "That user already owns this trip" });
     }
 
-    if (
-      inviteeUserIdStr &&
-      (trip.collaboratorIds || []).some((id) => userIdString(id) === inviteeUserIdStr)
-    ) {
+    if (inviteeUserIdStr && isCollaborator(trip, inviteeUserIdStr)) {
       return res.status(400).json({ error: "That user is already a collaborator" });
     }
+
+    const roleRaw = req.body?.role;
+    if (roleRaw !== "viewer" && roleRaw !== "editor") {
+      return res.status(400).json({ error: "role must be 'viewer' or 'editor'" });
+    }
+    const role = roleRaw;
 
     const existingPending = await TripInvitation.findOne({
       tripId: trip._id,
@@ -122,6 +125,7 @@ tripInvitationsRouter.post("/", async (req, res) => {
       inviterId,
       inviteeEmail,
       inviteeUserId: inviteeUserIdStr || undefined,
+      role,
     });
 
     res.status(201).json(invitation);
@@ -201,9 +205,15 @@ invitationsRouter.post("/:invitationId/accept", async (req, res) => {
     }
 
     const uid = userIdString(user._id);
-    await Trip.findByIdAndUpdate(trip._id, {
-      $addToSet: { collaboratorIds: uid },
-    });
+    if (isCollaborator(trip, uid)) {
+      return res.status(400).json({ error: "You are already a collaborator on this trip" });
+    }
+
+    const role = invitation.role === "editor" ? "editor" : "viewer";
+    trip.collaborators = trip.collaborators || [];
+    trip.collaborators.push({ userId: uid, role });
+    await trip.save();
+
     invitation.status = "accepted";
     invitation.inviteeUserId = uid;
     await invitation.save();

@@ -12,11 +12,15 @@ function idParam(value) {
  * @param {string} tripId
  * @param {string} email
  * @param {string} userId - inviter (must be trip owner)
+ * @param {'viewer' | 'editor'} role - role of the collaborator
  */
-export const sendTripInvitation = async (tripId, email, userId) => {
+export const sendTripInvitation = async (tripId, email, userId, role = 'viewer') => {
   const response = await axios.post(
     `${API_URL}/api/trips/${encodeURIComponent(idParam(tripId))}/invitations`,
-    { email: String(email || '').trim() },
+    {
+      email: String(email || '').trim(),
+      role: role === 'editor' ? 'editor' : 'viewer',
+    },
     { params: { userId: idParam(userId) } }
   );
   return response.data;

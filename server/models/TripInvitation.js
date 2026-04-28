@@ -11,6 +11,11 @@ const TripInvitationSchema = new mongoose.Schema(
     inviterId: { type: String, required: true },
     inviteeEmail: { type: String, required: true },
     inviteeUserId: { type: String },
+    role: {
+      type: String,
+      enum: ["viewer", "editor"],
+      default: "viewer",
+    },
     status: {
       type: String,
       enum: ["pending", "accepted", "declined", "revoked"],
