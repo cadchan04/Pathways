@@ -16,6 +16,11 @@ const {
     isCollaborator,
     readUserId,
 } = require('../collaboration/tripAccess');
+const {
+    actorLabel,
+    buildTripUpdateMessage,
+    appendCollaborationAlerts,
+} = require('../services/collaboration-notifications-service');
 
 function getTripNameBase(name) {
     const trimmed = String(name || '').trim();
@@ -151,8 +156,16 @@ router.post('/:id/leave', async (req, res) => {
         }
 
         const uid = userIdString(userId);
-        await Trip.findByIdAndUpdate(trip._id, {
-            $pull: { collaboratorIds: uid, collaborators: { userId: uid } },
+        trip.collaboratorIds = (trip.collaboratorIds || []).filter((id) => userIdString(id) !== uid);
+        trip.collaborators = (trip.collaborators || []).filter((c) => userIdString(c.userId) !== uid);
+        const actorName = await actorLabel(uid);
+        const message = `${actorName} left collaboration on ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: uid,
+            type: 'collaborator_removed',
+            message,
+            metadata: { tripId: String(trip._id), collaboratorUserId: uid },
         });
 
         res.status(200).json({ message: 'Trip removed from your list' });
@@ -266,9 +279,10 @@ router.put('/:id', async (req, res) => {
         }
 
         const changes = buildTripFieldChanges(trip.toObject(), updatePayload);
+        const changedFields = changes.map((change) => change.field);
+
         Object.assign(trip, updatePayload);
         trip.updatedAt = new Date();
-
         if (changes.length > 0) {
             const actor = await User.findById(userId).catch(() => null);
             addTripHistoryEntry(trip, {
@@ -281,6 +295,21 @@ router.put('/:id', async (req, res) => {
         }
 
         const updatedTrip = await trip.save();
+
+        if (changedFields.length > 0) {
+            const actorName = await actorLabel(userId);
+            const message = buildTripUpdateMessage(actorName, updatedTrip.name, changedFields);
+            await appendCollaborationAlerts({
+                trip: updatedTrip,
+                actorUserId: userId,
+                type: 'trip_updated',
+                message,
+                metadata: {
+                    tripId: String(updatedTrip._id),
+                    changedFields,
+                },
+            });
+        }
 
         res.status(200).json(updatedTrip);
     } catch (err) {
@@ -303,6 +332,33 @@ router.patch('/:id/alerts/:alertId/read', async (req, res) => {
 
       const alert = trip.priceAlerts.id(req.params.alertId);
       if (!alert) return res.status(404).json({ error: 'Alert not found' });
+
+      alert.read = true;
+      await trip.save();
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+router.patch('/:id/collab-alerts/:alertId/read', async (req, res) => {
+    try {
+      const userId = readUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'userId is required' });
+      }
+
+      const trip = await Trip.findById(req.params.id);
+      if (!trip) return res.status(404).json({ error: 'Trip not found' });
+      if (!canViewTrip(trip, userId)) {
+        return res.status(403).json({ error: 'You do not have access to this trip' });
+      }
+
+      const alert = trip.collabAlerts.id(req.params.alertId);
+      if (!alert) return res.status(404).json({ error: 'Alert not found' });
+      if (userIdString(alert.recipientUserId) !== userIdString(userId)) {
+        return res.status(403).json({ error: 'You can only mark your own alerts as read' });
+      }
 
       alert.read = true;
       await trip.save();
@@ -338,6 +394,14 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
             return res.status(404).json({ message: "Route not found" });
         }
 
+        const changedKeys = Object.keys(cleanData).filter((key) => {
+            const before = route[key] instanceof Date ? route[key].toISOString() : JSON.stringify(route[key] ?? null);
+            const after = cleanData[key] instanceof Date
+                ? cleanData[key].toISOString()
+                : JSON.stringify(cleanData[key] ?? null);
+            return before !== after;
+        });
+
         const actor = await User.findById(userId).catch(() => null);
         const routeName = route.name || cleanData.name || 'route';
 
@@ -349,7 +413,24 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
             summary: `Updated route: ${routeName}`,
             changes: [],
         });
-        await trip.save();
+
+        if (changedKeys.length > 0) {
+            const actorName = await actorLabel(userId);
+            const message = `${actorName} updated route "${route.name}" on ${trip.name}.`;
+            await appendCollaborationAlerts({
+                trip,
+                actorUserId: userId,
+                type: 'route_updated',
+                message,
+                metadata: {
+                    tripId: String(trip._id),
+                    routeId: String(route._id),
+                    changedFields: changedKeys,
+                },
+            });
+        } else {
+            await trip.save();
+        }
 
         res.status(200).json(route);
     } catch (err) {
@@ -375,8 +456,25 @@ router.patch('/:tripId/packing-list', async (req, res) => {
         return res.status(403).json({ error: 'You do not have permission to edit the packing list' });
       }
 
+      const beforePacking = JSON.stringify(trip.packingList || []);
+      const afterPacking = JSON.stringify(packingList || []);
       trip.packingList = packingList;
       await trip.save();
+
+      if (beforePacking !== afterPacking) {
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} updated the packing list on ${trip.name}.`;
+        await appendCollaborationAlerts({
+          trip,
+          actorUserId: userId,
+          type: 'trip_updated',
+          message,
+          metadata: {
+            tripId: String(trip._id),
+            changedFields: ['packingList'],
+          },
+        });
+      }
 
       res.json({ packingList: trip.packingList });
     } catch (err) {

@@ -1,6 +1,32 @@
 const mongoose = require('mongoose');
 const { routeSchema } = require("./Route");
 
+const collabNotificationSchema = new mongoose.Schema(
+    {
+        actorUserId: { type: String, required: true },
+        recipientUserId: { type: String, required: true },
+        type: {
+            type: String,
+            enum: [
+                'trip_updated',
+                'route_added',
+                'route_updated',
+                'route_deleted',
+                'accommodation_added',
+                'accommodation_deleted',
+                'collaborator_added',
+                'collaborator_removed'
+            ],
+            required: true
+        },
+        message: { type: String, required: true, trim: true },
+        metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
+        read: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now }
+    },
+    { _id: true }
+);
+
 const TripSchema = new mongoose.Schema({
     owner: { type: String, required: true },
     name: { type: String, required: true },
@@ -50,6 +76,7 @@ const TripSchema = new mongoose.Schema({
             ],
         }
     ],
+    collabAlerts: [collabNotificationSchema],
     packingList: [
         {
           id: { type: String, required: true },
@@ -61,6 +88,7 @@ const TripSchema = new mongoose.Schema({
 
 TripSchema.index({ 'collaborators.userId': 1 });
 TripSchema.index({ collaboratorIds: 1 });
+TripSchema.index({ 'collabAlerts.recipientUserId': 1, 'collabAlerts.read': 1, 'collabAlerts.createdAt': -1 });
 
 // calculate total cost from routes
 TripSchema.pre('save', async function() {

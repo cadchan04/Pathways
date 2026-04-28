@@ -7,6 +7,10 @@ const {
     actorNameFromUser,
     addTripHistoryEntry,
 } = require('../services/trip-changelog-service');
+const {
+    actorLabel,
+    appendCollaborationAlerts,
+} = require('../services/collaboration-notifications-service');
 
 const router = express.Router({ mergeParams: true });
 
@@ -51,6 +55,20 @@ router.post('/', async (req, res) => {
             changes: [],
         });
         await trip.save();
+        const newRoute = trip.routes[trip.routes.length - 1];
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} added route "${newRoute?.name || req.body.name}" to ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'route_added',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                routeId: newRoute ? String(newRoute._id) : undefined,
+                routeName: newRoute?.name || req.body.name || null,
+            },
+        });
         console.log("Updated Trip with new route:", trip.name, req.body.name)
         res.status(201).json(trip);
         checkAndSendPriceChangeNotifications().catch(console.error);
@@ -100,6 +118,8 @@ router.delete('/:routeId', async (req, res) => {
         }
 
         const costBefore = Number(trip.totalCost) || 0;
+        const deletedRouteName = route.name;
+        const deletedRouteId = String(route._id);
         const routeName = route.name || 'Untitled route';
         route.deleteOne();
 
@@ -114,6 +134,19 @@ router.delete('/:routeId', async (req, res) => {
             changes: [],
         });
         await trip.save();
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} deleted route "${deletedRouteName}" from ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'route_deleted',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                routeId: deletedRouteId,
+                routeName: deletedRouteName,
+            },
+        });
         console.log("Deleted route:", route.name, "from trip:", trip.name)
         res.json({ message: 'Route deleted successfully' });
         checkAndSendPriceChangeNotifications().catch(console.error);

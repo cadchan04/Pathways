@@ -2,6 +2,10 @@ const express = require('express');
 const Accommodation = require('../models/Accommodation');
 const Trip = require('../models/Trip');
 const { canViewTrip, canEditTrip, readUserId } = require('../collaboration/tripAccess');
+const {
+    actorLabel,
+    appendCollaborationAlerts,
+} = require('../services/collaboration-notifications-service');
 
 const router = express.Router({ mergeParams: true });
 
@@ -65,6 +69,19 @@ router.post('/', async (req, res) => {
 
     try {
         const savedAccommodation = await newAccommodation.save();
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} added accommodation "${savedAccommodation.name}" to ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'accommodation_added',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                accommodationId: String(savedAccommodation._id),
+                accommodationName: savedAccommodation.name,
+            },
+        });
         res.status(201).json(savedAccommodation);
     } catch (err) {
         console.error("Mongoose Save Error:", err.message);
@@ -123,7 +140,21 @@ router.delete('/:accId', async (req, res) => {
             return res.status(400).json({ error: 'Accommodation does not belong to this trip' });
         }
 
+        const deletedName = existing.name;
         await Accommodation.findByIdAndDelete(accId);
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} removed accommodation "${deletedName}" from ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'accommodation_deleted',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                accommodationId: String(existing._id),
+                accommodationName: deletedName,
+            },
+        });
         res.json({ message: 'Accommodation deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -111,3 +111,21 @@ export const updatePackingList = async (tripId, packingList, userId) => {
     );
     return response.data;
 };
+
+export const dismissPriceAlert = async (tripId, alertId, userId) => {
+    const response = await axios.patch(
+        `${API_URL}/api/trips/${tripId}/alerts/${alertId}/read`,
+        null,
+        { params: { userId } }
+    );
+    return response.data;
+};
+
+export const dismissCollabAlert = async (tripId, alertId, userId) => {
+    const response = await axios.patch(
+        `${API_URL}/api/trips/${tripId}/collab-alerts/${alertId}/read`,
+        null,
+        { params: { userId } }
+    );
+    return response.data;
+};

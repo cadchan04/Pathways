@@ -10,6 +10,10 @@ const {
   readUserId,
   isCollaborator,
 } = require("../collaboration/tripAccess");
+const {
+  actorLabel,
+  appendCollaborationAlerts,
+} = require("../services/collaboration-notifications-service");
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -213,6 +217,20 @@ invitationsRouter.post("/:invitationId/accept", async (req, res) => {
     trip.collaborators = trip.collaborators || [];
     trip.collaborators.push({ userId: uid, role });
     await trip.save();
+
+    const collaboratorLabel = await actorLabel(uid);
+    const message = `${collaboratorLabel} joined ${trip.name} as ${role}.`;
+    await appendCollaborationAlerts({
+      trip,
+      actorUserId: uid,
+      type: "collaborator_added",
+      message,
+      metadata: {
+        tripId: String(trip._id),
+        collaboratorUserId: uid,
+        role,
+      },
+    });
 
     invitation.status = "accepted";
     invitation.inviteeUserId = uid;
