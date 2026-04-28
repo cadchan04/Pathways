@@ -23,3 +23,23 @@ export const getActivities = async (tripId) => {
         throw err;
     }
 };
+
+export const getActivityById = async (tripId, activityId) => {
+    try {
+        const response = await axios.get(`${API_URL}/api/trips/${tripId}/activities/${activityId}`);
+        return response.data;
+    } catch (err) {
+        console.error("Error fetching activity by ID:", err);
+        throw err;
+    }
+};
+
+export const updateActivity = async (tripId, activityId, activityData) => {
+    try {
+        const response = await axios.put(`${API_URL}/api/trips/${tripId}/activities/${activityId}`, activityData);
+        return response.data;
+    } catch (err) {
+        console.error("Error updating activity:", err);
+        throw err;
+    }
+};

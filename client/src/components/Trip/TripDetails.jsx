@@ -59,7 +59,7 @@ export default function TripDetails() {
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [activeTab, setActiveTab] = useState('timeline');
+    const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'timeline');
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [selectedAcc, setSelectedAcc] = useState(null);
     const [showAccModal, setShowAccModal] = useState(false);

@@ -1,40 +1,40 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createActivity } from '../../services/activityServices';
+import { getActivityById, updateActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
 import { getTodayDateString, isDateBeforeToday } from '../Route/routeUtils';
 
-import './CreateActivity.css';
+import './EditActivity.css';
 
-export default function CreateActivity() {
+export default function EditActivity() {
     const navigate = useNavigate();
-    const { tripId } = useParams();
+    const { tripId, activityId } = useParams();
     const { dbUser } = useUser();
     const today = getTodayDateString();
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [formData, setFormData] = useState({
-        name: '',
-        activityType: 'Sightseeing',
-        address: '',
-        phoneNumber: '',
-        email: '',
-        website: '',
-        activityDate: '',
-        startTime: '15:00',
-        endTime: '16:00',
-        cost: '',
-        notes: ''
-    });
+    const [formData, setFormData] = useState(null);
+
+    useEffect(() => {
+        console.log("EditActivity mounted with tripId:", tripId, "and activityId:", activityId);
+        const fetchActivity = async () => {
+            try {
+                const activity = await getActivityById(tripId, activityId);
+                console.log("Fetched activity for editing:", activity);
+                setFormData(activity);
+            } catch (err) {
+                console.error("Error fetching activity:", err);
+            }
+        };
+
+        if (tripId && activityId) {
+            fetchActivity();
+        }
+    }, [tripId, activityId]);
 
     const validateDates = () => {
         const newErrors = {};
-
-        if (formData.activityDate && isDateBeforeToday(formData.activityDate, today)) {
-            newErrors.activityDate = 'Activity date cannot be in the past.';
-        }
-
         if (formData.activityDate && formData.endTime && formData.endTime < formData.startTime) {
             newErrors.endTime = 'End time cannot be before start time.';
         }
@@ -57,27 +57,26 @@ export default function CreateActivity() {
             return;
         }
 
-        const newActivity = {
+        const updatedActivity = {
             ...formData,
             tripId: tripId,
             owner: dbUser._id,
             cost: formData.cost === '' ? null : Number(formData.cost),
-            createdAt: new Date().toISOString(),
+            createdAt: formData.createdAt,
             updatedAt: new Date().toISOString()
         };
-        console.log("Constructed new activity object:", newActivity);
 
         try {
-            const savedActivity = await createActivity(tripId, newActivity);
+            const savedActivity = await updateActivity(tripId, activityId, updatedActivity);
             
             if (savedActivity) {
                 console.log("Activity saved to MongoDB via service");
-                navigate(`/view-trip-details/${tripId}`);
+                navigate(`/view-trip-details/${tripId}`, { state: { activeTab: 'activities' } });
             }
 
         } catch (err) {
-            console.error("Error creating activity:", err);
-            setErrors({ submit: err.response?.data?.error || "Failed to create activity." });
+            console.error("Error updating activity:", err);
+            setErrors({ submit: err.response?.data?.error || "Failed to update activity." });
         } finally {
             setIsSubmitting(false);
         }
@@ -99,10 +98,14 @@ export default function CreateActivity() {
         }));
     };
 
+    if (!formData) {
+        return <div className="edit-activity-container"><p>Loading activity details...</p></div>;
+    }
+
     return (
-        <div className="create-activity-container">
-            <h2>Add Activity</h2>
-            <form onSubmit={handleSubmit} className="create-activity-form">
+        <div className="edit-activity-container">
+            <h2>Edit Activity</h2>
+            <form onSubmit={handleSubmit} className="edit-activity-form">
                 {/* --- Basic Information --- */}
                 <div className="form-row">
                     <div className="form-group" style={{ flex: 2 }}>
@@ -169,7 +172,8 @@ export default function CreateActivity() {
                         <input 
                             type="date"
                             name="activityDate"
-                            value={formData.activityDate}
+                            value={new Date(formData.activityDate).toISOString().split('T')[0]}
+                            min={today}
                             required
                             onChange={handleChange} 
                         />
@@ -216,7 +220,7 @@ export default function CreateActivity() {
                                 name="cost"
                                 min="0"
                                 step="001"
-                                value={formData.cost}
+                                value={formData.cost ?? ''}
                                 placeholder="0.00"
                                 onChange={handleChange}
                             />
@@ -238,7 +242,7 @@ export default function CreateActivity() {
 
                 <div className="form-actions">
                     <button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Creating...' : 'Create'}
+                        {isSubmitting ? 'Saving...' : 'Save Changes'}
                     </button>
                     <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
                         Cancel

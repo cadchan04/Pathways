@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 import './ActivitiesTab.css';
 
 export default function ActivitiesTab({
-    // tripId,
     activities = [],
     isOwner,
     tripDates = { start: null, end: null },
@@ -12,8 +11,9 @@ export default function ActivitiesTab({
     onDelete
 }) {
     const navigate = useNavigate();
+    const tripId = useParams();
     const [activeMenuId, setActiveMenuId] = useState(null);
-    const deletingId = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
 
     // sort activities by date
     const sortedActivities = useMemo(() => {
@@ -166,7 +166,7 @@ export default function ActivitiesTab({
                                                 
                                                 {isOwner && (
                                                     <>
-                                                        <button onClick={() => navigate(`/edit-activity/${activity._id}`)}>
+                                                        <button onClick={() => navigate(`/edit-activity/${tripId.id}/${activity._id}`)}>
                                                             Edit
                                                         </button>
                                                         <button 

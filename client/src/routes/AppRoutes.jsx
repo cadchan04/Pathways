@@ -15,6 +15,7 @@ import EditProfile from "../components/Account/EditProfile.jsx";
 import InvitationsPage from "../components/Invitations/InvitationsPage.jsx";
 import CreateAccommodation from "../components/Accommodation/CreateAccommodation.jsx";
 import CreateActivity from "../components/Activity/CreateActivity.jsx";
+import EditActivity from "../components/Activity/EditActivity.jsx";
 
 export default function AppRoutes() {
   return (
@@ -40,6 +41,7 @@ export default function AppRoutes() {
       <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
       <Route path="/add-accommodation/:tripId" element={<ProtectedRoute><CreateAccommodation /></ProtectedRoute>} />
       <Route path="/add-activity/:tripId" element={<ProtectedRoute><CreateActivity /></ProtectedRoute>} />
+      <Route path="/edit-activity/:tripId/:activityId" element={<ProtectedRoute><EditActivity /></ProtectedRoute>} />
 
       {/* 404 fallback */}
       <Route path="*" element={<h1>404: Page Not Found</h1>} />

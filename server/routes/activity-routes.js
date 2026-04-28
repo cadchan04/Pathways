@@ -67,4 +67,51 @@ router.get('/', async (req, res) => {
     }
 });
 
+router.get('/:activityId', async (req, res) => {
+    const { tripId, activityId } = req.params;
+
+    if (!tripId || !activityId) {
+        return res.status(400).json({ error: 'Missing tripId or activityId parameters' });
+    }
+
+    try {
+        const activity = await Activity.findOne({ _id: activityId, tripId });
+
+        if (!activity) {
+            return res.status(404).json({ error: 'Activity not found' });
+        }
+
+        res.json(activity);
+    } catch (err) {
+        console.error("Mongoose Find Error:", err.message);
+        res.status(500).json({ error: 'Server error while fetching activity' });
+    }
+});
+
+router.put('/:activityId', async (req, res) => {
+    const { tripId, activityId } = req.params;
+    const updateData = req.body;
+
+    if (!tripId || !activityId) {
+        return res.status(400).json({ error: 'Missing tripId or activityId parameters' });
+    }
+
+    try {
+        const updatedActivity = await Activity.findOneAndUpdate(
+            { _id: activityId, tripId },
+            updateData,
+            { returnDocument: 'after' }
+        );
+
+        if (!updatedActivity) {
+            return res.status(404).json({ error: 'Activity not found' });
+        }
+
+        res.json(updatedActivity);
+    } catch (err) {
+        console.error("Mongoose Update Error:", err.message);
+        res.status(400).json({ error: err.message });
+    }
+});
+
 module.exports = router;
