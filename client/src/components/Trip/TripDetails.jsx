@@ -4,8 +4,10 @@ import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
 import { getRoutePreferences, saveMyRoutePreference } from '../../services/routePreferenceServices';
 import { getAccommodations, deleteAccommodation } from '../../services/accommodationServices';
+import { getActivities, deleteActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
 import AccommodationsTab from '../Accommodation/AccommodationsTab';
+import ActivitiesTab from '../Activity/ActivitiesTab';
 import { getTripById, updatePackingList, duplicateTrip, leaveTrip } from '../../services/tripServices';
 import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../collaboration/tripCollaboration';
 
@@ -54,9 +56,10 @@ export default function TripDetails() {
 
     const [trip, setTrip] = useState(null);
     const [accommodations, setAccommodations] = useState([]);
+    const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [activeTab, setActiveTab] = useState('timeline');
+    const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'timeline');
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [selectedAcc, setSelectedAcc] = useState(null);
     const [showAccModal, setShowAccModal] = useState(false);
@@ -66,6 +69,9 @@ export default function TripDetails() {
 
     const [showAccConfirm, setShowAccConfirm] = useState(false);
     const [accToDelete, setAccToDelete] = useState(null);
+
+    const [showActivityConfirm, setShowActivityConfirm] = useState(false);
+    const [activityToDelete, setActivityToDelete] = useState(null);
 
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('viewer');
@@ -227,13 +233,15 @@ export default function TripDetails() {
         if (!id || !dbUser?._id) return;
 
         try {
-            const [tripData, accData] = await Promise.all([
+            const [tripData, accData, activityData] = await Promise.all([
                 getTripById(id, dbUser._id),
-                getAccommodations(id, dbUser._id)
+                getAccommodations(id, dbUser._id),
+                getActivities(id, dbUser._id),
             ]);
 
             setTrip(tripData);
             setAccommodations(accData);
+            setActivities(activityData);
 
         } catch (err) {
             console.error("Error refreshing data:", err);
@@ -500,6 +508,11 @@ export default function TripDetails() {
         setShowAccConfirm(true);
     };
 
+    const handleDeleteActivity = async (activityId) => {
+        setActivityToDelete(activityId);
+        setShowActivityConfirm(true);
+    }
+
     const invitationActivityText = (inv) => {
         const email = inv.inviteeEmail || 'Unknown';
         const when = new Date(inv.updatedAt || inv.createdAt).toLocaleString();
@@ -570,9 +583,14 @@ export default function TripDetails() {
         });
 
         // TODO: format activities
+        const activityItems = (activities || []).map(activity => ({
+            ...activity,
+            itemType: 'activity',
+            sortDate: new Date(activity.activityDate?.$date || activity.activityDate)
+        }));
 
-        return [...routeItems, ...accItems].sort((a, b) => a.sortDate - b.sortDate);
-    }, [sortedRoutes, accommodations]);
+        return [...routeItems, ...accItems, ...activityItems].sort((a, b) => a.sortDate - b.sortDate);
+    }, [sortedRoutes, accommodations, activities]);
 
     // ── helpers for rendering ───────────────────────────────────────────────────────────────
     const renderRouteCard = (route, index, isSameDay, currentDate) => {
@@ -634,6 +652,37 @@ export default function TripDetails() {
                         <button
                             className="td-btn-view"
                             onClick={() => handleOpenAccModal(acc)}
+                        >
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderActivityCard = (activity, index, isSameDay, currentDate) => {
+        const outOfRange = isRouteOutOfRange({ departAt: activity.sortDate });
+
+        return (
+            <div key={`activity-${activity._id}`} className={`td-timeline-entry${isSameDay ? ' same-day' : ''}`}>
+                <div className="td-timeline-date-circle">
+                    {!isSameDay ? currentDate : ''}
+                </div>
+
+                <div className={`td-route-card td-activity-card ${outOfRange ? 'td-route-card--warning' : ''}`}>
+                    <div className="td-route-info">
+                        {outOfRange && <span>⚠️ </span>}
+                        <span className="td-acc-type-badge">{activity.activityType}</span>
+                        <h3>🎯 {activity.name}</h3>
+                        <p>🕒 {activity.startTime.split(':')[0] > 12 ? activity.startTime.split(':')[0] - 12 + ":" + activity.startTime.split(':')[1] + " PM " : activity.startTime + " AM "}
+                            to {activity.endTime.split(':')[0] > 12 ? activity.endTime.split(':')[0] - 12 + ":" + activity.endTime.split(':')[1] + " PM" : activity.endTime + " AM"}
+                            </p>
+                    </div>
+                    <div className="td-route-actions">
+                        <button
+                            className="td-btn-view"
+                            onClick={() => console.log('View activity details (not implemented)', activity)}
                         >
                             View Details
                         </button>
@@ -907,6 +956,8 @@ export default function TripDetails() {
                             case 'accommodation-checkin':
                             case 'accommodation-checkout':
                                 return renderAccommodationCard(item, index, isSameDay, currentDate);
+                            case 'activity':
+                                return renderActivityCard(item, index, isSameDay, currentDate);
                             
                             default:
                                 return null;
@@ -1090,6 +1141,16 @@ export default function TripDetails() {
         />
     );
 
+    const renderActivities = () => (
+        <ActivitiesTab
+            tripId={id}
+            activities={activities}
+            isOwner={isTripOwner}
+            tripDates={{ start: trip?.startDate, end: trip?.endDate }}
+            onDelete={handleDeleteActivity}
+        />
+    );
+
     const renderComingSoon = (icon, label) => (
         <div className="td-tab-content">
             <div className="td-content-header"><h2>{label}</h2></div>
@@ -1196,7 +1257,7 @@ export default function TripDetails() {
         timeline:       renderTimelineMult,
         routes:         renderRoutes,
         accommodations: renderAccommodations,
-        activities:     () => renderComingSoon('☼', 'Activities'),
+        activities:     renderActivities,
         map:            () => renderComingSoon('◎', 'Map'),
         collaboration:  renderCollaboration,
         changelog:      () => renderComingSoon('◷', 'Changelog'),
@@ -1249,7 +1310,7 @@ export default function TripDetails() {
                                         </button>
                                         <button
                                             className="td-dropdown-item"
-                                            onClick={() => navigate(`/add-activity`, { state: { tripId: trip._id } })}
+                                            onClick={() => navigate(`/add-activity/${trip._id}`, { state: { tripId: trip._id } })}
                                         >
                                             Add Activity
                                         </button>
@@ -1570,41 +1631,74 @@ export default function TripDetails() {
                 </div>
             )}
 
+            {/* ── Delete Activites Confirm ── */}
+            {showActivityConfirm && (
+                <div className="td-modal-overlay" onClick={() => setShowActivityConfirm(false)}>
+                    <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Confirm Delete</h3>
+                        <p>Delete Activity: "<strong>{activityToDelete?.name}</strong>"?</p>
+                        <div className="td-modal-actions">
+                            <button
+                                className="td-modal-btn td-modal-btn--danger"
+                                onClick={async () => {
+                                    try {
+                                        await deleteActivity(id, activityToDelete._id, mongoIdString(dbUser._id));
+                                        setActivities(prev => prev.filter(a => a._id !== activityToDelete._id));
+                                        setShowActivityConfirm(false);
+                                        setActivityToDelete(null);
+                                    } catch (err) {
+                                        console.error("Failed to delete activity:", err);
+                                        alert("Could not delete activity. Please try again.");
+                                    }
+                                }}
+                            >
+                                Confirm
+                            </button>
+                            <button 
+                                className="td-modal-btn td-modal-btn--cancel" 
+                                onClick={() => setShowActivityConfirm(false)}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Hidden PDF Render (DO NOT REMOVE) ── */}
-<div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+            <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
     
-    {/* Timeline PDF */}
-    <div ref={timelineRef} className="td-pdf-section">
-        <div className="td-pdf-header">
-            <h1>{trip.name}</h1>
-            {trip.description && <p>{trip.description}</p>}
-            <p>
-                {new Date(trip.startDate).toLocaleDateString()} –{' '}
-                {new Date(trip.endDate).toLocaleDateString()}
-            </p>
-            <p>Budget: ${trip.budget?.toFixed(2) || 'N/A'}</p>
-        </div>
+                {/* Timeline PDF */}
+                <div ref={timelineRef} className="td-pdf-section">
+                    <div className="td-pdf-header">
+                        <h1>{trip.name}</h1>
+                        {trip.description && <p>{trip.description}</p>}
+                        <p>
+                            {new Date(trip.startDate).toLocaleDateString()} –{' '}
+                            {new Date(trip.endDate).toLocaleDateString()}
+                        </p>
+                        <p>Budget: ${trip.budget?.toFixed(2) || 'N/A'}</p>
+                    </div>
 
-        {/* reuse your timeline UI */}
-        {renderTimelineMult()}
-    </div>
+                    {/* reuse your timeline UI */}
+                    {renderTimelineMult()}
+                </div>
 
-    {/* Packing List PDF */}
-    <div ref={packingRef} className="td-pdf-section">
-        <div className="td-pdf-header">
-            <h1>Packing List</h1>
-        </div>
+                {/* Packing List PDF */}
+                <div ref={packingRef} className="td-pdf-section">
+                    <div className="td-pdf-header">
+                        <h1>Packing List</h1>
+                    </div>
 
-        <ul className="td-pdf-packing-list">
-            {packingItems.map(item => (
-                <li key={item.id}>
-                    <input type="checkbox" checked={item.checked} readOnly />
-                    {item.text}</li>
-            ))}
-        </ul>
-    </div>
-
-</div>
+                    <ul className="td-pdf-packing-list">
+                        {packingItems.map(item => (
+                            <li key={item.id}>
+                                <input type="checkbox" checked={item.checked} readOnly />
+                                {item.text}</li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
         </div>
     );
 }

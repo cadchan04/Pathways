@@ -111,7 +111,7 @@ export default function RouteOptions() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [pendingTripId, setPendingTripId] = useState(null);
   const [comparisonRoutes, setComparisonRoutes] = useState([null, null])
-  const [sortBy, setSortBy] = useState({ key: 'duration', order: 'asc' })
+  const [sortBy, setSortBy] = useState({ key: 'totalDuration', order: 'asc' })
   const [filters, setFilters] = useState({
     travelTime: {
       min: '',
