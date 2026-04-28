@@ -33,6 +33,13 @@
     margin-bottom: 10px;
 }
 
+.edit-trip-collab-note {
+    font-size: 0.9rem;
+    color: #555;
+    margin: 0 0 16px;
+    line-height: 1.45;
+}
+
 .edit-trip-form {
     display: flex;
     flex-direction: column;

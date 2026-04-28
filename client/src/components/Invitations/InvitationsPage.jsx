@@ -59,6 +59,9 @@ export default function InvitationsPage() {
     return start || end || null;
   };
 
+  /** Viewer or editor */
+  const invitationAccessLabel = (inv) => (inv?.role === 'editor' ? 'Editor' : 'Viewer');
+
   const tripIdForNav = (inv) => {
     const t = inv.tripId;
     if (t && typeof t === 'object') return mongoIdString(t._id);
@@ -131,10 +134,17 @@ export default function InvitationsPage() {
           {invitations.map((inv) => {
             const id = mongoIdString(inv._id);
             const busy = actionId === id;
+            const accessLabel = invitationAccessLabel(inv);
             return (
               <li key={id} className="invitations-list__item">
                 <div className="invitations-list__main">
                   <h2 className="invitations-list__title">{tripLabel(inv)}</h2>
+                  <p className="invitations-list__role" aria-label="Invitation access level">
+                    Invited as <strong>{accessLabel}</strong>
+                    {accessLabel === 'Editor'
+                      ? ' — you can edit the trip after you accept.'
+                      : ' — you can view the trip after you accept.'}
+                  </p>
                   {tripDates(inv) && (
                     <p className="invitations-list__meta">{tripDates(inv)}</p>
                   )}

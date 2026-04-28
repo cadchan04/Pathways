@@ -1,8 +1,9 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { getTrips, duplicateTrip, deleteTripById } from '../../services/tripServices';
+import { getTrips, duplicateTrip, deleteTripById, leaveTrip } from '../../services/tripServices';
 import { useUser } from '../../../context/useUser';
+import { tripRoleForUser } from '../collaboration/tripCollaboration';
 
 import './MyTrip.css';
 
@@ -24,7 +25,8 @@ export default function MyTrip() {
   // Menu State
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [duplicatingId, setDuplicatingId] = useState(null);
-  const [showConfirm, setShowConfirm] = useState(false); // delete popup state
+  const [leavingId, setLeavingId] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [tripToDelete, setTripToDelete] = useState(null);
 
   // Fetch trips
@@ -87,6 +89,28 @@ export default function MyTrip() {
     }
   };
 
+  const handleLeaveTrip = async (e, trip) => {
+    e.stopPropagation();
+    const idStr =
+      typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
+    setLeavingId(idStr);
+    try {
+      await leaveTrip(idStr, dbUser._id);
+      setTrips((prev) =>
+        prev.filter((t) => {
+          const tid = typeof t._id === 'string' ? t._id : t._id?.$oid ?? String(t._id);
+          return tid !== idStr;
+        })
+      );
+      window.dispatchEvent(new Event('refreshNotifications'));
+    } catch (err) {
+      console.error('Error removing trip from list:', err);
+    } finally {
+      setLeavingId(null);
+      setActiveMenuId(null);
+    }
+  };
+
   const handleDeleteTrip = async (tripId) => {
     if (!dbUser?._id) return;
     try {
@@ -130,13 +154,28 @@ export default function MyTrip() {
               const tripIdStr =
                 typeof trip._id === 'string' ? trip._id : trip._id?.$oid ?? String(trip._id);
               const isOpen = activeMenuId === tripIdStr;
-              const isOwner =
-                dbUser?._id != null &&
-                mongoIdString(trip.owner) === mongoIdString(dbUser._id);
+              const role = tripRoleForUser(trip, dbUser?._id);
+              const isOwner = role === 'owner';
+              const isCollaborator = role === 'viewer' || role === 'editor';
+              const showTripMenu = isOwner || isCollaborator;
+              const roleLabel =
+                role === 'viewer' ? 'Viewer' : role === 'editor' ? 'Editor' : null;
+
               return (
                 <div key={tripIdStr} className="trip-row">
                   <div className="trip-info">
-                    <h3>{trip.name}</h3>
+                    <h3>
+                      {trip.name}
+                      {isCollaborator && roleLabel && (
+                        <span
+                          className="trip-badges"
+                          title={`Shared with you — ${roleLabel}`}
+                        >
+                          <span className="trip-shared-badge">Shared</span>
+                          <span className="trip-role-badge">{roleLabel}</span>
+                        </span>
+                      )}
+                    </h3>
                     <p>{trip.description || "No description provided."}</p>
                   </div>
 
@@ -155,11 +194,12 @@ export default function MyTrip() {
                       View Details
                     </button>
 
-                    {isOwner && (
+                    {showTripMenu && (
                     <div className="more-options-container">
                       <button
                         className="three-dots-button"
                         onClick={(e) => toggleMenu(e, tripIdStr)}
+                        aria-label="Trip actions"
                         >
                           ⋮
                         </button>
@@ -169,7 +209,7 @@ export default function MyTrip() {
                             <button
                               type="button"
                               className="duplicate-trip-button"
-                              disabled={duplicatingId !== null}
+                              disabled={duplicatingId !== null || leavingId !== null}
                               onClick={(e) => {
                                 handleDuplicateTrip(e, trip);
                                 setActiveMenuId(null);
@@ -178,6 +218,7 @@ export default function MyTrip() {
                               {duplicatingId === tripIdStr ? 'Duplicating…' : 'Duplicate'}
                             </button>
 
+                            {isOwner && (
                             <button
                               type="button"
                               className="delete-trip-button"
@@ -190,6 +231,18 @@ export default function MyTrip() {
                             >
                               Delete
                             </button>
+                            )}
+
+                            {isCollaborator && (
+                              <button
+                                type="button"
+                                className="delete-trip-button"
+                                disabled={leavingId !== null || duplicatingId !== null}
+                                onClick={(e) => handleLeaveTrip(e, trip)}
+                              >
+                                {leavingId === tripIdStr ? 'Removing…' : 'Remove'}
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

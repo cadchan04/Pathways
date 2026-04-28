@@ -130,7 +130,11 @@ export default function RouteDetails() {
     const handleSaveRegeneratedRoute = async (route) => {
         try {
             setIsSubmitting(true);
-            await updateRoute(location.state.tripId, location.state.originalRoute?._id, route);
+            if (!dbUser?._id) {
+                setSubmitError('Sign in to save changes.');
+                return;
+            }
+            await updateRoute(location.state.tripId, location.state.originalRoute?._id, route, dbUser._id);
         } catch (err) {
             console.error('Error saving regenerated route:', err);
             setSubmitError('Could not save the selected route. Please try again.');

@@ -1,7 +1,7 @@
 const express = require('express');
 const Trip = require('../models/Trip');
 const { checkAndSendPriceChangeNotifications } = require('../services/notifications-service');
-const { canViewTrip, canManageTrip, readUserId } = require('../collaboration/tripAccess');
+const { canViewTrip, canEditTrip, readUserId } = require('../collaboration/tripAccess');
 
 const router = express.Router({ mergeParams: true });
 
@@ -17,8 +17,8 @@ router.post('/', async (req, res) => {
         if (!trip) {
             return res.status(404).json({ error: 'Trip not found' });
         }
-        if (!canManageTrip(trip, userId)) {
-            return res.status(403).json({ error: 'Only the trip owner can add routes' });
+        if (!canEditTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have permission to add routes to this trip' });
         }
 
         const costBefore = Number(trip.totalCost) || 0;
@@ -76,8 +76,8 @@ router.delete('/:routeId', async (req, res) => {
         if (!trip) {
             return res.status(404).json({ error: 'Trip not found' });
         }
-        if (!canManageTrip(trip, userId)) {
-            return res.status(403).json({ error: 'Only the trip owner can delete routes' });
+        if (!canEditTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have permission to delete routes on this trip' });
         }
         const route = trip.routes.id(req.params.routeId);
         if (!route) {
@@ -85,8 +85,6 @@ router.delete('/:routeId', async (req, res) => {
         }
 
         const costBefore = Number(trip.totalCost) || 0;
-        route.deleteOne();
-
         route.deleteOne();
 
         trip.totalCost = trip.routes.reduce((sum, r) => sum + (Number(r.totalCost) || 0), 0);

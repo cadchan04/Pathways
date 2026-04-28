@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getTripById, updateTrip, deleteTripById, duplicateTrip } from '../../services/tripServices';
 import { useUser } from '../../../context/useUser';
+import { canEditTripAsUser, tripRoleForUser } from '../collaboration/tripCollaboration';
 
 import './EditTrip.css';
 
@@ -41,6 +42,7 @@ export default function EditTrip() {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [myRole, setMyRole] = useState(null);
 
     // Date Warning
     const [originalRoutes, setOriginalRoutes] = useState([]);
@@ -53,7 +55,9 @@ export default function EditTrip() {
     const [duplicating, setDuplicating] = useState(false);
     const [duplicateError, setDuplicateError] = useState(null);
 
-    // fetch existing trip data
+     // fetch existing trip data
+    const isTripOwner = myRole === 'owner';
+
     useEffect(() => {
         const fetchTrip = async () => {
             if (!dbUser?._id) {
@@ -64,7 +68,10 @@ export default function EditTrip() {
             try {
                 const data = await getTripById(id, dbUser._id);
 
-                if (mongoIdString(data.owner) !== mongoIdString(dbUser._id)) {
+                const role = tripRoleForUser(data, dbUser._id);
+                setMyRole(role);
+
+                if (!canEditTripAsUser(data, dbUser._id)) {
                     navigate(`/view-trip-details/${id}`, { replace: true });
                     return;
                 }
@@ -84,7 +91,7 @@ export default function EditTrip() {
             } finally {
                 setLoading(false);
             }
-        }
+        };
 
         fetchTrip();
     }, [id, dbUser?._id, navigate]);
@@ -110,7 +117,7 @@ export default function EditTrip() {
         e.preventDefault();
         setError(null);
 
-        const start = formData.startDate; 
+        const start = formData.startDate;
         const end = formData.endDate;
 
         // basic date validation
@@ -148,6 +155,18 @@ export default function EditTrip() {
         }
     };
 
+    // Delete Trip logic for a single trip view
+    const handleDeleteTrip = async () => {
+        try {
+            await deleteTripById(id, dbUser._id);
+            navigate('/my-trips');
+        } catch (err) {
+            console.error("Error deleting trip: ", err);
+            setError("Could not delete trip. Please try again.");
+            setShowConfirm(false);
+        }
+    };
+
     if (error && typeof error === 'string') {
         return (
             <div className="edit-trip-container">
@@ -171,24 +190,15 @@ export default function EditTrip() {
         );
     }
 
-    // Delete Trip logic for a single trip view
-    const handleDeleteTrip = async () => {
-        try {
-            await deleteTripById(id, dbUser._id);
-            navigate('/my-trips');
-        } catch (err) {
-            console.error("Error deleting trip: ", err);
-            setError("Could not delete trip. Please try again.");
-            setShowConfirm(false);
-        }
-    }
-
     return (
         <div className="edit-trip-container">
             <button className="back-cancel-button" onClick={() => navigate(-1)}>← Cancel</button>
             <div className="edit-header">
                 {duplicateError && <p className="duplicate-error">{duplicateError}</p>}
                 <h1>Edit Trip Details</h1>
+                {!isTripOwner && myRole === 'editor' && (
+                    <p className="edit-trip-collab-note">You’re editing as an <strong>editor</strong>. Trip ownership and collaborators are controlled by the owner.</p>
+                )}
             </div>
 
             {error && <div className="error-message" style={{color: 'red', marginBottom: '15px'}}>
@@ -257,13 +267,15 @@ export default function EditTrip() {
                         {duplicating ? 'Duplicating…' : 'Duplicate Trip'}
                     </button>
 
-                    <button
-                        type="button"
-                        className="delete-trip-button"
-                        onClick={() => setShowConfirm(true)}
+                    {isTripOwner && (
+                        <button
+                            type="button"
+                            className="delete-trip-button"
+                            onClick={() => setShowConfirm(true)}
                         >
-                        Delete Trip
-                    </button>
+                            Delete Trip
+                        </button>
+                    )}
                 </div>
             </form>
 

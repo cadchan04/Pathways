@@ -61,6 +61,18 @@
   color: #1a1a1a;
 }
 
+.invitations-list__role {
+  margin: 0 0 8px 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #4b5563;
+}
+
+.invitations-list__role strong {
+  color: #1a5f73;
+  font-weight: 700;
+}
+
 .invitations-list__meta {
   margin: 0;
   font-size: 0.9rem;

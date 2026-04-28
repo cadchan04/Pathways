@@ -1,7 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const Trip = require('../models/Trip.js');
-const { userIdString, canViewTrip, canManageTrip, readUserId } = require('../collaboration/tripAccess');
+const {
+    userIdString,
+    canViewTrip,
+    canManageTrip,
+    canEditTrip,
+    canDuplicateTrip,
+    isCollaborator,
+    readUserId,
+} = require('../collaboration/tripAccess');
 
 function getTripNameBase(name) {
     const trimmed = String(name || '').trim();
@@ -56,7 +64,11 @@ router.get('/', async (req, res) => {
     try {
         const uid = userIdString(userId);
         const trips = await Trip.find({
-            $or: [{ owner: uid }, { collaboratorIds: uid }],
+            $or: [
+                { owner: uid },
+                { collaboratorIds: uid },
+                { 'collaborators.userId': uid },
+            ],
         });
 
         res.status(200).json(trips);
@@ -78,22 +90,24 @@ router.post('/:id/duplicate', async (req, res) => {
             return res.status(404).json({ message: 'Trip not found' });
         }
 
-        if (!canManageTrip(source, userId)) {
-            return res.status(403).json({ error: 'Only the trip owner can duplicate this trip' });
+        if (!canDuplicateTrip(source, userId)) {
+            return res.status(403).json({ error: 'You do not have permission to duplicate this trip' });
         }
 
+        const newOwnerId = userIdString(userId);
         const baseName = getTripNameBase(source.name);
-        const count = await countTripsInNameFamily(source.owner, baseName);
+        const count = await countTripsInNameFamily(newOwnerId, baseName);
         const newName = `${baseName} (${count + 1})`;
 
         const now = new Date();
         const duplicated = new Trip({
-            owner: source.owner,
+            owner: newOwnerId,
             name: newName,
             description: source.description,
             startDate: source.startDate,
             endDate: source.endDate,
-            collaboratorIds: source.collaboratorIds ? [...source.collaboratorIds] : [],
+            collaboratorIds: [],
+            collaborators: [],
             routes: cloneRoutesForDuplicate(source.routes || []),
             createdAt: now,
             updatedAt: now
@@ -104,6 +118,41 @@ router.post('/:id/duplicate', async (req, res) => {
     } catch (err) {
         console.error('Error duplicating trip:', err);
         res.status(500).json({ error: 'Failed to duplicate trip' });
+    }
+});
+
+// Collaborator removes trip from their list only, but does not delete the trip for the owner
+router.post('/:id/leave', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) {
+            return res.status(404).json({ message: 'Trip not found' });
+        }
+
+        if (canManageTrip(trip, userId)) {
+            return res.status(400).json({
+                error: 'Trip owners cannot leave their trip this way. Delete the trip if you want it removed.',
+            });
+        }
+
+        if (!isCollaborator(trip, userId)) {
+            return res.status(403).json({ error: 'You are not a collaborator on this trip' });
+        }
+
+        const uid = userIdString(userId);
+        await Trip.findByIdAndUpdate(trip._id, {
+            $pull: { collaboratorIds: uid, collaborators: { userId: uid } },
+        });
+
+        res.status(200).json({ message: 'Trip removed from your list' });
+    } catch (err) {
+        console.error('Error leaving trip:', err);
+        res.status(500).json({ error: 'Failed to leave trip' });
     }
 });
 
@@ -156,7 +205,7 @@ router.delete('/:id', async(req, res) => {
     }
 });
 
-// Edit a trip by id (owner only)
+// Edit a trip by id (owner or editor)
 router.put('/:id', async (req, res) => {
     try {
         const userId = readUserId(req);
@@ -169,13 +218,20 @@ router.put('/:id', async (req, res) => {
         if (!trip) {
             return res.status(404).json({ message: "Trip not found" });
         }
+        if (!canEditTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have permission to edit this trip' });
+        }
+
+        const updatePayload = { ...req.body };
         if (!canManageTrip(trip, userId)) {
-            return res.status(403).json({ error: 'Only the trip owner can edit trip details' });
+            delete updatePayload.owner;
+            delete updatePayload.collaboratorIds;
+            delete updatePayload.collaborators;
         }
 
         const updatedTrip = await Trip.findByIdAndUpdate(
             id,
-            req.body,
+            updatePayload,
             { returnDocument: "after", runValidators: true }
         );
 
@@ -216,9 +272,18 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
         const { tripId, routeId } = req.params;
         const { _id, ...cleanData } = req.body;
 
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
         const trip = await Trip.findById(tripId);
         if (!trip) {
             return res.status(404).json({ message: "Trip not found" });
+        }
+
+        if (!canEditTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have permission to edit routes on this trip' });
         }
 
         const route = trip.routes.id(routeId);
@@ -238,21 +303,28 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
 
 router.patch('/:tripId/packing-list', async (req, res) => {
     try {
-      const { tripId } = req.params
-      const { packingList } = req.body
-  
-      const trip = await Trip.findByIdAndUpdate(
-        tripId,
-        { $set: { packingList } },
-        { new: true }
-      )
-  
-      if (!trip) return res.status(404).json({ error: 'Trip not found' })
-  
-      res.json({ packingList: trip.packingList })
+      const { tripId } = req.params;
+      const { packingList } = req.body;
+
+      const userId = readUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: 'userId is required' });
+      }
+
+      const trip = await Trip.findById(tripId);
+      if (!trip) return res.status(404).json({ error: 'Trip not found' });
+
+      if (!canEditTrip(trip, userId)) {
+        return res.status(403).json({ error: 'You do not have permission to edit the packing list' });
+      }
+
+      trip.packingList = packingList;
+      await trip.save();
+
+      res.json({ packingList: trip.packingList });
     } catch (err) {
-      console.error('Error updating packing list:', err)
-      res.status(500).json({ error: 'Could not update packing list' })
+      console.error('Error updating packing list:', err);
+      res.status(500).json({ error: 'Could not update packing list' });
     }
   });
   

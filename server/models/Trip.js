@@ -8,6 +8,16 @@ const TripSchema = new mongoose.Schema({
     startDate: { type: Date },
     endDate: { type: Date },
     collaboratorIds: [{ type: String }], // will be array of user IDs who are collaborators
+    collaborators: [
+        {
+            userId: { type: String, required: true },
+            role: {
+                type: String,
+                enum: ['viewer', 'editor'],
+                required: true,
+            },
+        },
+    ],
     routes: [routeSchema],
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
@@ -27,6 +37,9 @@ const TripSchema = new mongoose.Schema({
         }
     ]
 });
+
+TripSchema.index({ 'collaborators.userId': 1 });
+TripSchema.index({ collaboratorIds: 1 });
 
 // calculate total cost from routes
 TripSchema.pre('save', async function() {

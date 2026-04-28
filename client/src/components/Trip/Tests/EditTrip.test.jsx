@@ -9,7 +9,7 @@ import { useUser } from '../../../../context/useUser';
 vi.mock('../../../services/tripServices', () => ({
   getTripById: vi.fn(),
   updateTrip: vi.fn(),
-  deleteTrip: vi.fn(),
+  deleteTripById: vi.fn(),
   duplicateTrip: vi.fn(),
 }));
 

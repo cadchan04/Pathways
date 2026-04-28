@@ -130,6 +130,20 @@
        border: 2px solid var(--td-accent) !important;
    }
    .td-sidebar-action-btn--outline:hover { background: var(--td-accent); color: #fff; }
+
+   .td-sidebar-action-btn--danger {
+       color: var(--td-danger-hover) !important;
+       border-color: var(--td-danger-hover) !important;
+   }
+   .td-sidebar-action-btn--outline.td-sidebar-action-btn--danger:hover:not(:disabled) {
+       background-color: var(--td-danger-hover) !important;
+       color: #fff !important;
+       border-color: var(--td-danger-hover) !important;
+   }
+   .td-sidebar-action-btn--danger:disabled {
+       opacity: 0.65;
+       cursor: not-allowed;
+   }
    
    .td-sidebar-action-icon { font-size: .95rem; flex-shrink: 0; }
    
@@ -358,6 +372,32 @@
    }
    .td-invite-input:focus { border-color: var(--td-accent); box-shadow: 0 0 0 2px rgba(63,168,198,.2); }
    .td-invite-input:disabled { opacity: .7; background: #f7f9fa; }
+
+   .td-invite-role {
+       min-width: 120px;
+       padding: 10px 12px;
+       border: 1px solid var(--td-border-mid);
+       border-radius: var(--td-radius);
+       font-size: .9rem;
+       background: var(--td-bg);
+       color: var(--td-text-primary);
+   }
+   .td-invite-role:focus { border-color: var(--td-accent); outline: none; box-shadow: 0 0 0 2px rgba(63,168,198,.2); }
+
+   .td-trip-role-line {
+       font-size: .95rem;
+       color: var(--td-text-secondary);
+       margin: 0 0 10px;
+   }
+
+   .td-packing-checkbox-static {
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       width: 1.25rem;
+       font-size: .85rem;
+       color: var(--td-text-muted);
+   }
    
    .td-invite-submit {
        padding: 10px 20px; background-color: var(--td-accent); color: white;
