@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useUser } from '../../../../context/useUser';
-import { getTrips } from '../../../services/tripServices';
+import { dismissCollabAlert, dismissPriceAlert, getTrips } from '../../../services/tripServices';
 import { listMyInvitations } from '../../../services/invitationServices';
 import './Navbar.css';
 import axios from 'axios';
@@ -11,6 +11,13 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const Navbar = () => {
+  const normalizeMongoId = (value) => {
+    if (value == null) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object' && value.$oid) return value.$oid;
+    return String(value);
+  };
+
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth0();
@@ -51,22 +58,48 @@ const Navbar = () => {
               body: alert.message,
               url: `/view-trip-details/${trip._id}`,
               tripId: trip._id,
-              alertId: alert._id
+              alertId: alert._id,
+              alertKind: 'price',
+              createdAt: alert.createdAt || trip.updatedAt || trip.createdAt,
             }))
         );
 
-      setNotifications([...priceAlerts, ...upcomingTrips]);
+      const collabAlerts = data.flatMap((trip) =>
+        (trip.collabAlerts || [])
+          .filter(
+            (alert) =>
+              !alert.read &&
+              normalizeMongoId(alert.recipientUserId) === normalizeMongoId(dbUser._id)
+          )
+          .map((alert) => ({
+            title: `🤝 Trip Update: ${trip.name}`,
+            body: alert.message,
+            url: `/view-trip-details/${trip._id}`,
+            tripId: trip._id,
+            alertId: alert._id,
+            alertKind: 'collab',
+            createdAt: alert.createdAt || trip.updatedAt || trip.createdAt,
+          }))
+      );
+
+      const allNotifications = [...collabAlerts, ...priceAlerts, ...upcomingTrips]
+        .map((n) => ({ ...n, createdAt: n.createdAt || new Date().toISOString() }))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      setNotifications(allNotifications);
     } catch (err) {
       console.error('Error fetching trips for notifications:', err);
     }
   };
 
-  const dismissAlert = async (tripId, alertId) => {
+  const dismissAlert = async (tripId, alertId, alertKind) => {
     if (!dbUser?._id) return;
     try {
-      await axios.patch(`${API_URL}/api/trips/${tripId}/alerts/${alertId}/read`, null, {
-        params: { userId: dbUser._id },
-      });
+      if (alertKind === 'collab') {
+        await dismissCollabAlert(tripId, alertId, dbUser._id);
+      } else {
+        await dismissPriceAlert(tripId, alertId, dbUser._id);
+      }
       fetchUpcoming();
     } catch (err) {
       console.error('Error dismissing alert:', err);
@@ -172,7 +205,7 @@ const Navbar = () => {
     className="dismiss-btn"
     onClick={(e) => {
       e.stopPropagation();
-      dismissAlert(n.tripId, n.alertId);
+      dismissAlert(n.tripId, n.alertId, n.alertKind);
     }}
   >
     ✕
