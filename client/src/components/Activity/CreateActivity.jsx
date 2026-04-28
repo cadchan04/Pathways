@@ -64,7 +64,7 @@ export default function CreateActivity() {
         console.log("Constructed new activity object:", newActivity);
 
         try {
-            const savedActivity = await createActivity(tripId, newActivity);
+            const savedActivity = await createActivity(tripId, newActivity, dbUser._id);
             
             if (savedActivity) {
                 console.log("Activity saved to MongoDB via service");

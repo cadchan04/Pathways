@@ -1,11 +1,26 @@
 const express = require('express');
 const Activity = require('../models/Activity');
+const Trip = require('../models/Trip');
+const { canViewTrip, canEditTrip, readUserId } = require('../collaboration/tripAccess');
 
 const router = express.Router({ mergeParams: true });
 
 // POST method to create a new activity
 router.post('/', async (req, res) => {
     const { tripId } = req.params;
+
+    const userId = readUserId(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'userId is required' });
+    }
+
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+        return res.status(404).json({ error: 'Trip not found' });
+    }
+    if (!canEditTrip(trip, userId)) {
+        return res.status(403).json({ error: 'You do not have permission to add activities on this trip' });
+    }
 
     const {
         name,
@@ -54,6 +69,19 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
     const { tripId } = req.params;
 
+    const userId = readUserId(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'userId is required' });
+    }
+
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+        return res.status(404).json({ error: 'Trip not found' });
+    }
+    if (!canViewTrip(trip, userId)) {
+        return res.status(403).json({ error: 'You do not have permission to view activities on this trip' });
+    }
+
     if (!tripId) {
         return res.status(400).json({ error: 'Missing tripId parameter' });
     }
@@ -69,10 +97,23 @@ router.get('/', async (req, res) => {
 
 router.get('/:activityId', async (req, res) => {
     const { tripId, activityId } = req.params;
+    const userId = readUserId(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'userId is required' });
+    }
 
     if (!tripId || !activityId) {
         return res.status(400).json({ error: 'Missing tripId or activityId parameters' });
     }
+
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+        return res.status(404).json({ error: 'Trip not found' });
+    }
+    if (!canViewTrip(trip, userId)) {
+        return res.status(403).json({ error: 'You do not have permission to view activities on this trip' });
+    }
+
 
     try {
         const activity = await Activity.findOne({ _id: activityId, tripId });
@@ -91,9 +132,21 @@ router.get('/:activityId', async (req, res) => {
 router.put('/:activityId', async (req, res) => {
     const { tripId, activityId } = req.params;
     const updateData = req.body;
+    const userId = readUserId(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'userId is required' });
+    }
 
     if (!tripId || !activityId) {
         return res.status(400).json({ error: 'Missing tripId or activityId parameters' });
+    }
+
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+        return res.status(404).json({ error: 'Trip not found' });
+    }
+    if (!canEditTrip(trip, userId)) {
+        return res.status(403).json({ error: 'You do not have permission to edit activities on this trip' });
     }
 
     try {
@@ -116,9 +169,21 @@ router.put('/:activityId', async (req, res) => {
 
 router.delete('/:activityId', async (req, res) => {
     const { tripId, activityId } = req.params;
+    const userId = readUserId(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'userId is required' });
+    }
 
     if (!tripId || !activityId) {
         return res.status(400).json({ error: 'Missing tripId or activityId parameters' });
+    }
+
+    const trip = await Trip.findById(tripId);
+    if (!trip) {
+        return res.status(404).json({ error: 'Trip not found' });
+    }
+    if (!canEditTrip(trip, userId)) {
+        return res.status(403).json({ error: 'You do not have permission to delete activities on this trip' });
     }
 
     try {

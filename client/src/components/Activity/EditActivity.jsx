@@ -20,7 +20,7 @@ export default function EditActivity() {
         console.log("EditActivity mounted with tripId:", tripId, "and activityId:", activityId);
         const fetchActivity = async () => {
             try {
-                const activity = await getActivityById(tripId, activityId);
+                const activity = await getActivityById(tripId, activityId, dbUser._id);
                 console.log("Fetched activity for editing:", activity);
                 setFormData(activity);
             } catch (err) {
@@ -67,7 +67,7 @@ export default function EditActivity() {
         };
 
         try {
-            const savedActivity = await updateActivity(tripId, activityId, updatedActivity);
+            const savedActivity = await updateActivity(tripId, activityId, updatedActivity, dbUser._id);
             
             if (savedActivity) {
                 console.log("Activity saved to MongoDB via service");

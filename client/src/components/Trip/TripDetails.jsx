@@ -236,7 +236,7 @@ export default function TripDetails() {
             const [tripData, accData, activityData] = await Promise.all([
                 getTripById(id, dbUser._id),
                 getAccommodations(id, dbUser._id),
-                getActivities(id)
+                getActivities(id, dbUser._id),
             ]);
 
             setTrip(tripData);
@@ -1642,7 +1642,7 @@ export default function TripDetails() {
                                 className="td-modal-btn td-modal-btn--danger"
                                 onClick={async () => {
                                     try {
-                                        await deleteActivity(id, activityToDelete._id);
+                                        await deleteActivity(id, activityToDelete._id, mongoIdString(dbUser._id));
                                         setActivities(prev => prev.filter(a => a._id !== activityToDelete._id));
                                         setShowActivityConfirm(false);
                                         setActivityToDelete(null);
