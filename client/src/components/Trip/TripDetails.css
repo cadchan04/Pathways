@@ -431,6 +431,115 @@
    .invite-activity-empty { margin: 12px 0 0; font-size: .88rem; color: #777; font-style: italic; }
    .invite-activity-list { margin: 10px 0 0; padding-left: 1.1rem; font-size: .88rem; line-height: 1.5; color: #333; }
    .invite-activity-item { margin-bottom: 6px; }
+
+   /* ══════════════════════════════════════════════
+      CHANGELOG TAB
+   ══════════════════════════════════════════════ */
+   .td-changelog-muted {
+       margin: 0;
+       color: var(--td-text-muted);
+       font-size: .9rem;
+   }
+   .td-changelog-list {
+       position: relative;
+       display: flex;
+       flex-direction: column;
+       gap: 16px;
+       margin: 0;
+       padding: 0 0 0 28px;
+       list-style: none;
+   }
+   .td-changelog-list::before {
+       content: '';
+       position: absolute;
+       left: 8px;
+       top: 8px;
+       bottom: 8px;
+       width: 2px;
+       background: var(--td-border-mid);
+   }
+   .td-changelog-item {
+       position: relative;
+       display: flex;
+       gap: 16px;
+   }
+   .td-changelog-marker {
+       position: absolute;
+       left: -25px;
+       top: 18px;
+       width: 12px;
+       height: 12px;
+       border-radius: 50%;
+       background: var(--td-accent);
+       box-shadow: 0 0 0 4px var(--td-accent-lighter);
+   }
+   .td-changelog-card {
+       flex: 1;
+       min-width: 0;
+       padding: 16px 18px;
+       border: 1px solid var(--td-border);
+       border-left: 5px solid var(--td-accent);
+       border-radius: var(--td-radius-lg);
+       background: var(--td-surface);
+       box-shadow: var(--td-shadow-md);
+   }
+   .td-changelog-card-header {
+       display: flex;
+       justify-content: space-between;
+       align-items: baseline;
+       gap: 12px;
+       margin-bottom: 4px;
+   }
+   .td-changelog-card-header h3 {
+       margin: 0;
+       font-size: 1rem;
+       color: var(--td-text-primary);
+   }
+   .td-changelog-card-header time {
+       flex-shrink: 0;
+       font-size: .8rem;
+       color: var(--td-text-muted);
+   }
+   .td-changelog-actor {
+       margin: 0;
+       color: var(--td-text-secondary);
+       font-size: .88rem;
+   }
+   .td-changelog-change-list {
+       display: flex;
+       flex-direction: column;
+       gap: 8px;
+       margin: 12px 0 0;
+       padding: 0;
+       list-style: none;
+   }
+   .td-changelog-change {
+       display: grid;
+       grid-template-columns: minmax(90px, 140px) minmax(0, 1fr) auto minmax(0, 1fr);
+       gap: 8px;
+       align-items: center;
+       padding: 8px 10px;
+       border-radius: var(--td-radius);
+       background: var(--td-accent-lighter);
+       font-size: .84rem;
+   }
+   .td-changelog-field {
+       font-weight: 700;
+       color: var(--td-text-primary);
+   }
+   .td-changelog-value {
+       min-width: 0;
+       overflow-wrap: anywhere;
+       color: var(--td-text-secondary);
+   }
+   .td-changelog-value--new {
+       color: #1f6f4a;
+       font-weight: 700;
+   }
+   .td-changelog-arrow {
+       color: var(--td-text-muted);
+       font-family: 'DM Mono', monospace;
+   }
    
    /* ══════════════════════════════════════════════
       GROUP TRANSPORT SUMMARY BARS

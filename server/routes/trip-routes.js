@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const Trip = require('../models/Trip.js');
+const User = require('../models/User.js');
+const {
+    actorNameFromUser,
+    addTripHistoryEntry,
+    buildTripFieldChanges,
+} = require('../services/trip-changelog-service.js');
 const {
     userIdString,
     canViewTrip,
@@ -180,6 +186,33 @@ router.get('/:id', async (req, res) => {
     }
 })
 
+// GET chronological edit history for a trip (owner or collaborator only)
+router.get('/:id/changelog', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id).select('editHistory owner collaboratorIds collaborators');
+        if (!trip) {
+            return res.status(404).json({ message: "Trip not found" });
+        }
+
+        if (!canViewTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have access to this trip' });
+        }
+
+        const history = [...(trip.editHistory || [])].sort((a, b) => (
+            new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime()
+        ));
+
+        res.status(200).json(history);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Delete a trip by ID (owner only)
 router.delete('/:id', async(req, res) => {
     try {
@@ -223,17 +256,31 @@ router.put('/:id', async (req, res) => {
         }
 
         const updatePayload = { ...req.body };
+        delete updatePayload._id;
+        delete updatePayload.editHistory;
+        delete updatePayload.priceAlerts;
         if (!canManageTrip(trip, userId)) {
             delete updatePayload.owner;
             delete updatePayload.collaboratorIds;
             delete updatePayload.collaborators;
         }
 
-        const updatedTrip = await Trip.findByIdAndUpdate(
-            id,
-            updatePayload,
-            { returnDocument: "after", runValidators: true }
-        );
+        const changes = buildTripFieldChanges(trip.toObject(), updatePayload);
+        Object.assign(trip, updatePayload);
+        trip.updatedAt = new Date();
+
+        if (changes.length > 0) {
+            const actor = await User.findById(userId).catch(() => null);
+            addTripHistoryEntry(trip, {
+                userId,
+                userName: actorNameFromUser(actor, userId),
+                action: 'trip_updated',
+                summary: `Updated ${changes.map((change) => change.label.toLowerCase()).join(', ')}`,
+                changes,
+            });
+        }
+
+        const updatedTrip = await trip.save();
 
         res.status(200).json(updatedTrip);
     } catch (err) {
@@ -291,7 +338,17 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
             return res.status(404).json({ message: "Route not found" });
         }
 
+        const actor = await User.findById(userId).catch(() => null);
+        const routeName = route.name || cleanData.name || 'route';
+
         Object.assign(route, cleanData);
+        addTripHistoryEntry(trip, {
+            userId,
+            userName: actorNameFromUser(actor, userId),
+            action: 'route_updated',
+            summary: `Updated route: ${routeName}`,
+            changes: [],
+        });
         await trip.save();
 
         res.status(200).json(route);

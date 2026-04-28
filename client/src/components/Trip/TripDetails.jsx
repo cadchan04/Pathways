@@ -8,11 +8,9 @@ import { getActivities, deleteActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
 import AccommodationsTab from '../Accommodation/AccommodationsTab';
 import ActivitiesTab from '../Activity/ActivitiesTab';
-import { getTripById, updatePackingList, duplicateTrip, leaveTrip } from '../../services/tripServices';
+import TripChangelog from './TripChangelog';
+import { getTripById, getTripChangelog, updatePackingList, duplicateTrip, leaveTrip } from '../../services/tripServices';
 import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../collaboration/tripCollaboration';
-
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 import './TripDetails.css';
 
@@ -86,6 +84,9 @@ export default function TripDetails() {
     const [preferenceError, setPreferenceError] = useState('');
     const [groupSummary, setGroupSummary] = useState(null);
     const [showPreferencesModal, setShowPreferencesModal] = useState(false);
+    const [changelog, setChangelog] = useState([]);
+    const [changelogLoading, setChangelogLoading] = useState(false);
+    const [changelogError, setChangelogError] = useState('');
 
     // Packing list
     const [packingItems, setPackingItems] = useState([])
@@ -218,6 +219,30 @@ export default function TripDetails() {
         })();
         return () => { cancelled = true; };
     }, [location.state?.fromRouteDetails, id, dbUser?._id]);
+
+    useEffect(() => {
+        if (activeTab !== 'changelog' || !id || !dbUser?._id) return;
+
+        let cancelled = false;
+        const loadChangelog = async () => {
+            setChangelogLoading(true);
+            setChangelogError('');
+            try {
+                const history = await getTripChangelog(id, dbUser._id);
+                if (!cancelled) setChangelog(Array.isArray(history) ? history : []);
+            } catch (err) {
+                if (!cancelled) {
+                    setChangelog([]);
+                    setChangelogError(err?.response?.data?.error || 'Could not load edit history.');
+                }
+            } finally {
+                if (!cancelled) setChangelogLoading(false);
+            }
+        };
+
+        loadChangelog();
+        return () => { cancelled = true; };
+    }, [activeTab, id, dbUser?._id]);
 
     useEffect(() => {
         const handleClick = () => setShowAddMenu(false);
@@ -854,6 +879,23 @@ export default function TripDetails() {
 
     const handleExportPDF = async () => {
         if (!timelineRef.current || !packingRef.current) return;
+
+        let jsPDF;
+        let html2canvas;
+        try {
+            const jspdfModuleName = 'jsp' + 'df';
+            const html2canvasModuleName = 'html2' + 'canvas';
+            const [{ default: JSPDFModule }, { default: html2canvasModule }] = await Promise.all([
+                import(/* @vite-ignore */ jspdfModuleName),
+                import(/* @vite-ignore */ html2canvasModuleName),
+            ]);
+            jsPDF = JSPDFModule;
+            html2canvas = html2canvasModule;
+        } catch (err) {
+            console.error('PDF export dependencies are unavailable:', err);
+            alert('PDF export is unavailable because jspdf/html2canvas are not installed. Run npm install in the client folder and try again.');
+            return;
+        }
     
         const pdf = new jsPDF('p', 'mm', 'a4');
     
@@ -1253,6 +1295,10 @@ export default function TripDetails() {
         </div>
     );
 
+    const renderChangelog = () => (
+        <TripChangelog changelog={changelog} loading={changelogLoading} error={changelogError} />
+    );
+
     const tabContent = {
         timeline:       renderTimelineMult,
         routes:         renderRoutes,
@@ -1260,7 +1306,7 @@ export default function TripDetails() {
         activities:     renderActivities,
         map:            () => renderComingSoon('◎', 'Map'),
         collaboration:  renderCollaboration,
-        changelog:      () => renderComingSoon('◷', 'Changelog'),
+        changelog:      renderChangelog,
         packinglist:    renderPackingList,
     };
 

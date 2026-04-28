@@ -1,7 +1,12 @@
 const express = require('express');
 const Trip = require('../models/Trip');
+const User = require('../models/User');
 const { checkAndSendPriceChangeNotifications } = require('../services/notifications-service');
 const { canViewTrip, canEditTrip, readUserId } = require('../collaboration/tripAccess');
+const {
+    actorNameFromUser,
+    addTripHistoryEntry,
+} = require('../services/trip-changelog-service');
 
 const router = express.Router({ mergeParams: true });
 
@@ -22,7 +27,7 @@ router.post('/', async (req, res) => {
         }
 
         const costBefore = Number(trip.totalCost) || 0;
-        trip.routes.push({
+        const routeToAdd = {
             name: req.body.name,
             origin: req.body.origin,
             destination: req.body.destination,
@@ -32,9 +37,19 @@ router.post('/', async (req, res) => {
             totalCost: req.body.totalCost,
             totalDuration: req.body.totalDuration,
             totalDistance: req.body.totalDistance
-        });
+        };
+
+        trip.routes.push(routeToAdd);
 
         trip.lastKnownCost = costBefore;
+        const actor = await User.findById(userId).catch(() => null);
+        addTripHistoryEntry(trip, {
+            userId,
+            userName: actorNameFromUser(actor, userId),
+            action: 'route_added',
+            summary: `Added route: ${routeToAdd.name || 'Untitled route'}`,
+            changes: [],
+        });
         await trip.save();
         console.log("Updated Trip with new route:", trip.name, req.body.name)
         res.status(201).json(trip);
@@ -85,10 +100,19 @@ router.delete('/:routeId', async (req, res) => {
         }
 
         const costBefore = Number(trip.totalCost) || 0;
+        const routeName = route.name || 'Untitled route';
         route.deleteOne();
 
         trip.totalCost = trip.routes.reduce((sum, r) => sum + (Number(r.totalCost) || 0), 0);
         trip.lastKnownCost = costBefore;
+        const actor = await User.findById(userId).catch(() => null);
+        addTripHistoryEntry(trip, {
+            userId,
+            userName: actorNameFromUser(actor, userId),
+            action: 'route_deleted',
+            summary: `Deleted route: ${routeName}`,
+            changes: [],
+        });
         await trip.save();
         console.log("Deleted route:", route.name, "from trip:", trip.name)
         res.json({ message: 'Route deleted successfully' });

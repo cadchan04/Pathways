@@ -29,6 +29,27 @@ const TripSchema = new mongoose.Schema({
         createdAt: { type: Date, default: Date.now },
         read: { type: Boolean, default: false }
     }],
+    editHistory: [
+        {
+            action: {
+                type: String,
+                enum: ['trip_updated', 'route_added', 'route_updated', 'route_deleted'],
+                required: true,
+            },
+            summary: { type: String, required: true },
+            changedBy: { type: String, required: true },
+            changedByName: { type: String },
+            changedAt: { type: Date, default: Date.now },
+            changes: [
+                {
+                    field: { type: String },
+                    label: { type: String },
+                    previousValue: { type: String },
+                    newValue: { type: String },
+                }
+            ],
+        }
+    ],
     packingList: [
         {
           id: { type: String, required: true },
