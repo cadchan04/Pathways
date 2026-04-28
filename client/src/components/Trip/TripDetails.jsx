@@ -661,6 +661,37 @@ export default function TripDetails() {
         );
     };
 
+    const renderActivityCard = (activity, index, isSameDay, currentDate) => {
+        const outOfRange = isRouteOutOfRange({ departAt: activity.sortDate });
+
+        return (
+            <div key={`activity-${activity._id}`} className={`td-timeline-entry${isSameDay ? ' same-day' : ''}`}>
+                <div className="td-timeline-date-circle">
+                    {!isSameDay ? currentDate : ''}
+                </div>
+
+                <div className={`td-route-card td-activity-card ${outOfRange ? 'td-route-card--warning' : ''}`}>
+                    <div className="td-route-info">
+                        {outOfRange && <span>⚠️ </span>}
+                        <span className="td-acc-type-badge">{activity.activityType}</span>
+                        <h3>🎯 {activity.name}</h3>
+                        <p>🕒 {activity.startTime.split(':')[0] > 12 ? activity.startTime.split(':')[0] - 12 + ":" + activity.startTime.split(':')[1] + " PM " : activity.startTime + " AM "}
+                            to {activity.endTime.split(':')[0] > 12 ? activity.endTime.split(':')[0] - 12 + ":" + activity.endTime.split(':')[1] + " PM" : activity.endTime + " AM"}
+                            </p>
+                    </div>
+                    <div className="td-route-actions">
+                        <button
+                            className="td-btn-view"
+                            onClick={() => console.log('View activity details (not implemented)', activity)}
+                        >
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     // ── rendering ───────────────────────────────────────────────────────────────
 
     const renderGroupSummaryBars = (summary, model) => (
@@ -925,6 +956,8 @@ export default function TripDetails() {
                             case 'accommodation-checkin':
                             case 'accommodation-checkout':
                                 return renderAccommodationCard(item, index, isSameDay, currentDate);
+                            case 'activity':
+                                return renderActivityCard(item, index, isSameDay, currentDate);
                             
                             default:
                                 return null;
