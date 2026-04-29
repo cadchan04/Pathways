@@ -63,6 +63,8 @@ export default function TripDetails() {
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [selectedAcc, setSelectedAcc] = useState(null);
     const [showAccModal, setShowAccModal] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState(null);
+    const [showActivityModal, setShowActivityModal] = useState(false);
 
     const [showConfirm, setShowConfirm] = useState(false);
     const [routeToDelete, setRouteToDelete] = useState(null);
@@ -315,8 +317,19 @@ export default function TripDetails() {
         }
       }
     
-    const calculateTotalCost = (routes) =>
-        routes.reduce((total, route) => total + (Number(route.totalCost) || 0), 0);
+    const calculateTotalCost = (routes, activities, accommodations) => {
+        let total = 0;
+        if (routes) {
+            total += routes.reduce((sum, route) => sum + (Number(route.totalCost) || 0), 0);
+        }
+        if (activities) {
+            total += activities.reduce((sum, activity) => sum + (Number(activity.cost) || 0), 0);
+        }
+        if (accommodations) {
+            total += accommodations.reduce((sum, accommodation) => sum + (Number(accommodation.cost) || 0), 0);
+        }
+        return total;
+    };
 
     const formatDate = (dateInput) => {
         const date = (dateInput instanceof Date) 
@@ -498,9 +511,19 @@ export default function TripDetails() {
         setShowAccModal(true);
     };
 
+    const handleOpenActivityModal = (activity) => {
+        setSelectedActivity(activity);
+        setShowActivityModal(true);
+    };
+
     const handleCloseAccModal = () => {
         setSelectedAcc(null);
         setShowAccModal(false);
+    };
+
+    const handleCloseActivityModal = () => {
+        setSelectedActivity(null);
+        setShowActivityModal(false);
     };
 
     const handleDeleteAcc = async (accId) => {
@@ -682,7 +705,7 @@ export default function TripDetails() {
                     <div className="td-route-actions">
                         <button
                             className="td-btn-view"
-                            onClick={() => console.log('View activity details (not implemented)', activity)}
+                            onClick={() => handleOpenActivityModal(activity)}
                         >
                             View Details
                         </button>
@@ -901,7 +924,8 @@ export default function TripDetails() {
     if (!dbUser?._id) return <div className="td-shell td-empty"><p>Sign in to view this trip.</p></div>;
     if (!trip)        return <div className="td-shell td-empty"><p>Trip not found.</p></div>;
 
-    const currentTotal = trip.routes ? calculateTotalCost(trip.routes) : 0;
+    const currentTotal = trip.totalCost || 0;
+    // const currentTotal = (trip.routes && accommodations && activities) ? calculateTotalCost(trip.routes, activities, accommodations) : 0;
     // moved sortedRoutes up to a useMemo, so it doesn't need to be re-calculated on every render
     // const sortedRoutes = trip.routes
     //     ? [...trip.routes].sort((a, b) =>
@@ -1066,6 +1090,7 @@ export default function TripDetails() {
                         return (
                             <div key={index} className={`td-route-row${isRouteOutOfRange(route) ? ' td-route-row--warning' : ''}`}>
                                 <div className="td-route-row-info">
+                                    {/* HERE FOR ROUTE DATE */}
                                     <span className="td-route-row-date">{formatDate(route.departAt)}</span>
                                     <div>
                                         <h3 className="td-route-title">
@@ -1145,8 +1170,9 @@ export default function TripDetails() {
         <ActivitiesTab
             tripId={id}
             activities={activities}
-            isOwner={isTripOwner}
+            canEdit={canEditTripPage}
             tripDates={{ start: trip?.startDate, end: trip?.endDate }}
+            onOpenModal={handleOpenActivityModal}
             onDelete={handleDeleteActivity}
         />
     );
@@ -1597,6 +1623,66 @@ export default function TripDetails() {
                 </div>
             )}
 
+            {/* Activity Details Modal */}
+            {showActivityModal && selectedActivity && (
+                <div className="acc-modal-overlay" onClick={handleCloseActivityModal}>
+                    <div className="acc-modal-card" onClick={(e) => e.stopPropagation()}>
+                        <header className="acc-modal-header">
+                            <span className="acc-type-tag">{selectedActivity.activityType}</span>
+                            <h2>{selectedActivity.name}</h2>
+                            <button className="acc-modal-close" onClick={handleCloseActivityModal}>✕</button>
+                        </header>
+
+                        <div className="acc-modal-body">
+                            <section className="acc-modal-section">
+                                <h4>Activity Information</h4>
+                                <div className="acc-modal-grid">
+                                    <p><strong>📍 Location:</strong> {selectedActivity.address}</p>
+                                    <p><strong>Cost:</strong> {selectedActivity.cost ? `$${selectedActivity.cost.toFixed(2)}` : 'N/A'}</p>
+                                </div>
+                                <div className="acc-modal-grid">
+                                    <p><strong>📅 Date:</strong> {new Date(selectedActivity.activityDate).toLocaleDateString('en-US', { timeZone: 'UTC' })}</p>
+                                    <p><strong>⏰ Time:</strong> {selectedActivity.startTime.split(':')[0] > 12 ? selectedActivity.startTime.split(':')[0] - 12 + ":" + selectedActivity.startTime.split(':')[1] + " PM" : selectedActivity.startTime + " AM"} 
+                                - {selectedActivity.endTime.split(':')[0] > 12 ? selectedActivity.endTime.split(':')[0] - 12 + ":" + selectedActivity.endTime.split(':')[1] + " PM" : selectedActivity.endTime + " AM"}</p>
+                                </div>
+                            </section>
+
+                            <section className="acc-modal-section">
+                                <h4>Contact & Links</h4>
+                                <div className="acc-modal-grid">
+                                    <p>
+                                        <strong>📞 Phone:</strong> {selectedActivity.phoneNumber 
+                                            ? <a href={`tel:${selectedActivity.phoneNumber}`}>{selectedActivity.phoneNumber}</a> 
+                                            : <span className="acc-modal-empty">N/A</span>}
+                                    </p>
+                                    <p>
+                                        <strong>✉️ Email:</strong> {selectedActivity.email 
+                                            ? <a href={`mailto:${selectedActivity.email}`}>{selectedActivity.email}</a> 
+                                            : <span className="acc-modal-empty">N/A</span>}
+                                    </p>
+                                    <p>
+                                        <strong>🌐 Website:</strong> {selectedActivity.website 
+                                            ? <a href={selectedActivity.website} target="_blank" rel="noreferrer">Visit Site</a> 
+                                            : <span className="acc-modal-empty">N/A</span>}
+                                    </p>
+                                </div>
+                            </section>
+
+                            <section className="acc-modal-section">
+                                <h4>Notes</h4>
+                                <div className="acc-modal-notes">
+                                    {selectedActivity.notes || "No additional notes for this activity."}
+                                </div>
+                            </section>
+                        </div>
+
+                        <footer className="acc-modal-footer">
+                            <button className="td-btn-secondary" onClick={handleCloseActivityModal}>Close</button>
+                        </footer>
+                    </div>
+                </div>
+            )}
+
             {/* ── Delete Accommodation Confirm ── */}
             {showAccConfirm && (
                 <div className="td-modal-overlay" onClick={() => setShowAccConfirm(false)}>
@@ -1610,6 +1696,8 @@ export default function TripDetails() {
                                     try {
                                         await deleteAccommodation(id, accToDelete._id, mongoIdString(dbUser._id));
                                         setAccommodations(prev => prev.filter(a => a._id !== accToDelete._id));
+                                        const updatedTrip = await getTripById(id, dbUser._id);
+                                        setTrip(updatedTrip);
                                         setShowAccConfirm(false);
                                         setAccToDelete(null);
                                     } catch (err) {
@@ -1644,6 +1732,8 @@ export default function TripDetails() {
                                     try {
                                         await deleteActivity(id, activityToDelete._id, mongoIdString(dbUser._id));
                                         setActivities(prev => prev.filter(a => a._id !== activityToDelete._id));
+                                        const updatedTrip = await getTripById(id, dbUser._id);
+                                        setTrip(updatedTrip);
                                         setShowActivityConfirm(false);
                                         setActivityToDelete(null);
                                     } catch (err) {
