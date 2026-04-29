@@ -8,7 +8,18 @@ import { getActivities, deleteActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
 import AccommodationsTab from '../Accommodation/AccommodationsTab';
 import ActivitiesTab from '../Activity/ActivitiesTab';
-import { getTripById, updatePackingList, duplicateTrip, leaveTrip } from '../../services/tripServices';
+import {
+    getTripById,
+    updatePackingList,
+    duplicateTrip,
+    leaveTrip,
+    getItineraryOptions,
+    createItineraryOption,
+    updateItineraryOption,
+    reviewItineraryOption,
+    addItineraryOptionComment,
+    deleteItineraryOption,
+} from '../../services/tripServices';
 import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../collaboration/tripCollaboration';
 
 import jsPDF from 'jspdf';
@@ -30,6 +41,7 @@ const TABS = [
     { id: 'activities',     label: 'Activities',      icon: '☼' },
     { id: 'map',            label: 'Map',             icon: '◎' },
     { id: 'collaboration',  label: 'Collaboration',   icon: '⌘' },
+    { id: 'itineraryoptions', label: 'Group Options', icon: '☰' },
     { id: 'changelog',      label: 'Changelog',       icon: '◷' },
     { id: 'packinglist',    label: 'Packing List',  icon: '✓' },
 ];
@@ -88,6 +100,30 @@ export default function TripDetails() {
     const [preferenceError, setPreferenceError] = useState('');
     const [groupSummary, setGroupSummary] = useState(null);
     const [showPreferencesModal, setShowPreferencesModal] = useState(false);
+    const [itineraryOptions, setItineraryOptions] = useState([]);
+    const [isLoadingItineraryOptions, setIsLoadingItineraryOptions] = useState(false);
+    const [itineraryOptionsError, setItineraryOptionsError] = useState('');
+    const [showItineraryOptionModal, setShowItineraryOptionModal] = useState(false);
+    const [itineraryFormMode, setItineraryFormMode] = useState('create');
+    const [editingItineraryOptionId, setEditingItineraryOptionId] = useState(null);
+    const [itinerarySaveError, setItinerarySaveError] = useState('');
+    const [isSavingItineraryOption, setIsSavingItineraryOption] = useState(false);
+    const [voteError, setVoteError] = useState('');
+    const [voteSubmittingByOptionId, setVoteSubmittingByOptionId] = useState({});
+    const [selectedItineraryOption, setSelectedItineraryOption] = useState(null);
+    const [showItineraryDetailsModal, setShowItineraryDetailsModal] = useState(false);
+    const [itineraryCommentText, setItineraryCommentText] = useState('');
+    const [itineraryCommentError, setItineraryCommentError] = useState('');
+    const [itineraryCommentSubmitting, setItineraryCommentSubmitting] = useState(false);
+    const [showDeleteItineraryConfirm, setShowDeleteItineraryConfirm] = useState(false);
+    const [itineraryOptionToDelete, setItineraryOptionToDelete] = useState(null);
+    const [isDeletingItineraryOption, setIsDeletingItineraryOption] = useState(false);
+    const [itineraryDayPlans, setItineraryDayPlans] = useState([]);
+    const [itineraryForm, setItineraryForm] = useState({
+        title: '',
+        summary: '',
+    });
+    const [itineraryActiveMenuId, setItineraryActiveMenuId] = useState(null);
 
     // Packing list
     const [packingItems, setPackingItems] = useState([])
@@ -222,6 +258,59 @@ export default function TripDetails() {
     }, [location.state?.fromRouteDetails, id, dbUser?._id]);
 
     useEffect(() => {
+        if (!trip || !id || !dbUser?._id) return;
+        if (activeTab !== 'itineraryoptions') return;
+        if (!hasCollaboratorsOnTrip(trip)) {
+            setItineraryOptions([]);
+            setItineraryOptionsError('');
+            return;
+        }
+
+        let cancelled = false;
+        (async () => {
+            try {
+                setIsLoadingItineraryOptions(true);
+                setItineraryOptionsError('');
+                const options = await getItineraryOptions(id, mongoIdString(dbUser._id));
+                if (!cancelled) setItineraryOptions(Array.isArray(options) ? options : []);
+            } catch (err) {
+                if (!cancelled) {
+                    setItineraryOptions([]);
+                    setItineraryOptionsError(
+                        err?.response?.data?.error || 'Could not load itinerary options right now.'
+                    );
+                }
+            } finally {
+                if (!cancelled) setIsLoadingItineraryOptions(false);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [activeTab, trip, id, dbUser?._id]);
+
+    const loadItineraryOptionsData = async () => {
+        if (!trip || !id || !dbUser?._id) return;
+        if (!hasCollaboratorsOnTrip(trip)) {
+            setItineraryOptions([]);
+            setItineraryOptionsError('');
+            return;
+        }
+        setIsLoadingItineraryOptions(true);
+        setItineraryOptionsError('');
+        try {
+            const options = await getItineraryOptions(id, mongoIdString(dbUser._id));
+            setItineraryOptions(Array.isArray(options) ? options : []);
+        } catch (err) {
+            setItineraryOptions([]);
+            setItineraryOptionsError(
+                err?.response?.data?.error || 'Could not load itinerary options right now.'
+            );
+        } finally {
+            setIsLoadingItineraryOptions(false);
+        }
+    };
+
+    useEffect(() => {
         const handleClick = () => setShowAddMenu(false);
     
         if (showAddMenu) {
@@ -230,6 +319,12 @@ export default function TripDetails() {
     
         return () => window.removeEventListener('click', handleClick);
     }, [showAddMenu]);
+
+    useEffect(() => {
+        const closeMenu = () => setItineraryActiveMenuId(null);
+        window.addEventListener('click', closeMenu);
+        return () => window.removeEventListener('click', closeMenu);
+    }, []);
 
     const loadAllData = async () => {
         if (!id || !dbUser?._id) return;
@@ -535,6 +630,408 @@ export default function TripDetails() {
         setActivityToDelete(activityId);
         setShowActivityConfirm(true);
     }
+
+    const toDateKey = (value) => {
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return null;
+        const year = d.getUTCFullYear();
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const makeDefaultDayItem = () => ({ label: '', cost: '' });
+
+    const buildTripDayPlans = (tripValue) => {
+        const startKey = toDateKey(tripValue?.startDate);
+        const endKey = toDateKey(tripValue?.endDate);
+        if (!startKey || !endKey) {
+            return [{
+                key: 'day-1',
+                label: 'Day 1',
+                date: null,
+                items: [makeDefaultDayItem()],
+            }];
+        }
+
+        const start = new Date(`${startKey}T00:00:00Z`);
+        const end = new Date(`${endKey}T00:00:00Z`);
+        if (end < start) {
+            return [{
+                key: 'day-1',
+                label: 'Day 1',
+                date: startKey,
+                items: [makeDefaultDayItem()],
+            }];
+        }
+
+        const plans = [];
+        let cursor = new Date(start);
+        let dayNumber = 1;
+        while (cursor <= end) {
+            const key = toDateKey(cursor);
+            plans.push({
+                key: `day-${dayNumber}`,
+                label: `Day ${dayNumber}`,
+                date: key,
+                items: [makeDefaultDayItem()],
+            });
+            cursor.setUTCDate(cursor.getUTCDate() + 1);
+            dayNumber += 1;
+        }
+        return plans;
+    };
+
+    const mergeOptionItemsIntoDayPlans = (plans, option) => {
+        const nextPlans = plans.map((plan) => ({ ...plan, items: [] }));
+        const items = Array.isArray(option?.items) ? option.items : [];
+        if (items.length === 0) {
+            return plans;
+        }
+
+        for (const item of items) {
+            const itemDateKey = toDateKey(item?.date);
+            const dayPlan = nextPlans.find((plan) => plan.date && itemDateKey && plan.date === itemDateKey);
+            const normalizedItem = {
+                label: String(item?.label || '').trim(),
+                cost:
+                    item?.cost === 0 || item?.cost
+                        ? String(item.cost)
+                        : '',
+            };
+            if (dayPlan) {
+                dayPlan.items.push(normalizedItem);
+            } else if (nextPlans[0]) {
+                nextPlans[0].items.push(normalizedItem);
+            }
+        }
+
+        return nextPlans.map((plan) => ({
+            ...plan,
+            items: plan.items.length > 0 ? plan.items : [makeDefaultDayItem()],
+        }));
+    };
+
+    const openCreateItineraryModal = () => {
+        setItineraryFormMode('create');
+        setEditingItineraryOptionId(null);
+        setItinerarySaveError('');
+        setItineraryForm({
+            title: '',
+            summary: '',
+        });
+        setItineraryDayPlans(buildTripDayPlans(trip));
+        setShowItineraryOptionModal(true);
+    };
+
+    const openEditItineraryModal = (option) => {
+        setItineraryFormMode('edit');
+        setEditingItineraryOptionId(mongoIdString(option?._id));
+        setItinerarySaveError('');
+        setItineraryForm({
+            title: option?.title || '',
+            summary: option?.summary || '',
+        });
+        setItineraryDayPlans(mergeOptionItemsIntoDayPlans(buildTripDayPlans(trip), option));
+        setShowItineraryOptionModal(true);
+    };
+
+    const handleCloseItineraryModal = () => {
+        if (isSavingItineraryOption) return;
+        setShowItineraryOptionModal(false);
+        setItinerarySaveError('');
+    };
+
+    const computedItineraryTotalCost = useMemo(() => {
+        return itineraryDayPlans.reduce((total, day) => {
+            const dayTotal = (day.items || []).reduce((sum, item) => {
+                const n = Number(item.cost);
+                return sum + (Number.isFinite(n) ? n : 0);
+            }, 0);
+            return total + dayTotal;
+        }, 0);
+    }, [itineraryDayPlans]);
+
+    const buildItineraryItemsFromDayPlans = (dayPlans) => {
+        const items = [];
+        for (const day of dayPlans) {
+            for (const item of day.items || []) {
+                const label = String(item?.label || '').trim();
+                if (!label) continue;
+                const numericCost = Number(item?.cost);
+                items.push({
+                    type: 'custom',
+                    label,
+                    date: day.date || null,
+                    cost: Number.isFinite(numericCost) ? numericCost : null,
+                });
+            }
+        }
+        return items;
+    };
+
+    const itineraryLinesForOption = (option) =>
+        Array.isArray(option?.items)
+            ? option.items
+                .filter((item) => String(item?.label || '').trim())
+                .map((item) => ({
+                    label: String(item?.label || '').trim(),
+                    cost: Number.isFinite(Number(item?.cost)) ? Number(item.cost) : null,
+                }))
+            : [];
+
+    const groupItineraryItemsByDay = (option) => {
+        const groups = new Map();
+        const items = Array.isArray(option?.items) ? option.items : [];
+        for (const item of items) {
+            const dateKey = toDateKey(item?.date) || 'No date';
+            if (!groups.has(dateKey)) groups.set(dateKey, []);
+            groups.get(dateKey).push(item);
+        }
+        return [...groups.entries()].sort((a, b) => {
+            if (a[0] === 'No date') return 1;
+            if (b[0] === 'No date') return -1;
+            return a[0].localeCompare(b[0]);
+        });
+    };
+
+    const itineraryVoteSummary = (option) => {
+        const reviews = Array.isArray(option?.reviews) ? option.reviews : [];
+        return {
+            preferred: reviews.filter((r) => r?.value === 'preferred').length,
+            acceptable: reviews.filter((r) => r?.value === 'acceptable').length,
+            notPreferred: reviews.filter((r) => r?.value === 'not_preferred').length,
+        };
+    };
+
+    const handleSaveItineraryOption = async (e) => {
+        e.preventDefault();
+        if (!id || !dbUser?._id) return;
+        const title = itineraryForm.title.trim();
+        if (!title) {
+            setItinerarySaveError('Title is required.');
+            return;
+        }
+
+        const items = buildItineraryItemsFromDayPlans(itineraryDayPlans);
+        if (items.length === 0) {
+            setItinerarySaveError('Add at least one itinerary step.');
+            return;
+        }
+        const payload = {
+            title,
+            summary: itineraryForm.summary.trim(),
+            estimatedTotalCost: computedItineraryTotalCost,
+            items,
+        };
+
+        setItinerarySaveError('');
+        setIsSavingItineraryOption(true);
+        try {
+            if (itineraryFormMode === 'edit' && editingItineraryOptionId) {
+                await updateItineraryOption(id, editingItineraryOptionId, payload, mongoIdString(dbUser._id));
+            } else {
+                await createItineraryOption(id, payload, mongoIdString(dbUser._id));
+            }
+            await loadItineraryOptionsData();
+            setShowItineraryOptionModal(false);
+        } catch (err) {
+            setItinerarySaveError(
+                err?.response?.data?.error || 'Could not save itinerary option right now.'
+            );
+        } finally {
+            setIsSavingItineraryOption(false);
+        }
+    };
+
+    const handleDayItemChange = (dayIdx, itemIdx, field, value) => {
+        setItineraryDayPlans((prev) => prev.map((dayPlan, dIdx) => {
+            if (dIdx !== dayIdx) return dayPlan;
+            const nextItems = (dayPlan.items || []).map((item, iIdx) => (
+                iIdx === itemIdx ? { ...item, [field]: value } : item
+            ));
+            return { ...dayPlan, items: nextItems };
+        }));
+    };
+
+    const addDayItemRow = (dayIdx) => {
+        setItineraryDayPlans((prev) => prev.map((dayPlan, dIdx) => (
+            dIdx === dayIdx
+                ? { ...dayPlan, items: [...(dayPlan.items || []), makeDefaultDayItem()] }
+                : dayPlan
+        )));
+    };
+
+    const removeDayItemRow = (dayIdx, itemIdx) => {
+        setItineraryDayPlans((prev) => prev.map((dayPlan, dIdx) => {
+            if (dIdx !== dayIdx) return dayPlan;
+            const filtered = (dayPlan.items || []).filter((_, iIdx) => iIdx !== itemIdx);
+            return { ...dayPlan, items: filtered.length > 0 ? filtered : [makeDefaultDayItem()] };
+        }));
+    };
+
+    const getMyOptionVote = (option) => {
+        const uid = mongoIdString(dbUser?._id);
+        if (!uid || !Array.isArray(option?.reviews)) return '';
+        const mine = option.reviews.find((review) => mongoIdString(review?.userId) === uid);
+        return mine?.value || '';
+    };
+
+    const handleQuickVote = async (option, value) => {
+        if (!id || !dbUser?._id || !option?._id) return;
+        const optionId = mongoIdString(option._id);
+        setVoteError('');
+        setVoteSubmittingByOptionId((prev) => ({ ...prev, [optionId]: true }));
+        try {
+            await reviewItineraryOption(
+                id,
+                optionId,
+                { value },
+                mongoIdString(dbUser._id)
+            );
+            await loadItineraryOptionsData();
+        } catch (err) {
+            setVoteError(err?.response?.data?.error || 'Could not save your vote right now.');
+        } finally {
+            setVoteSubmittingByOptionId((prev) => ({ ...prev, [optionId]: false }));
+        }
+    };
+
+    const itineraryVoteLabel = (value) => {
+        switch (value) {
+            case 'preferred':
+                return 'Preferred';
+            case 'acceptable':
+                return 'Acceptable';
+            case 'not_preferred':
+                return 'Not Preferred';
+            default:
+                return value || '';
+        }
+    };
+
+    const itineraryCommentThreads = (option) => {
+        const reviews = Array.isArray(option?.reviews) ? option.reviews : [];
+        const commentReviews = reviews.filter((r) => String(r?.comment || '').trim());
+        if (!commentReviews.length) return [];
+
+        const myUid = mongoIdString(dbUser?._id);
+        const threadsByUser = new Map();
+
+        for (const review of commentReviews) {
+            const userId = mongoIdString(review?.userId);
+            const labelFromReview = String(review?.userLabel || '').trim();
+            const label =
+                labelFromReview ||
+                (userId && userId === myUid ? (dbUser?.name || dbUser?.email || 'You') : userId);
+
+            if (!threadsByUser.has(userId)) {
+                threadsByUser.set(userId, { userId, userLabel: label, items: [] });
+            }
+
+            threadsByUser.get(userId).items.push(review);
+        }
+
+        return [...threadsByUser.values()].map((thread) => ({
+            ...thread,
+            items: thread.items.sort(
+                (a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
+            ),
+        }));
+    };
+
+    const itineraryCommentsFlat = (option) => {
+        const directComments = Array.isArray(option?.comments) ? option.comments : [];
+        const commentDocs = directComments
+            .filter((c) => String(c?.comment || '').trim())
+            .map((c) => ({
+                userId: mongoIdString(c?.userId),
+                comment: String(c?.comment || ''),
+                userLabel: String(c?.userLabel || '').trim(),
+                createdAt: c?.createdAt,
+            }));
+
+        // Backward-compat: older comments were stored inside `reviews.comment`.
+        const reviewComments = Array.isArray(option?.reviews) ? option.reviews : [];
+        const fallbackReviewComments = reviewComments
+            .filter((r) => String(r?.comment || '').trim())
+            .map((r) => ({
+                userId: mongoIdString(r?.userId),
+                comment: String(r?.comment || ''),
+                userLabel: String(r?.userLabel || '').trim(),
+                createdAt: r?.createdAt,
+            }));
+
+        return [...commentDocs, ...fallbackReviewComments].sort(
+            (a, b) =>
+                new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
+        );
+    };
+
+    const handleAddItineraryComment = async () => {
+        if (!id || !dbUser?._id || !selectedItineraryOption?._id) return;
+        const trimmed = itineraryCommentText.trim();
+        if (!trimmed) {
+            setItineraryCommentError('Comment cannot be empty.');
+            return;
+        }
+
+        setItineraryCommentError('');
+        setItineraryCommentSubmitting(true);
+        try {
+            await addItineraryOptionComment(
+                id,
+                mongoIdString(selectedItineraryOption._id),
+                { comment: trimmed },
+                mongoIdString(dbUser._id)
+            );
+            setItineraryCommentText('');
+            await loadItineraryOptionsData();
+        } catch (err) {
+            setItineraryCommentError(err?.response?.data?.error || 'Could not save your comment right now.');
+        } finally {
+            setItineraryCommentSubmitting(false);
+        }
+    };
+
+    const openItineraryDetailsModal = (option) => {
+        setSelectedItineraryOption(option || null);
+        setShowItineraryDetailsModal(Boolean(option));
+        setItineraryCommentText('');
+        setItineraryCommentError('');
+        setItineraryCommentSubmitting(false);
+    };
+
+    useEffect(() => {
+        if (!showItineraryDetailsModal || !selectedItineraryOption?._id) return;
+        const selectedId = mongoIdString(selectedItineraryOption._id);
+        const updated = itineraryOptions.find((o) => mongoIdString(o?._id) === selectedId);
+        if (updated) setSelectedItineraryOption(updated);
+    }, [itineraryOptions, showItineraryDetailsModal]);
+
+    const handleDeleteItineraryOption = async () => {
+        if (!id || !dbUser?._id || !itineraryOptionToDelete?._id) return;
+        setIsDeletingItineraryOption(true);
+        try {
+            const deletingId = mongoIdString(itineraryOptionToDelete._id);
+            await deleteItineraryOption(
+                id,
+                mongoIdString(itineraryOptionToDelete._id),
+                mongoIdString(dbUser._id)
+            );
+            setShowDeleteItineraryConfirm(false);
+            setItineraryOptionToDelete(null);
+            await loadItineraryOptionsData();
+            if (mongoIdString(selectedItineraryOption?._id) === deletingId) {
+                setShowItineraryDetailsModal(false);
+                setSelectedItineraryOption(null);
+            }
+        } catch (err) {
+            setVoteError(err?.response?.data?.error || 'Could not delete itinerary option right now.');
+        } finally {
+            setIsDeletingItineraryOption(false);
+        }
+    };
 
     const invitationActivityText = (inv) => {
         const email = inv.inviteeEmail || 'Unknown';
@@ -1188,6 +1685,165 @@ export default function TripDetails() {
         </div>
     );
 
+    const renderItineraryOptions = () => {
+        if (!hasCollaborators) {
+            return (
+                <div className="td-tab-content">
+                    <div className="td-content-header"><h2>Itinerary Options</h2></div>
+                    <div className="td-empty-state">
+                        <span className="td-empty-icon">☰</span>
+                        <p>Itinerary options are only available on collaborative trips.</p>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="td-tab-content">
+                <div className="td-content-header">
+                    <h2>Itinerary Options</h2>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        {canEditTripPage && (
+                            <button
+                                type="button"
+                                className="trip-route-preference-open"
+                                onClick={openCreateItineraryModal}
+                            >
+                                Add Option
+                            </button>
+                        )}
+                    </div>
+                </div>
+                {isLoadingItineraryOptions ? (
+                    <p>Loading itinerary options...</p>
+                ) : itineraryOptionsError ? (
+                    <p className="td-invite-error" role="alert">{itineraryOptionsError}</p>
+                ) : itineraryOptions.length === 0 ? (
+                    <div className="td-empty-state">
+                        <span className="td-empty-icon">☰</span>
+                        <p>No itinerary options available yet.</p>
+                    </div>
+                ) : (
+                    <div className="td-routes-list itinerary-options-list">
+                        {itineraryOptions.map((option) => (
+                            <article key={mongoIdString(option._id)} className="acc-card itinerary-option-card">
+                                <div className="acc-col acc-col-main itinerary-option-main-col">
+                                    <span className="acc-type-tag itinerary-option-type-tag">
+                                        ITINERARY
+                                    </span>
+                                    <div className="acc-header-row">
+                                        <h3 className="itinerary-option-title">{option.title || 'Untitled option'}</h3>
+                                    </div>
+                                    <p className="acc-address itinerary-option-summary">
+                                        {option.summary || 'No summary provided.'}
+                                    </p>
+                                </div>
+
+                                <div className="acc-col acc-col-meta itinerary-option-meta-col">
+                                    <div className="acc-meta-item itinerary-option-meta-item">
+                                        <span>Total Cost</span>
+                                        <strong>${Number(option.estimatedTotalCost || 0).toFixed(2)}</strong>
+                                    </div>
+                                </div>
+
+                                <div className="acc-col acc-col-votes itinerary-option-votes-col">
+                                    {(() => {
+                                        const votes = itineraryVoteSummary(option);
+                                        const total = votes.preferred + votes.acceptable + votes.notPreferred;
+                                        const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
+                                        if (total === 0) {
+                                            return (
+                                                <div className="itinerary-vote-bars">
+                                                    <div className="itinerary-vote-empty">No votes yet</div>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div className="itinerary-vote-bars">
+                                                <div className="itinerary-vote-bar-row itinerary-vote-bar-row--preferred">
+                                                    <span className="itinerary-vote-bar-label">Preferred</span>
+                                                    <span className="itinerary-vote-bar-count">{votes.preferred}</span>
+                                                    <div className="itinerary-vote-bar-track" aria-hidden="true">
+                                                        <div className="itinerary-vote-bar-fill" style={{ width: `${pct(votes.preferred)}%` }} />
+                                                    </div>
+                                                </div>
+                                                <div className="itinerary-vote-bar-row itinerary-vote-bar-row--acceptable">
+                                                    <span className="itinerary-vote-bar-label">Acceptable</span>
+                                                    <span className="itinerary-vote-bar-count">{votes.acceptable}</span>
+                                                    <div className="itinerary-vote-bar-track" aria-hidden="true">
+                                                        <div className="itinerary-vote-bar-fill" style={{ width: `${pct(votes.acceptable)}%` }} />
+                                                    </div>
+                                                </div>
+                                                <div className="itinerary-vote-bar-row itinerary-vote-bar-row--not-preferred">
+                                                    <span className="itinerary-vote-bar-label">Not Preferred</span>
+                                                    <span className="itinerary-vote-bar-count">{votes.notPreferred}</span>
+                                                    <div className="itinerary-vote-bar-track" aria-hidden="true">
+                                                        <div className="itinerary-vote-bar-fill" style={{ width: `${pct(votes.notPreferred)}%` }} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+
+                                <div className="acc-col acc-col-actions itinerary-option-actions-col">
+                                    <div className="acc-menu-container">
+                                        <button
+                                            className="acc-menu-trigger"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const oid = mongoIdString(option._id);
+                                                setItineraryActiveMenuId((prev) => (prev === oid ? null : oid));
+                                            }}
+                                        >
+                                            ⋮
+                                        </button>
+                                        {itineraryActiveMenuId === mongoIdString(option._id) && (
+                                            <div className="acc-dropdown">
+                                                <button
+                                                    onClick={() => {
+                                                        setItineraryActiveMenuId(null);
+                                                        openItineraryDetailsModal(option);
+                                                    }}
+                                                >
+                                                    View Details
+                                                </button>
+                                                {canEditTripPage && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => {
+                                                                setItineraryActiveMenuId(null);
+                                                                openEditItineraryModal(option);
+                                                            }}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            className="delete-option"
+                                                            onClick={() => {
+                                                                setItineraryActiveMenuId(null);
+                                                                setItineraryOptionToDelete(option);
+                                                                setShowDeleteItineraryConfirm(true);
+                                                            }}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                )}
+                {voteError && <p className="td-invite-error" role="alert">{voteError}</p>}
+            </div>
+        );
+    };
+
     const renderCollaboration = () => (
         <div className="td-tab-content">
             <div className="td-content-header"><h2>Collaboration</h2></div>
@@ -1282,6 +1938,7 @@ export default function TripDetails() {
     const tabContent = {
         timeline:       renderTimelineMult,
         routes:         renderRoutes,
+        itineraryoptions: renderItineraryOptions,
         accommodations: renderAccommodations,
         activities:     renderActivities,
         map:            () => renderComingSoon('◎', 'Map'),
@@ -1291,6 +1948,10 @@ export default function TripDetails() {
     };
 
     // ── render ────────────────────────────────────────────────────────────────
+
+    const visibleTabs = hasCollaborators
+        ? TABS
+        : TABS.filter((tab) => tab.id !== 'itineraryoptions');
 
     return (
         <div className="td-shell">
@@ -1551,6 +2212,369 @@ export default function TripDetails() {
                         {renderModalGroupSummary()}
                         {preferenceError && <p className="trip-route-preference-error">{preferenceError}</p>}
                     </section>
+                </div>
+            )}
+
+            {/* Group Options */}
+            {hasCollaborators && showItineraryOptionModal && (
+                <div className="td-modal-overlay" onClick={handleCloseItineraryModal}>
+                    <div className="td-modal itinerary-option-modal" style={{ width: 'min(560px, 92vw)' }} onClick={(e) => e.stopPropagation()}>
+                        <h3>{itineraryFormMode === 'edit' ? 'Edit Itinerary Option' : 'Add Itinerary Option'}</h3>
+                        <form onSubmit={handleSaveItineraryOption} className="itinerary-option-form">
+                            <div className="itinerary-option-fields" style={{ display: 'grid', gap: '10px', textAlign: 'left' }}>
+                                <label htmlFor="itinerary-option-title">
+                                    Title
+                                    <input
+                                        id="itinerary-option-title"
+                                        type="text"
+                                        value={itineraryForm.title}
+                                        onChange={(e) =>
+                                            setItineraryForm((prev) => ({ ...prev, title: e.target.value }))
+                                        }
+                                        disabled={isSavingItineraryOption}
+                                        style={{ width: '100%' }}
+                                    />
+                                </label>
+                                <label htmlFor="itinerary-option-summary">
+                                    Summary
+                                    <textarea
+                                        id="itinerary-option-summary"
+                                        value={itineraryForm.summary}
+                                        onChange={(e) =>
+                                            setItineraryForm((prev) => ({ ...prev, summary: e.target.value }))
+                                        }
+                                        disabled={isSavingItineraryOption}
+                                        rows={2}
+                                        style={{ width: '100%' }}
+                                    />
+                                </label>
+                                <div>
+                                    <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Daily Itinerary Plan</p>
+                                    <div style={{ display: 'grid', gap: '10px' }}>
+                                        {itineraryDayPlans.map((dayPlan, dayIdx) => (
+                                            <details
+                                                key={dayPlan.key}
+                                                open={dayIdx === 0}
+                                                style={{ border: '1px solid var(--td-border-mid)', borderRadius: '8px', padding: '10px 12px' }}
+                                            >
+                                                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+                                                    <span>{dayPlan.label}</span>
+                                                    {dayPlan.date && (
+                                                        <span style={{ color: 'var(--td-text-muted)', fontWeight: 500 }}>
+                                                            {' \u00b7 '}
+                                                            {new Date(`${dayPlan.date}T00:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC' })}
+                                                        </span>
+                                                    )}
+                                                    <span style={{ color: 'var(--td-text-muted)', fontWeight: 500 }}>
+                                                        {' \u00b7 '}
+                                                        {(dayPlan.items || []).filter((item) => String(item?.label || '').trim()).length} item
+                                                        {(dayPlan.items || []).filter((item) => String(item?.label || '').trim()).length === 1 ? '' : 's'}
+                                                    </span>
+                                                </summary>
+                                                <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
+                                                    {(dayPlan.items || []).map((item, itemIdx) => (
+                                                        <div
+                                                            key={`${dayPlan.key}-item-${itemIdx}`}
+                                                            style={{ display: 'grid', gridTemplateColumns: '1fr 130px auto', gap: '8px', alignItems: 'center' }}
+                                                        >
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Itinerary step (e.g., Train to Boston)"
+                                                                value={item.label}
+                                                                onChange={(e) =>
+                                                                    handleDayItemChange(dayIdx, itemIdx, 'label', e.target.value)
+                                                                }
+                                                                disabled={isSavingItineraryOption}
+                                                            />
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                placeholder="Cost"
+                                                                value={item.cost}
+                                                                onChange={(e) =>
+                                                                    handleDayItemChange(dayIdx, itemIdx, 'cost', e.target.value)
+                                                                }
+                                                                disabled={isSavingItineraryOption}
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                className="td-modal-btn td-modal-btn--cancel"
+                                                                onClick={() => removeDayItemRow(dayIdx, itemIdx)}
+                                                                disabled={isSavingItineraryOption}
+                                                                style={{ padding: '8px 10px' }}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    <div>
+                                                        <button
+                                                            type="button"
+                                                            className="td-btn-view"
+                                                            onClick={() => addDayItemRow(dayIdx)}
+                                                            disabled={isSavingItineraryOption}
+                                                        >
+                                                            + Add item
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </details>
+                                        ))}
+                                    </div>
+                                </div>
+                                <label htmlFor="itinerary-option-total" className="itinerary-option-total">
+                                    Estimated Total Cost (auto-calculated)
+                                    <input
+                                        id="itinerary-option-total"
+                                        type="text"
+                                        value={`$${computedItineraryTotalCost.toFixed(2)}`}
+                                        disabled
+                                        readOnly
+                                        style={{ width: '100%', backgroundColor: '#f8fafc' }}
+                                    />
+                                </label>
+                            </div>
+                            {itinerarySaveError && (
+                                <p className="td-invite-error" role="alert" style={{ marginTop: '10px' }}>
+                                    {itinerarySaveError}
+                                </p>
+                            )}
+                            <div className="td-modal-actions itinerary-option-actions">
+                                <div className="itinerary-option-action-row">
+                                <button
+                                    type="button"
+                                    className="td-modal-btn td-modal-btn--cancel"
+                                    onClick={handleCloseItineraryModal}
+                                    disabled={isSavingItineraryOption}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="trip-route-preference-save"
+                                    disabled={isSavingItineraryOption}
+                                >
+                                    {isSavingItineraryOption
+                                        ? 'Saving...'
+                                        : itineraryFormMode === 'edit'
+                                            ? 'Save Changes'
+                                            : 'Create Option'}
+                                </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showItineraryDetailsModal && selectedItineraryOption && (
+                <div className="td-modal-overlay" onClick={() => setShowItineraryDetailsModal(false)}>
+                    <div className="td-modal itinerary-option-details-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>{selectedItineraryOption.title || 'Itinerary Option'}</h3>
+                        <p className="itinerary-option-details-summary">
+                            {selectedItineraryOption.summary || 'No summary provided.'}
+                        </p>
+                        <div className="itinerary-option-details-top">
+                            <span><strong>Total Cost:</strong> ${Number(selectedItineraryOption.estimatedTotalCost || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="itinerary-option-vote-summary">
+                            <span>Preferred: {itineraryVoteSummary(selectedItineraryOption).preferred}</span>
+                            <span>Acceptable: {itineraryVoteSummary(selectedItineraryOption).acceptable}</span>
+                            <span>Not Preferred: {itineraryVoteSummary(selectedItineraryOption).notPreferred}</span>
+                        </div>
+                        <div className="itinerary-details-vote-controls">
+                            {[
+                                { key: 'preferred', label: 'Preferred' },
+                                { key: 'acceptable', label: 'Acceptable' },
+                                { key: 'not_preferred', label: 'Not Preferred' },
+                            ].map((vote) => (
+                                <button
+                                    key={vote.key}
+                                    type="button"
+                                    className="itinerary-details-vote-btn"
+                                    style={
+                                        getMyOptionVote(selectedItineraryOption) === vote.key
+                                            ? { backgroundColor: 'var(--td-accent)', color: '#fff', borderColor: 'var(--td-accent)' }
+                                            : undefined
+                                    }
+                                    onClick={() => handleQuickVote(selectedItineraryOption, vote.key)}
+                                    disabled={Boolean(voteSubmittingByOptionId[mongoIdString(selectedItineraryOption._id)])}
+                                >
+                                    {vote.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="itinerary-option-details-body">
+                            {(() => {
+                                const tripDayPlans = trip ? buildTripDayPlans(trip) : [];
+                                const dayNumByDateKey = new Map();
+                                tripDayPlans.forEach((p, idx) => {
+                                    if (p?.date) dayNumByDateKey.set(p.date, idx + 1);
+                                });
+
+                                return groupItineraryItemsByDay(selectedItineraryOption).map(([dayKey, items], dayIndex) => {
+                                    const dayNumber =
+                                        dayKey === 'No date'
+                                            ? 1
+                                            : (dayNumByDateKey.get(dayKey) ?? dayIndex + 1);
+
+                                    return (
+                                        <details
+                                            key={`${dayKey}-${dayIndex}`}
+                                            className="itinerary-detail-day"
+                                            open={dayIndex === 0}
+                                        >
+                                            <summary>
+                                                {dayKey === 'No date'
+                                                    ? `Day ${dayNumber} · Unscheduled`
+                                                    : `Day ${dayNumber} · ${new Date(`${dayKey}T00:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC' })}`}
+                                                <span className="itinerary-detail-day-count">
+                                                    {items.length} item{items.length === 1 ? '' : 's'}
+                                                </span>
+                                            </summary>
+                                            <ul>
+                                                {items.map((item, idx) => (
+                                                    <li key={`${dayKey}-item-${idx}`}>
+                                                        <span>{item?.label || 'Untitled step'}</span>
+                                                        <strong>{item?.cost != null ? `$${Number(item.cost).toFixed(2)}` : '-'}</strong>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </details>
+                                    );
+                                });
+                            })()}
+                        </div>
+
+                        <details className="itinerary-comments-detail" open>
+                            <summary>
+                                Comments
+                                {(() => {
+                                    const comments = itineraryCommentsFlat(selectedItineraryOption);
+                                    const count = comments.length;
+                                    return (
+                                        <span className="itinerary-detail-day-count">
+                                            {count} comment{count === 1 ? '' : 's'}
+                                        </span>
+                                    );
+                                })()}
+                            </summary>
+
+                            {(() => {
+                                const comments = itineraryCommentsFlat(selectedItineraryOption);
+                                const myUid = mongoIdString(dbUser?._id);
+
+                                return (
+                                    <div className="itinerary-comments-body">
+                                        <div className="itinerary-comments-scroll" role="list">
+                                            {comments.length ? (
+                                                comments.map((item, idx) => {
+                                                    const authorLabel =
+                                                        String(item?.userLabel || '').trim() ||
+                                                        (item?.userId && item.userId === myUid
+                                                            ? (dbUser?.name || dbUser?.email || 'You')
+                                                            : item?.userId);
+
+                                                    const when = item?.createdAt
+                                                        ? new Date(item.createdAt).toLocaleString('en-US', {
+                                                            timeZone: 'UTC',
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        })
+                                                        : '';
+
+                                                    return (
+                                                        <div
+                                                            key={`${item?.userId || 'unknown'}-${item?.createdAt || idx}`}
+                                                            className="itinerary-comment-item itinerary-comment-item--flat"
+                                                            role="listitem"
+                                                        >
+                                                            <div className="itinerary-comment-item-meta">
+                                                                <span className="itinerary-comment-item-author">
+                                                                    {authorLabel || 'User'}
+                                                                </span>
+                                                                <span className="itinerary-comment-item-date">{when}</span>
+                                                            </div>
+                                                            <p className="itinerary-comment-item-text">{item.comment}</p>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="itinerary-comments-empty">No comments yet.</div>
+                                            )}
+                                        </div>
+
+                                        <div className="itinerary-comment-form">
+                                            <label htmlFor="itinerary-comment-text" className="itinerary-comment-label">
+                                                Add a comment
+                                            </label>
+                                            <textarea
+                                                id="itinerary-comment-text"
+                                                rows={3}
+                                                value={itineraryCommentText}
+                                                onChange={(e) => setItineraryCommentText(e.target.value)}
+                                                placeholder="Write your comment..."
+                                                disabled={itineraryCommentSubmitting}
+                                            />
+                                            <div className="itinerary-comment-actions">
+                                                <button
+                                                    type="button"
+                                                    className="itinerary-comment-submit"
+                                                    onClick={handleAddItineraryComment}
+                                                    disabled={itineraryCommentSubmitting}
+                                                >
+                                                    {itineraryCommentSubmitting ? 'Posting...' : 'Post Comment'}
+                                                </button>
+                                            </div>
+                                            {itineraryCommentError && (
+                                                <p className="td-invite-error" role="alert" style={{ marginTop: '8px' }}>
+                                                    {itineraryCommentError}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </details>
+
+                        <div className="td-modal-actions">
+                            <button
+                                className="td-modal-btn td-modal-btn--cancel"
+                                onClick={() => { setShowItineraryDetailsModal(false); setItineraryCommentText(''); setItineraryCommentError(''); }}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showDeleteItineraryConfirm && itineraryOptionToDelete && (
+                <div className="td-modal-overlay" onClick={() => setShowDeleteItineraryConfirm(false)}>
+                    <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Delete Itinerary Option</h3>
+                        <p>Delete "{itineraryOptionToDelete.title || 'this option'}"?</p>
+                        <div className="td-modal-actions">
+                            <button
+                                className="td-modal-btn td-modal-btn--cancel"
+                                onClick={() => setShowDeleteItineraryConfirm(false)}
+                                disabled={isDeletingItineraryOption}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="td-modal-btn td-modal-btn--danger"
+                                onClick={handleDeleteItineraryOption}
+                                disabled={isDeletingItineraryOption}
+                            >
+                                {isDeletingItineraryOption ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
