@@ -11,6 +11,7 @@ import ActivitiesTab from '../Activity/ActivitiesTab';
 import TripChangelog from './TripChangelog';
 import { getTripById, getTripChangelog, updatePackingList, duplicateTrip, leaveTrip } from '../../services/tripServices';
 import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../collaboration/tripCollaboration';
+import RouteMap from './RouteMap';
 
 import './TripDetails.css';
 
@@ -1204,6 +1205,27 @@ export default function TripDetails() {
         </div>
     );
 
+    const renderMap = () => (
+        <div className="td-tab-content">
+            <div className="td-content-header"><h2>Map</h2></div>
+            {sortedRoutes.length === 0 ? (
+                <div className="td-empty-state">
+                    <span className="td-empty-icon">◎</span>
+                    <p>No routes added to this trip yet.</p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '2rem' }}>
+                    {sortedRoutes.map((route, index) => (
+                        <div key={`map-route-${index}`}>
+                            <h3 style={{ marginBottom: '1rem', color: '#333' }}>{getRouteTitle(route)}</h3>
+                            <RouteMap route={route} />
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
     const renderCollaboration = () => (
         <div className="td-tab-content">
             <div className="td-content-header"><h2>Collaboration</h2></div>
@@ -1304,7 +1326,7 @@ export default function TripDetails() {
         routes:         renderRoutes,
         accommodations: renderAccommodations,
         activities:     renderActivities,
-        map:            () => renderComingSoon('◎', 'Map'),
+        map:            renderMap,
         collaboration:  renderCollaboration,
         changelog:      renderChangelog,
         packinglist:    renderPackingList,
