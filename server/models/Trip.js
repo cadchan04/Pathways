@@ -15,7 +15,12 @@ const collabNotificationSchema = new mongoose.Schema(
                 'accommodation_added',
                 'accommodation_deleted',
                 'collaborator_added',
-                'collaborator_removed'
+                'collaborator_removed',
+                'itinerary_option_added',
+                'itinerary_option_updated',
+                'itinerary_option_deleted',
+                'itinerary_option_reviewed',
+                'itinerary_option_commented'
             ],
             required: true
         },
@@ -25,6 +30,63 @@ const collabNotificationSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now }
     },
     { _id: true }
+);
+
+const itineraryReviewSchema = new mongoose.Schema(
+    {
+        userId: { type: String, required: true },
+        value: {
+            type: String,
+            enum: ['preferred', 'acceptable', 'not_preferred'],
+            required: true,
+        },
+        comment: { type: String, trim: true, default: '' },
+        userLabel: { type: String, trim: true, default: '' },
+    },
+    { _id: true, timestamps: true }
+);
+
+const itineraryOptionCommentSchema = new mongoose.Schema(
+    {
+        userId: { type: String, required: true },
+        comment: { type: String, required: true, trim: true },
+        userLabel: { type: String, trim: true, default: '' },
+    },
+    { _id: true, timestamps: true }
+);
+
+const itineraryOptionItemSchema = new mongoose.Schema(
+    {
+        type: {
+            type: String,
+            enum: ['route', 'accommodation', 'activity', 'custom'],
+            required: true,
+        },
+        refId: { type: String, default: null },
+        label: { type: String, required: true, trim: true },
+        date: { type: Date, default: null },
+        cost: { type: Number, default: null },
+        notes: { type: String, trim: true, default: '' },
+    },
+    { _id: true }
+);
+
+const itineraryOptionSchema = new mongoose.Schema(
+    {
+        title: { type: String, required: true, trim: true },
+        summary: { type: String, trim: true, default: '' },
+        proposedByUserId: { type: String, required: true },
+        status: {
+            type: String,
+            enum: ['draft', 'proposed', 'archived'],
+            default: 'draft',
+        },
+        items: { type: [itineraryOptionItemSchema], default: [] },
+        estimatedTotalCost: { type: Number, default: 0 },
+        reviews: { type: [itineraryReviewSchema], default: [] },
+        comments: { type: [itineraryOptionCommentSchema], default: [] },
+    },
+    { _id: true, timestamps: true }
 );
 
 const TripSchema = new mongoose.Schema({
@@ -62,7 +124,8 @@ const TripSchema = new mongoose.Schema({
           text: { type: String, required: true },
           checked: { type: Boolean, default: false }
         }
-    ]
+    ],
+    itineraryOptions: { type: [itineraryOptionSchema], default: [] }
 });
 
 TripSchema.index({ 'collaborators.userId': 1 });

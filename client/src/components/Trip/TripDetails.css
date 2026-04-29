@@ -344,6 +344,698 @@
        border: 2px solid var(--td-danger-hover);
    }
    .td-btn-delete:hover { background-color: var(--td-danger-hover); color: white; }
+
+.itinerary-options-list {
+    display: grid;
+    gap: 14px;
+}
+
+.itinerary-option-card {
+    border-left: 6px solid var(--td-accent) !important;
+}
+
+.itinerary-option-main-col {
+    padding-right: 25px !important;
+}
+
+.itinerary-option-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.itinerary-option-type-tag {
+    background: #f1f8fb !important;
+    color: var(--td-accent) !important;
+}
+
+.itinerary-option-summary {
+    margin-top: 8px;
+    font-size: .88rem;
+    color: #4b5a62;
+}
+
+
+
+.itinerary-preview-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.itinerary-preview-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #f2f8fb;
+    color: #4a5a60;
+    font-size: .75rem;
+    border: 1px solid #dcecf3;
+}
+
+
+.itinerary-option-actions-col {
+    min-width: 80px;
+    align-items: flex-end;
+}
+
+.itinerary-option-title {
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+.itinerary-option-meta-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 150px;
+    padding: 0 20px;
+    border-left: none !important;
+    border-right: none !important;
+    align-items: flex-end;
+    text-align: right;
+}
+
+.itinerary-vote-total {
+    font-size: .8rem;
+    color: var(--td-text-muted);
+    font-weight: 600;
+}
+
+.itinerary-option-votes-col {
+    min-width: 150px;
+    align-items: flex-end;
+    border-left: 1px solid #eee;
+    border-right: 1px solid #eee;
+    padding: 0 20px;
+}
+
+.itinerary-vote-empty-muted {
+    font-size: .8rem;
+    color: var(--td-text-muted);
+    font-weight: 700;
+    text-align: right;
+    padding-top: 2px;
+}
+
+.itinerary-thumb-vote-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.itinerary-thumb-vote-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 2px solid rgba(63, 168, 198, .25);
+    background: #fff;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.itinerary-thumb-vote-row--down {
+    border-color: rgba(239, 68, 68, .25);
+}
+
+.itinerary-thumb-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.itinerary-thumb-label {
+    font-size: .82rem;
+    font-weight: 800;
+    color: #0f5f6e;
+}
+
+.itinerary-thumb-count {
+    font-family: 'DM Mono', monospace;
+    font-size: .82rem;
+    color: #0f5f6e;
+}
+
+.itinerary-thumb-vote-row--down .itinerary-thumb-label,
+.itinerary-thumb-vote-row--down .itinerary-thumb-count {
+    color: #b42318;
+}
+
+.itinerary-vote-breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.itinerary-thumb-vote-row {
+    display: flex;
+}
+
+.itinerary-vote-bar-label {
+    font-size: .8rem;
+}
+
+.itinerary-vote-breakdown-list .itinerary-vote-bar-row {
+    display: flex;
+}
+
+.itinerary-thumb-vote-row--down {
+    color: #b42318;
+}
+
+.itinerary-vote-breakdown-list .itinerary-thumb-vote-row--down .itinerary-thumb-label {
+    color: #b42318;
+}
+
+.itinerary-thumb-vote-row {
+    justify-content: flex-end;
+}
+
+.itinerary-thumb-vote-row--down .itinerary-thumb-label,
+.itinerary-thumb-vote-row--down .itinerary-thumb-count {
+    color: #b42318;
+}
+
+.itinerary-thumb-vote-row--down {
+    border-color: rgba(239, 68, 68, .25);
+}
+
+.itinerary-thumb-vote-row {
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 2px solid rgba(63, 168, 198, .25);
+    background: #fff;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.itinerary-thumb-vote-row .itinerary-thumb-vote-row--down {
+    border-color: rgba(239, 68, 68, .25);
+}
+
+.itinerary-thumb-vote-row--up .itinerary-thumb-icon {
+    color: var(--td-accent);
+}
+
+.itinerary-thumb-vote-row--acceptable .itinerary-thumb-icon {
+    color: #2563eb;
+}
+
+.itinerary-thumb-vote-row--down .itinerary-thumb-icon {
+    color: #dc2626;
+}
+
+.itinerary-vote-bar-label {
+    color: var(--td-text-muted);
+}
+
+.itinerary-thumb-vote-row--up .itinerary-thumb-label,
+.itinerary-thumb-vote-row--up .itinerary-thumb-count {
+    color: #0f5f6e;
+}
+
+.itinerary-thumb-vote-row--acceptable .itinerary-thumb-label,
+.itinerary-thumb-vote-row--acceptable .itinerary-thumb-count {
+    color: #0b4aa6;
+}
+
+.itinerary-thumb-vote-row--down .itinerary-thumb-label,
+.itinerary-thumb-vote-row--down .itinerary-thumb-count {
+    color: #b42318;
+}
+
+.itinerary-thumb-vote-row--up,
+.itinerary-thumb-vote-row--acceptable {
+    border-color: rgba(63, 168, 198, .25);
+}
+
+.itinerary-thumb-vote-row--acceptable {
+    border-color: rgba(59, 130, 246, .25);
+}
+
+.itinerary-vote-bar-track {
+    display: block;
+}
+
+.itinerary-vote-bars {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+}
+
+.itinerary-vote-empty {
+    font-size: .8rem;
+    color: var(--td-text-muted);
+    font-weight: 600;
+    text-align: right;
+}
+
+.itinerary-vote-bar-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.itinerary-vote-bar-label {
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--td-text-muted);
+    white-space: nowrap;
+}
+
+.itinerary-vote-bar-count {
+    font-size: .78rem;
+    font-weight: 800;
+    color: var(--td-text-primary);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.itinerary-vote-bar-track {
+    grid-column: 1 / -1;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--td-border);
+    overflow: hidden;
+}
+
+.itinerary-vote-bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--td-accent) 0%, #5bd0e0 100%);
+    transition: width .25s ease;
+}
+
+.itinerary-vote-bar-row--preferred .itinerary-vote-bar-fill {
+    background: linear-gradient(90deg, var(--td-accent) 0%, #5bd0e0 100%);
+}
+
+.itinerary-vote-bar-row--acceptable .itinerary-vote-bar-fill {
+    background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+}
+
+.itinerary-vote-bar-row--not-preferred .itinerary-vote-bar-fill {
+    background: linear-gradient(90deg, #ef4444 0%, #fb7185 100%);
+}
+
+.itinerary-details-vote-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    margin-bottom: 6px;
+}
+
+.itinerary-details-vote-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.2rem;
+    padding: 0 14px;
+    border-radius: var(--td-radius);
+    background: transparent;
+    color: var(--td-accent);
+    border: 2px solid var(--td-accent);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background var(--td-transition), color var(--td-transition);
+}
+
+.itinerary-details-vote-btn:hover:not(:disabled) {
+    background: var(--td-accent);
+    color: #fff;
+}
+
+.itinerary-option-details-modal {
+    width: min(520px, 88vw) !important;
+    padding: 22px;
+    text-align: left;
+}
+
+.itinerary-option-details-summary {
+    color: var(--td-text-secondary);
+    margin-bottom: 4px;
+    text-align: left;
+}
+
+.itinerary-option-details-top {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+    color: var(--td-text-primary);
+}
+
+.itinerary-option-vote-summary {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.itinerary-option-vote-summary span {
+    background: #f5fafc;
+    border: 1px solid #dbeaf1;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: .8rem;
+}
+
+.itinerary-option-details-body {
+    max-height: none;
+    overflow-y: visible;
+    display: grid;
+    gap: 10px;
+}
+
+.itinerary-comments-section {
+    display: grid;
+    gap: 12px;
+    margin-top: 2px;
+}
+
+.itinerary-comments-details {
+    margin-top: 2px;
+}
+
+.itinerary-comments-summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 0;
+}
+
+.itinerary-comments-summary-title {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--td-text-primary);
+}
+
+.itinerary-comments-summary::-webkit-details-marker {
+    display: none;
+}
+
+.itinerary-comments-scroll {
+    max-height: 160px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-top: 6px;
+}
+
+.itinerary-comments-body {
+    padding: 0 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+}
+
+.itinerary-comments-detail {
+    /* Comments should not forcibly clip; the modal handles scrolling. */
+    overflow: visible;
+}
+
+.itinerary-comments-detail summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    list-style: none;
+    padding: 12px 14px;
+    font-size: .95rem;
+    font-weight: 700;
+}
+
+.itinerary-comments-detail summary::-webkit-details-marker {
+    display: none;
+}
+
+.itinerary-comments-detail summary::before {
+    content: '▾';
+    font-size: .8rem;
+    color: var(--td-text-muted);
+    margin-right: 8px;
+}
+
+.itinerary-comments-detail:not([open]) summary::before {
+    content: '▸';
+}
+
+.itinerary-comment-item--flat {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 10px 0 !important;
+    text-align: left;
+    border-bottom: 1px solid #eef2f5;
+}
+
+.itinerary-comments-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.itinerary-comments-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--td-text-primary);
+}
+
+.itinerary-comments-empty {
+    margin: 0;
+    color: var(--td-text-muted);
+    font-style: italic;
+}
+
+.itinerary-comments-threads {
+    display: grid;
+    gap: 10px;
+}
+
+.itinerary-comment-thread {
+    border: 1px solid var(--td-border);
+    border-radius: 10px;
+    background: #fbfdfe;
+    overflow: hidden;
+}
+
+.itinerary-comment-thread summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-weight: 800;
+    color: #2c4a52;
+}
+
+.itinerary-comment-thread summary::-webkit-details-marker {
+    display: none;
+}
+
+.itinerary-comment-thread summary::before {
+    content: '▸';
+    font-size: .85rem;
+    color: var(--td-accent);
+    margin-right: 8px;
+    font-weight: 900;
+}
+
+.itinerary-comment-thread[open] summary::before {
+    content: '▾';
+}
+
+.itinerary-comment-thread-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 12px;
+}
+
+.itinerary-comment-thread-user {
+    color: var(--td-accent-deeper);
+    font-weight: 900;
+}
+
+.itinerary-comment-thread-meta {
+    margin-left: auto;
+    font-weight: 700;
+    font-size: .86rem;
+    color: var(--td-text-muted);
+}
+
+.itinerary-comment-thread-body {
+    padding: 10px 12px 12px;
+    border-top: 1px solid #eef2f5;
+    display: grid;
+    gap: 8px;
+}
+
+.itinerary-comment-item {
+    background: #fff;
+    border: 1px solid #edf2f5;
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.itinerary-comment-item-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.itinerary-comment-item-author {
+    font-weight: 900;
+    color: #0f5f6e;
+    font-size: .92rem;
+}
+
+.itinerary-comment-item-date {
+    font-size: .78rem;
+    color: var(--td-text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.itinerary-comment-item-text {
+    margin: 4px 0 0;
+    color: var(--td-text-primary);
+    line-height: 1.42;
+    white-space: pre-wrap;
+    text-align: left;
+}
+
+.itinerary-comment-form {
+    display: grid;
+    gap: 8px;
+    text-align: left;
+}
+
+.itinerary-comment-label {
+    font-weight: 800;
+    color: var(--td-text-secondary);
+    font-size: .95rem;
+}
+
+.itinerary-comment-form textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--td-border-mid);
+    border-radius: var(--td-radius);
+    background: var(--td-surface);
+    font-family: inherit;
+    font-size: .95rem;
+    outline: none;
+    resize: vertical;
+    min-height: 56px;
+    max-height: 140px;
+    transition: border-color var(--td-transition), box-shadow var(--td-transition);
+}
+
+.itinerary-comment-form textarea:focus {
+    border-color: var(--td-accent);
+    box-shadow: 0 0 0 2px rgba(63, 168, 198, .2);
+}
+
+.itinerary-comment-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0;
+}
+
+.itinerary-comment-submit {
+    background: var(--td-accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--td-radius);
+    padding: 6px 10px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background var(--td-transition);
+}
+
+.itinerary-comment-submit:hover:not(:disabled) {
+    background: var(--td-accent-dark);
+}
+
+.itinerary-comment-submit:disabled {
+    opacity: .65;
+    cursor: not-allowed;
+}
+
+.itinerary-detail-day {
+    border: 1px solid var(--td-border);
+    border-radius: 10px;
+    background: #fbfdfe;
+    overflow: hidden;
+}
+
+.itinerary-detail-day summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    list-style: none;
+    padding: 12px 14px;
+    font-size: .95rem;
+    font-weight: 700;
+}
+
+.itinerary-detail-day summary::-webkit-details-marker { display: none; }
+.itinerary-detail-day summary::before {
+    content: '▾';
+    font-size: .8rem;
+    color: var(--td-text-muted);
+    margin-right: 8px;
+}
+.itinerary-detail-day:not([open]) summary::before {
+    content: '▸';
+}
+
+.itinerary-detail-day-count {
+    margin-left: auto;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--td-text-muted);
+}
+
+.itinerary-detail-day ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 12px 12px;
+    display: grid;
+    gap: 6px;
+}
+
+.itinerary-detail-day li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid #edf2f5;
+}
    
    /* ── Group transport preferences open button ──────────────────────── */
    .trip-route-preference-open {
@@ -531,7 +1223,9 @@
    .td-modal {
        background: var(--td-surface); border-radius: var(--td-radius-lg);
        padding: 28px; width: min(360px,92vw); box-shadow: var(--td-shadow-lg);
-       display: flex; flex-direction: column; gap: 14px; text-align: center;
+    display: flex; flex-direction: column; gap: 14px; text-align: center;
+    max-height: 90vh;
+    overflow-y: auto;
    }
    .td-modal h3 { margin: 0; font-size: 1.05rem; font-weight: 700; }
    .td-modal p  { margin: 0; font-size: .9rem; color: var(--td-text-muted); }
@@ -545,6 +1239,49 @@
    .td-modal-btn--danger:hover { background: var(--td-danger-hover); color: #fff; }
    .td-modal-btn--cancel { background: transparent; color: var(--td-text-muted); border: 1px solid var(--td-border-mid); }
    .td-modal-btn--cancel:hover { background: var(--td-border); }
+
+.itinerary-option-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.itinerary-option-fields {
+    overflow-y: auto;
+    padding-bottom: 12px;
+}
+
+.itinerary-option-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: static;
+    background: var(--td-surface);
+    padding: 10px 28px 14px;
+    margin-top: 0;
+    margin-left: -28px;
+    margin-right: -28px;
+    border-top: 1px solid var(--td-border);
+    flex-shrink: 0;
+}
+
+.itinerary-option-total {
+    display: block;
+    text-align: left;
+    margin: 0 0 8px 0;
+}
+
+.itinerary-option-action-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.itinerary-option-modal {
+    padding: 28px 28px 0;
+    overflow: hidden;
+}
    
    /* ── Responsive ──────────────────────────────────────────────────── */
    @media (max-width: 768px) {
