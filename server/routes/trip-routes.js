@@ -359,6 +359,12 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
             return res.status(404).json({ message: "Route not found" });
         }
 
+        if (cleanData.totalCost !== undefined) {
+            const costBefore = Number(route.totalCost) || 0;
+            const costAfter = Number(cleanData.totalCost) || 0;
+            trip.totalCost = trip.totalCost + (costAfter - costBefore);
+        }
+
         const changedKeys = Object.keys(cleanData).filter((key) => {
             const before = route[key] instanceof Date ? route[key].toISOString() : JSON.stringify(route[key] ?? null);
             const after = cleanData[key] instanceof Date

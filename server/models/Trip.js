@@ -70,15 +70,16 @@ TripSchema.index({ collaboratorIds: 1 });
 TripSchema.index({ 'collabAlerts.recipientUserId': 1, 'collabAlerts.read': 1, 'collabAlerts.createdAt': -1 });
 
 // calculate total cost from routes
-TripSchema.pre('save', async function() {
-    if (this.routes && this.routes.length > 0) {
-        this.totalCost = this.routes.reduce((sum, route) => {
-            return sum + (Number(route.totalCost) || 0);
-        }, 0);
-    } else {
-        this.totalCost = 0;
-    }
-});
+// Recalculate at the save bc now there are activities and accommodations that also contribute to total cost, so we can't just sum the routes
+// TripSchema.pre('save', async function() {
+//     if (this.routes && this.routes.length > 0) {
+//         this.totalCost = this.routes.reduce((sum, route) => {
+//             return sum + (Number(route.totalCost) || 0);
+//         }, 0);
+//     } else {
+//         this.totalCost = 0;
+//     }
+// });
 
 const Trip = mongoose.model('Trip', TripSchema);
 
