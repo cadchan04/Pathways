@@ -26,8 +26,8 @@ export default function CreateActivity() {
         email: '',
         website: '',
         activityDate: '',
-        startTime: '15:00',
-        endTime: '16:00',
+        startTime: '12:00',
+        endTime: '13:00',
         cost: '',
         attending: [],
         notes: ''
@@ -102,7 +102,7 @@ export default function CreateActivity() {
             
             if (savedActivity) {
                 console.log("Activity saved to MongoDB via service");
-                navigate(`/view-trip-details/${tripId}`);
+                navigate(`/view-trip-details/${tripId}`, { state: { activeTab: 'activities' } });
             }
 
         } catch (err) {
@@ -237,7 +237,6 @@ export default function CreateActivity() {
                             value={formData.endTime}
                             onChange={handleChange}
                         />
-                        {errors.endTime && <p className="error-text">{errors.endTime}</p>}
                     </div>
                 </div>
 

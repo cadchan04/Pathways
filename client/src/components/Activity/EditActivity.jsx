@@ -248,7 +248,6 @@ export default function EditActivity() {
                             value={formData.endTime}
                             onChange={handleChange}
                         />
-                        {errors.endTime && <p className="error-text">{errors.endTime}</p>}
                     </div>
                 </div>
 
