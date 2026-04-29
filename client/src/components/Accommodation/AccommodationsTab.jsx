@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import './AccommodationsTab.css';
 
@@ -13,6 +13,7 @@ export default function AccommodationsTab({
     onDelete
 }) {
     const navigate = useNavigate();
+    const tripId = useParams();
     const [activeMenuId, setActiveMenuId] = useState(null);
     const deletingId = useState(null);
 
@@ -148,7 +149,7 @@ export default function AccommodationsTab({
                                                 
                                                 {canEdit && (
                                                     <>
-                                                        <button onClick={() => navigate(`/edit-accommodation/${acc._id}`)}>
+                                                        <button onClick={() => navigate(`/edit-accommodation/${tripId.id}/${acc._id}`)}>
                                                             Edit
                                                         </button>
                                                         <button 

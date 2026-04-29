@@ -28,6 +28,32 @@ export const getAccommodations = async (tripId, userId) => {
     }
 };
 
+// get a specific accommodation given a specified accommodation id
+export const getAccommodationById = async (tripId, accId, userId) => {
+    try {
+        const response = await axios.get(`${API_URL}/api/trips/${tripId}/accommodations/${accId}`, {
+            params: { userId: userId }
+        });
+        return response.data;
+    } catch (err) {
+        console.error("Error fetching accommodation by ID:", err);
+        throw err;
+    }
+};
+
+// update a specific accommodation
+export const updateAccommodation = async (tripId, accId, accData, userId) => {
+    try {
+        const response = await axios.put(`${API_URL}/api/trips/${tripId}/accommodations/${accId}`, accData, {
+            params: { userId: userId }
+        });
+        return response.data;
+    } catch (err) {
+        console.error("Error updating accommodation:", err);
+        throw err;
+    }
+};
+
 // delete an accommodation by its ID
 export const deleteAccommodation = async (tripId, accId, userId) => {
     try {
@@ -39,4 +65,4 @@ export const deleteAccommodation = async (tripId, accId, userId) => {
         console.error("Error deleting accommodation:", err);
         throw err;
     }
-}
+};
