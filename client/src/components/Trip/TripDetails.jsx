@@ -2693,6 +2693,13 @@ export default function TripDetails() {
                             </section>
 
                             <section className="acc-modal-section">
+                                <h4>Attending</h4>
+                                <div className="acc-modal-notes">
+                                    {selectedActivity.attending.length > 0 ? selectedActivity.attending.map(person => person.name).join(', ') : "No attendees for this activity."}
+                                </div>
+                            </section>
+
+                            <section className="acc-modal-section">
                                 <h4>Notes</h4>
                                 <div className="acc-modal-notes">
                                     {selectedActivity.notes || "No additional notes for this activity."}

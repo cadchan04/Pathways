@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 
+const User = require('./User');
+
 const activitySchema = new mongoose.Schema({
   name: { type: String, required: true },
   activityType: {
@@ -19,6 +21,7 @@ const activitySchema = new mongoose.Schema({
   endTime: { type: String, required: true },
   
   cost: { type: Number, default: null },
+  attending: [{ type: String, ref: User, required: false }],
   notes: { type: String, required: false },
   
   tripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', required: true },

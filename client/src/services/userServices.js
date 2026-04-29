@@ -11,3 +11,13 @@ export const syncUser = async (userData) => {
         throw err;
     }
 }
+
+export const getUserById = async (userId) => {
+    try {
+        const response = await axios.get(`${API_URL}/api/user/get/${userId}`);
+        return response.data;
+    } catch (err) {
+        console.error("Status:", err.response?.status)
+        throw err;
+    }
+}
