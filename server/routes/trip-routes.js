@@ -589,17 +589,6 @@ router.put('/:id/itinerary-options/:optionId/review', async (req, res) => {
         }
 
         await trip.save();
-        await appendCollaborationAlerts({
-            trip,
-            actorUserId: userId,
-            type: 'itinerary_option_reviewed',
-            message: `${actorName} reviewed itinerary option "${option.title}" on ${trip.name}.`,
-            metadata: {
-                tripId: String(trip._id),
-                itineraryOptionId: String(option._id),
-                vote: voteValue,
-            },
-        });
 
         res.json(option);
     } catch (err) {

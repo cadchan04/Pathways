@@ -6,6 +6,7 @@ const {
   ACTIVITY_PREFERENCE_CATEGORIES,
 } = require("../models/AccommodationActivityPreference");
 const { canViewTrip, readUserId } = require("../collaboration/tripAccess");
+const { actorLabel, appendCollaborationAlerts } = require("../services/collaboration-notifications-service");
 
 const router = express.Router({ mergeParams: true });
 
@@ -145,6 +146,10 @@ router.put("/me", async (req, res) => {
       setPayload.activityRankByCategory = normalizedActivity;
     }
 
+    const existingPreference = await AccommodationActivityPreference.findOne({
+      tripId: access.trip._id,
+      userId: access.userId,
+    }).lean();
     const saved = await AccommodationActivityPreference.findOneAndUpdate(
       { tripId: access.trip._id, userId: access.userId },
       { $set: setPayload },
@@ -155,6 +160,31 @@ router.put("/me", async (req, res) => {
         setDefaultsOnInsert: true,
       }
     );
+    const actorName = await actorLabel(access.userId);
+    await appendCollaborationAlerts({
+      trip: access.trip,
+      actorUserId: access.userId,
+      type: existingPreference
+        ? "accommodation_activity_preference_updated"
+        : "accommodation_activity_preference_added",
+      message: `${actorName} ${existingPreference ? "updated" : "submitted"} accommodation/activity preferences on ${access.trip.name}.`,
+      metadata: {
+        tripId: String(access.trip._id),
+        preferenceId: String(saved?._id || ""),
+        topAccommodation:
+          saved?.accommodationRankByCategory
+            ? Object.entries(saved.accommodationRankByCategory).find(
+                ([, rank]) => Number(rank) === 1
+              )?.[0] || null
+            : null,
+        topActivity:
+          saved?.activityRankByCategory
+            ? Object.entries(saved.activityRankByCategory).find(
+                ([, rank]) => Number(rank) === 1
+              )?.[0] || null
+            : null,
+      },
+    });
 
     res.status(200).json(saved);
   } catch (err) {

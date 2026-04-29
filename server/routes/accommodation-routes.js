@@ -181,6 +181,11 @@ router.put('/:accId', async (req, res) => {
     }
 
     try {
+        const existingAccommodation = await Accommodation.findOne({ _id: accId, tripId });
+        if (!existingAccommodation) {
+            return res.status(404).json({ error: 'Accommodation not found' });
+        }
+
         const updatedAccommodation = await Accommodation.findOneAndUpdate(
             { _id: accId, tripId },
             updateData,
@@ -190,6 +195,20 @@ router.put('/:accId', async (req, res) => {
         if (!updatedAccommodation) {
             return res.status(404).json({ error: 'Accommodation not found' });
         }
+
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} updated accommodation "${updatedAccommodation.name}" on ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'accommodation_updated',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                accommodationId: String(updatedAccommodation._id),
+                accommodationName: updatedAccommodation.name,
+            },
+        });
 
         res.json(updatedAccommodation);
     } catch (err) {
