@@ -173,15 +173,29 @@ router.put('/:activityId', async (req, res) => {
 
         Object.assign(activityToUpdate, updateData);
 
-         const [savedTrip, savedActivity] = await Promise.all([
-                Trip.findByIdAndUpdate(trip._id, {
-                        $set: { 
-                            totalCost: newTotalCost,
-                            updatedAt: new Date() 
-                        }
-                    },  { returnDocument: "after", runValidators: true }),
-                activityToUpdate.save()
-            ]);
+        const [savedTrip, savedActivity] = await Promise.all([
+            Trip.findByIdAndUpdate(trip._id, {
+                    $set: { 
+                        totalCost: newTotalCost,
+                        updatedAt: new Date() 
+                    }
+                },  { returnDocument: "after", runValidators: true }),
+            activityToUpdate.save()
+        ]);
+
+        const actorName = await actorLabel(userId);
+                const message = `${actorName} added activity "${savedActivity.name}" to ${trip.name}.`;
+                await appendCollaborationAlerts({
+                    trip,
+                    actorUserId: userId,
+                    type: 'activity_added',
+                    message,
+                    metadata: {
+                        tripId: String(trip._id),
+                        activityId: String(savedActivity._id),
+                        activityName: savedActivity.name,
+                    },
+                });
 
         res.json({ trip: savedTrip, activity: savedActivity });
     } catch (err) {
@@ -228,6 +242,20 @@ router.delete('/:activityId', async (req, res) => {
                     },  { returnDocument: "after", runValidators: true }),
                 activityToDelete.deleteOne()
             ]);
+
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} removed activity "${activityToDelete.name}" from ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'activity_deleted',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                activityId: String(activityToDelete._id),
+                activityName: activityToDelete.name,
+            },
+        });
 
         res.json({ trip: savedTrip, message: 'Activity deleted successfully' });
     } catch (err) {
