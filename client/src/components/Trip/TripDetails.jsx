@@ -1199,12 +1199,15 @@ export default function TripDetails() {
             ];
         });
 
-        // TODO: format activities
-        const activityItems = (activities || []).map(activity => ({
-            ...activity,
-            itemType: 'activity',
-            sortDate: new Date(activity.activityDate?.$date || activity.activityDate)
-        }));
+        const activityItems = (activities || []).flatMap(activity => {
+            const cleanDate = (dateStr) => dateStr ? dateStr.split('T')[0] : null;
+            const cleanTime = (timeStr) => timeStr || '00:00';
+            return [ {
+                ...activity,
+                itemType: 'activity',
+                sortDate: new Date(`${cleanDate(activity.activityDate)}T${cleanTime(activity.startTime)}:00`)
+            }];
+        });
 
         return [...routeItems, ...accItems, ...activityItems].sort((a, b) => a.sortDate - b.sortDate);
     }, [sortedRoutes, accommodations, activities]);
