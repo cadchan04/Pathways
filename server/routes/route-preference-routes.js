@@ -5,6 +5,7 @@ const {
   ROUTE_PREFERENCE_MODES,
 } = require("../models/RoutePreference");
 const { canViewTrip, readUserId } = require("../collaboration/tripAccess");
+const { actorLabel, appendCollaborationAlerts } = require("../services/collaboration-notifications-service");
 
 const router = express.Router({ mergeParams: true });
 
@@ -151,6 +152,10 @@ router.put("/me", async (req, res) => {
         });
       }
 
+      const existingPreference = await RoutePreference.findOne({
+        tripId: access.trip._id,
+        userId: access.userId,
+      }).lean();
       const saved = await RoutePreference.findOneAndUpdate(
         { tripId: access.trip._id, userId: access.userId },
         {
@@ -161,6 +166,18 @@ router.put("/me", async (req, res) => {
         },
         { upsert: true, returnDocument: "after", runValidators: true, setDefaultsOnInsert: true }
       );
+      const actorName = await actorLabel(access.userId);
+      await appendCollaborationAlerts({
+        trip: access.trip,
+        actorUserId: access.userId,
+        type: existingPreference ? "transport_preference_updated" : "transport_preference_added",
+        message: `${actorName} ${existingPreference ? "updated" : "submitted"} transport preferences on ${access.trip.name}.`,
+        metadata: {
+          tripId: String(access.trip._id),
+          preferenceId: String(saved?._id || ""),
+          topMode: saved?.ranking?.[0] || null,
+        },
+      });
 
       return res.status(200).json(saved);
     }
@@ -191,11 +208,27 @@ router.put("/me", async (req, res) => {
       return res.status(400).json({ error: "ranking must include at least one mode" });
     }
 
+    const existingPreference = await RoutePreference.findOne({
+      tripId: access.trip._id,
+      userId: access.userId,
+    }).lean();
     const saved = await RoutePreference.findOneAndUpdate(
       { tripId: access.trip._id, userId: access.userId },
       { $set: { ranking: sanitizedRanking, rankByMode: {} } },
       { upsert: true, returnDocument: "after", runValidators: true, setDefaultsOnInsert: true }
     );
+    const actorName = await actorLabel(access.userId);
+    await appendCollaborationAlerts({
+      trip: access.trip,
+      actorUserId: access.userId,
+      type: existingPreference ? "transport_preference_updated" : "transport_preference_added",
+      message: `${actorName} ${existingPreference ? "updated" : "submitted"} transport preferences on ${access.trip.name}.`,
+      metadata: {
+        tripId: String(access.trip._id),
+        preferenceId: String(saved?._id || ""),
+        topMode: sanitizedRanking[0] || null,
+      },
+    });
 
     res.status(200).json(saved);
   } catch (err) {

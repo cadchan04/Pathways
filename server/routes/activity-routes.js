@@ -73,6 +73,19 @@ router.post('/', async (req, res) => {
                     },  { returnDocument: "after", runValidators: true }),
                 newActivity.save()
             ]);
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} added activity "${savedActivity.name}" to ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'activity_added',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                activityId: String(savedActivity._id),
+                activityName: savedActivity.name,
+            },
+        });
         res.status(201).json({ trip: savedTrip, activity: savedActivity });
     } catch (err) {
         console.error("Mongoose Save Error:", err.message);
@@ -188,19 +201,19 @@ router.put('/:activityId', async (req, res) => {
             activityToUpdate.save()
         ]);
 
-        // const actorName = await actorLabel(userId);
-        //         const message = `${actorName} added activity "${savedActivity.name}" to ${trip.name}.`;
-        //         await appendCollaborationAlerts({
-        //             trip,
-        //             actorUserId: userId,
-        //             type: 'activity_added',
-        //             message,
-        //             metadata: {
-        //                 tripId: String(trip._id),
-        //                 activityId: String(savedActivity._id),
-        //                 activityName: savedActivity.name,
-        //             },
-        //         });
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} updated activity "${savedActivity.name}" on ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'activity_updated',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                activityId: String(savedActivity._id),
+                activityName: savedActivity.name,
+            },
+        });
 
         res.json({ trip: savedTrip, activity: savedActivity });
     } catch (err) {
@@ -247,19 +260,19 @@ router.delete('/:activityId', async (req, res) => {
                 activityToDelete.deleteOne()
             ]);
 
-        // const actorName = await actorLabel(userId);
-        // const message = `${actorName} removed activity "${activityToDelete.name}" from ${trip.name}.`;
-        // await appendCollaborationAlerts({
-        //     trip,
-        //     actorUserId: userId,
-        //     type: 'activity_deleted',
-        //     message,
-        //     metadata: {
-        //         tripId: String(trip._id),
-        //         activityId: String(activityToDelete._id),
-        //         activityName: activityToDelete.name,
-        //     },
-        // });
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} removed activity "${activityToDelete.name}" from ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'activity_deleted',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                activityId: String(activityToDelete._id),
+                activityName: activityToDelete.name,
+            },
+        });
 
         res.json({ trip: savedTrip, message: 'Activity deleted successfully' });
     } catch (err) {

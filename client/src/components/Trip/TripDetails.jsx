@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { deleteRoute } from '../../services/routeServices';
 import { sendTripInvitation, listTripInvitations } from '../../services/invitationServices';
 import { getRoutePreferences, saveMyRoutePreference } from '../../services/routePreferenceServices';
+import { getAccommodationActivityPreferences, saveMyAccommodationActivityPreferences } from '../../services/accommodationActivityPreferenceServices';
 import { getAccommodations, deleteAccommodation } from '../../services/accommodationServices';
 import { getActivities, deleteActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
@@ -99,6 +100,7 @@ export default function TripDetails() {
     const [isSavingPreference, setIsSavingPreference] = useState(false);
     const [preferenceError, setPreferenceError] = useState('');
     const [groupSummary, setGroupSummary] = useState(null);
+    const [groupCategorySummary, setGroupCategorySummary] = useState({ accommodation: null, activity: null });
     const [showPreferencesModal, setShowPreferencesModal] = useState(false);
     const [itineraryOptions, setItineraryOptions] = useState([]);
     const [isLoadingItineraryOptions, setIsLoadingItineraryOptions] = useState(false);
@@ -137,8 +139,16 @@ export default function TripDetails() {
     const packingRef = useRef(null);
 
     const TRANSPORT_MODES = ['RIDESHARE', 'PERSONAL_VEHICLE', 'BUS', 'TRAIN', 'FLIGHT'];
+    const ACCOMMODATION_CATEGORIES = ['HOTEL', 'AIRBNB', 'HOSTEL', 'OTHER'];
+    const ACTIVITY_CATEGORIES = ['SIGHTSEEING', 'DINING', 'ENTERTAINMENT', 'SHOPPING', 'OUTDOOR', 'OTHER'];
     const [rankByMode, setRankByMode] = useState({
         RIDESHARE: '', PERSONAL_VEHICLE: '', BUS: '', TRAIN: '', FLIGHT: '',
+    });
+    const [accommodationRankByCategory, setAccommodationRankByCategory] = useState({
+        HOTEL: '', AIRBNB: '', HOSTEL: '', OTHER: '',
+    });
+    const [activityRankByCategory, setActivityRankByCategory] = useState({
+        SIGHTSEEING: '', DINING: '', ENTERTAINMENT: '', SHOPPING: '', OUTDOOR: '', OTHER: '',
     });
 
     // ── data fetching ─────────────────────────────────────────────────────────
@@ -186,6 +196,11 @@ export default function TripDetails() {
         if (!hasCollaborators) {
             setGroupSummary(null); setPreferenceError('');
             setRankByMode({ RIDESHARE: '', PERSONAL_VEHICLE: '', BUS: '', TRAIN: '', FLIGHT: '' });
+            setAccommodationRankByCategory({ HOTEL: '', AIRBNB: '', HOSTEL: '', OTHER: '' });
+            setActivityRankByCategory({
+                SIGHTSEEING: '', DINING: '', ENTERTAINMENT: '', SHOPPING: '', OUTDOOR: '', OTHER: '',
+            });
+            setGroupCategorySummary({ accommodation: null, activity: null });
             return;
         }
         let cancelled = false;
@@ -194,9 +209,13 @@ export default function TripDetails() {
             try {
                 const tripId = id || mongoIdString(trip._id);
                 const uid = mongoIdString(dbUser._id);
-                const prefData = await getRoutePreferences(tripId, uid);
+                const [prefData, categoryPrefData] = await Promise.all([
+                    getRoutePreferences(tripId, uid),
+                    getAccommodationActivityPreferences(tripId, uid),
+                ]);
                 if (!cancelled) {
                     setGroupSummary(prefData?.groupSummary || null);
+                    setGroupCategorySummary(categoryPrefData?.groupSummary || { accommodation: null, activity: null });
                     if (prefData?.myPreference?.rankByMode) {
                         setRankByMode(normalizeRankByMode(prefData.myPreference.rankByMode));
                     } else if (prefData?.myPreference?.ranking) {
@@ -204,9 +223,22 @@ export default function TripDetails() {
                     } else {
                         setRankByMode({ RIDESHARE: '', PERSONAL_VEHICLE: '', BUS: '', TRAIN: '', FLIGHT: '' });
                     }
+
+                    setAccommodationRankByCategory(
+                        normalizeRankByCategory(
+                            categoryPrefData?.myPreference?.accommodationRankByCategory || {},
+                            ACCOMMODATION_CATEGORIES
+                        )
+                    );
+                    setActivityRankByCategory(
+                        normalizeRankByCategory(
+                            categoryPrefData?.myPreference?.activityRankByCategory || {},
+                            ACTIVITY_CATEGORIES
+                        )
+                    );
                 }
             } catch (err) {
-                if (!cancelled) setPreferenceError(err?.response?.data?.error || 'Could not load route preferences.');
+                if (!cancelled) setPreferenceError(err?.response?.data?.error || 'Could not load group preferences.');
             } finally {
                 if (!cancelled) setIsLoadingPreferenceData(false);
             }
@@ -221,8 +253,15 @@ export default function TripDetails() {
         const onVisible = () => {
             if (document.visibilityState !== 'visible') return;
             const tripId = id || mongoIdString(trip._id);
-            getRoutePreferences(tripId, mongoIdString(dbUser._id))
-                .then((prefData) => setGroupSummary(prefData?.groupSummary || null))
+            const uid = mongoIdString(dbUser._id);
+            Promise.all([
+                getRoutePreferences(tripId, uid),
+                getAccommodationActivityPreferences(tripId, uid),
+            ])
+                .then(([prefData, categoryPrefData]) => {
+                    setGroupSummary(prefData?.groupSummary || null);
+                    setGroupCategorySummary(categoryPrefData?.groupSummary || { accommodation: null, activity: null });
+                })
                 .catch(() => {});
         };
         document.addEventListener('visibilitychange', onVisible);
@@ -238,9 +277,15 @@ export default function TripDetails() {
             try {
                 const tripId = id || mongoIdString(trip._id);
                 const uid = mongoIdString(dbUser._id);
-                const prefData = await getRoutePreferences(tripId, uid);
-                if (!cancelled) setGroupSummary(prefData?.groupSummary || null);
-            } catch (err) { console.error('Error loading route preferences (modal):', err); }
+                const [prefData, categoryPrefData] = await Promise.all([
+                    getRoutePreferences(tripId, uid),
+                    getAccommodationActivityPreferences(tripId, uid),
+                ]);
+                if (!cancelled) {
+                    setGroupSummary(prefData?.groupSummary || null);
+                    setGroupCategorySummary(categoryPrefData?.groupSummary || { accommodation: null, activity: null });
+                }
+            } catch (err) { console.error('Error loading group preferences (modal):', err); }
         })();
         return () => { cancelled = true; };
     }, [showPreferencesModal, trip, id, dbUser?._id]);
@@ -502,6 +547,13 @@ export default function TripDetails() {
         RIDESHARE: 'Rideshare', PERSONAL_VEHICLE: 'Personal Vehicle',
         BUS: 'Bus', TRAIN: 'Train', FLIGHT: 'Flight',
     }[mode] || mode);
+    const accommodationCategoryLabel = (category) => ({
+        HOTEL: 'Hotel', AIRBNB: 'Airbnb', HOSTEL: 'Hostel', OTHER: 'Other',
+    }[category] || category);
+    const activityCategoryLabel = (category) => ({
+        SIGHTSEEING: 'Sightseeing', DINING: 'Dining', ENTERTAINMENT: 'Entertainment',
+        SHOPPING: 'Shopping', OUTDOOR: 'Outdoor', OTHER: 'Other',
+    }[category] || category);
 
     const normalizeRanking = (ranking = []) => {
         const cleaned = ranking.map((m) => String(m || '').trim().toUpperCase());
@@ -526,12 +578,31 @@ export default function TripDetails() {
         }
         return normalized;
     };
+    const normalizeRankByCategory = (raw = {}, categories = []) => {
+        const normalized = {};
+        for (const category of categories) {
+            const value = raw?.[category];
+            if (value === '' || value == null) { normalized[category] = ''; continue; }
+            const n = Number(value);
+            normalized[category] = Number.isInteger(n) && n >= 1 && n <= categories.length ? n : '';
+        }
+        return normalized;
+    };
 
     const handleRankSelectChange = (mode, value) => {
         if (value === '') { setRankByMode((prev) => ({ ...prev, [mode]: '' })); return; }
         const nextRank = Number(value);
         if (!Number.isInteger(nextRank) || nextRank < 1 || nextRank > 5) return;
         setRankByMode((prev) => ({ ...prev, [mode]: nextRank }));
+    };
+    const handleCategoryRankSelectChange = (setState, categories, category, value) => {
+        if (value === '') {
+            setState((prev) => ({ ...prev, [category]: '' }));
+            return;
+        }
+        const nextRank = Number(value);
+        if (!Number.isInteger(nextRank) || nextRank < 1 || nextRank > categories.length) return;
+        setState((prev) => ({ ...prev, [category]: nextRank }));
     };
 
     const handleSavePreferences = async () => {
@@ -540,14 +611,40 @@ export default function TripDetails() {
         try {
             const tripId = id || tripIdStr;
             const uid = mongoIdString(dbUser._id);
-            await saveMyRoutePreference(tripId, rankByMode, uid);
-            const latest = await getRoutePreferences(tripId, uid);
+            await Promise.all([
+                saveMyRoutePreference(tripId, rankByMode, uid),
+                saveMyAccommodationActivityPreferences(
+                    tripId,
+                    accommodationRankByCategory,
+                    activityRankByCategory,
+                    uid
+                ),
+            ]);
+
+            const [latest, latestCategory] = await Promise.all([
+                getRoutePreferences(tripId, uid),
+                getAccommodationActivityPreferences(tripId, uid),
+            ]);
             setGroupSummary(latest.groupSummary || null);
+            setGroupCategorySummary(latestCategory?.groupSummary || { accommodation: null, activity: null });
             if (latest?.myPreference?.rankByMode) setRankByMode(normalizeRankByMode(latest.myPreference.rankByMode));
             else if (latest?.myPreference?.ranking) setRankByMode(buildRankByModeFromRanking(normalizeRanking(latest.myPreference.ranking)));
             else setRankByMode({ RIDESHARE: '', PERSONAL_VEHICLE: '', BUS: '', TRAIN: '', FLIGHT: '' });
+
+            setAccommodationRankByCategory(
+                normalizeRankByCategory(
+                    latestCategory?.myPreference?.accommodationRankByCategory || {},
+                    ACCOMMODATION_CATEGORIES
+                )
+            );
+            setActivityRankByCategory(
+                normalizeRankByCategory(
+                    latestCategory?.myPreference?.activityRankByCategory || {},
+                    ACTIVITY_CATEGORIES
+                )
+            );
         } catch (err) {
-            setPreferenceError(err?.response?.data?.error || 'Could not save preferences right now.');
+            setPreferenceError(err?.response?.data?.error || 'Could not save group preferences right now.');
         } finally {
             setIsSavingPreference(false);
         }
@@ -1046,11 +1143,11 @@ export default function TripDetails() {
         }
     };
 
-    const buildGroupSummaryModel = (summary) => {
+    const buildGroupSummaryModel = (summary, options = TRANSPORT_MODES) => {
         if (!summary || summary.submissionsCount <= 0) return null;
         const responseCount = summary.submissionsCount;
         const avgForMode = (mode) => (summary.scores[mode] ?? 0) / responseCount;
-        const avgScores = TRANSPORT_MODES.map((m) => avgForMode(m));
+        const avgScores = options.map((m) => avgForMode(m));
         const minAvg = Math.min(...avgScores);
         const maxAvg = Math.max(...avgScores);
         return { responseCount, avgForMode, maxAvg, avgSpan: maxAvg - minAvg };
@@ -1275,7 +1372,7 @@ export default function TripDetails() {
                 <summary className="trip-route-preference-group-summary">
                     <span className="trip-route-preference-group-summary-title">
                         <span className="trip-route-preference-group-chevron" aria-hidden>▼</span>
-                        Group summary
+                        Transport group summary
                     </span>
                     <span className="trip-route-preference-group-summary-meta">{summaryMeta}</span>
                 </summary>
@@ -1283,6 +1380,77 @@ export default function TripDetails() {
                     {model && groupSummary
                         ? renderGroupSummaryBars(groupSummary, model)
                         : renderGroupSummaryEmptyBars()}
+                </div>
+            </details>
+        );
+    };
+
+    const renderCategorySummary = (title, summary, categories, labelForCategory) => {
+        const submissionsCount = summary?.submissionsCount || 0;
+        const tied = summary?.tiedCategories || [];
+        const topCategory = summary?.topCategory;
+        const model = summary ? buildGroupSummaryModel(summary, categories) : null;
+        const summaryMeta = model
+            ? (() => {
+                const n = model.responseCount;
+                const nLabel = `${n} ${n === 1 ? 'response' : 'responses'}`;
+                if (tied.length > 1) {
+                    return `${nLabel} · Tie: ${tied.map((c) => labelForCategory(c)).join(', ')}`;
+                }
+                return `${nLabel} · Top: ${labelForCategory(topCategory)}`;
+            })()
+            : 'No responses yet';
+        const detailsKey = `${title}-${submissionsCount}-${topCategory || 'none'}`;
+        return (
+            <details key={detailsKey} className="trip-route-preference-group-details" defaultOpen>
+                <summary className="trip-route-preference-group-summary">
+                    <span className="trip-route-preference-group-summary-title">
+                        <span className="trip-route-preference-group-chevron" aria-hidden>▼</span>
+                        {title}
+                    </span>
+                    <span className="trip-route-preference-group-summary-meta">{summaryMeta}</span>
+                </summary>
+                <div className="trip-route-preference-group-body">
+                    {model && summary ? (
+                        <div className="group-transport-bars" role="list">
+                            {[...categories]
+                                .sort((a, b) => {
+                                    const da = model.avgForMode(a);
+                                    const db = model.avgForMode(b);
+                                    if (da !== db) return da - db;
+                                    return labelForCategory(a).localeCompare(labelForCategory(b));
+                                })
+                                .map((category) => {
+                                    const avg = model.avgForMode(category);
+                                    const pct = model.avgSpan === 0 ? 100 : Math.round((100 * (model.maxAvg - avg)) / model.avgSpan);
+                                    const isTopPick = (summary.tiedCategories || []).includes(category);
+                                    return (
+                                        <div key={category} className="group-transport-bar-row" role="listitem">
+                                            <span className="group-transport-bar-label">{labelForCategory(category)}</span>
+                                            <div className="group-transport-bar-track" aria-hidden="true">
+                                                <div
+                                                    className={isTopPick
+                                                        ? 'group-transport-bar-fill group-transport-bar-fill--top'
+                                                        : 'group-transport-bar-fill'}
+                                                    style={{ width: `${pct}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    ) : (
+                        <div className="group-transport-bars group-transport-bars--empty" role="list">
+                            {categories.map((category) => (
+                                <div key={category} className="group-transport-bar-row" role="listitem">
+                                    <span className="group-transport-bar-label">{labelForCategory(category)}</span>
+                                    <div className="group-transport-bar-track" aria-hidden="true">
+                                        <div className="group-transport-bar-fill group-transport-bar-fill--empty" style={{ width: '0%' }} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </details>
         );
@@ -1452,15 +1620,6 @@ export default function TripDetails() {
             <div className="td-tab-content">
                 <div className="td-content-header">
                     <h2>Timeline</h2>
-                    {hasCollaborators && (
-                        <button
-                            type="button"
-                            className="trip-route-preference-open"
-                            onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
-                        >
-                            Group Transport Preferences
-                        </button>
-                    )}
                 </div>
 
                 <div className="td-timeline">
@@ -1564,15 +1723,6 @@ export default function TripDetails() {
         <div className="td-tab-content">
             <div className="td-content-header">
                 <h2>Routes</h2>
-                {hasCollaborators && (
-                    <button
-                        type="button"
-                        className="trip-route-preference-open"
-                        onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
-                    >
-                        Group Transport Preferences
-                    </button>
-                )}
             </div>
             {sortedRoutes.length === 0 ? (
                 <div className="td-empty-state">
@@ -1703,6 +1853,13 @@ export default function TripDetails() {
                 <div className="td-content-header">
                     <h2>Itinerary Options</h2>
                     <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            type="button"
+                            className="trip-route-preference-open"
+                            onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
+                        >
+                            Group Preferences
+                        </button>
                         {canEditTripPage && (
                             <button
                                 type="button"
@@ -1848,18 +2005,6 @@ export default function TripDetails() {
         <div className="td-tab-content">
             <div className="td-content-header"><h2>Collaboration</h2></div>
 
-            {hasCollaborators && (
-                <div style={{ marginBottom: '20px' }}>
-                    <button
-                        type="button"
-                        className="trip-route-preference-open"
-                        onClick={() => { setPreferenceError(''); setShowPreferencesModal(true); }}
-                    >
-                        Group Transport Preferences
-                    </button>
-                </div>
-            )}
-
             {isTripOwner ? (
                 <section className="td-invite-section" aria-labelledby="invite-heading">
                     <h3 className="td-section-heading" id="invite-heading">Invite Collaborators</h3>
@@ -1927,7 +2072,7 @@ export default function TripDetails() {
                     <span className="td-empty-icon">⌘</span>
                     <p>
                         {tripRole === 'viewer'
-                            ? 'You’re a viewer on this trip — you can browse and join transport preferences, but only editors can change trip details.'
+                            ? 'You’re a viewer on this trip — you can browse and join group preferences, but only editors can change trip details.'
                             : 'You’re an editor on this trip — you can edit routes, accommodations, and trip details. Only the owner can invite others or delete the trip.'}
                     </p>
                 </div>
@@ -2154,7 +2299,7 @@ export default function TripDetails() {
                 </div>
             )}
 
-            {/* ── Transport Preferences Modal ── */}
+            {/* ── Group Preferences Modal ── */}
             {hasCollaborators && showPreferencesModal && (
                 <div
                     className="trip-route-preference-modal-overlay"
@@ -2170,35 +2315,104 @@ export default function TripDetails() {
                             ← Cancel
                         </button>
                         <div className="trip-route-preference-header">
-                            <h2>Mode of Transport Preference</h2>
+                            <h2>Group Preferences</h2>
                             {isLoadingPreferenceData && <p>Loading...</p>}
                         </div>
                         <p className="trip-route-preference-help">
-                            Rank transport modes from highest to lowest preference.
+                            Rank each category from highest to lowest preference.
                         </p>
-                        <ol className="trip-route-preference-list">
-                            {TRANSPORT_MODES.map((mode) => (
-                                <li key={mode} className="trip-route-preference-item">
-                                    <div className="trip-route-preference-buttons">
-                                        <label htmlFor={`rank-${mode}`} className="visually-hidden">
-                                            Rank for {modeLabel(mode)}
-                                        </label>
-                                        <select
-                                            id={`rank-${mode}`}
-                                            value={rankByMode[mode]}
-                                            onChange={(e) => handleRankSelectChange(mode, e.target.value)}
-                                            disabled={isSavingPreference}
-                                        >
-                                            <option value="">--</option>
-                                            {[1, 2, 3, 4, 5].map((rank) => (
-                                                <option key={`${mode}-${rank}`} value={rank}>{rank}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <span>{modeLabel(mode)}</span>
-                                </li>
-                            ))}
-                        </ol>
+                        <section className="trip-route-preference-section">
+                            <h3 className="trip-route-preference-section-title">Transport Mode</h3>
+                            <ol className="trip-route-preference-list">
+                                {TRANSPORT_MODES.map((mode) => (
+                                    <li key={mode} className="trip-route-preference-item">
+                                        <div className="trip-route-preference-buttons">
+                                            <label htmlFor={`rank-${mode}`} className="visually-hidden">
+                                                Rank for {modeLabel(mode)}
+                                            </label>
+                                            <select
+                                                id={`rank-${mode}`}
+                                                value={rankByMode[mode]}
+                                                onChange={(e) => handleRankSelectChange(mode, e.target.value)}
+                                                disabled={isSavingPreference}
+                                            >
+                                                <option value="">--</option>
+                                                {[1, 2, 3, 4, 5].map((rank) => (
+                                                    <option key={`${mode}-${rank}`} value={rank}>{rank}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <span>{modeLabel(mode)}</span>
+                                    </li>
+                                ))}
+                            </ol>
+                        </section>
+                        <section className="trip-route-preference-section">
+                            <h3 className="trip-route-preference-section-title">Accommodation Type</h3>
+                            <ol className="trip-route-preference-list">
+                                {ACCOMMODATION_CATEGORIES.map((category) => (
+                                    <li key={category} className="trip-route-preference-item">
+                                        <div className="trip-route-preference-buttons">
+                                            <label htmlFor={`rank-accommodation-${category}`} className="visually-hidden">
+                                                Rank for {accommodationCategoryLabel(category)}
+                                            </label>
+                                            <select
+                                                id={`rank-accommodation-${category}`}
+                                                value={accommodationRankByCategory[category]}
+                                                onChange={(e) =>
+                                                    handleCategoryRankSelectChange(
+                                                        setAccommodationRankByCategory,
+                                                        ACCOMMODATION_CATEGORIES,
+                                                        category,
+                                                        e.target.value
+                                                    )
+                                                }
+                                                disabled={isSavingPreference}
+                                            >
+                                                <option value="">--</option>
+                                                {[1, 2, 3, 4].map((rank) => (
+                                                    <option key={`${category}-${rank}`} value={rank}>{rank}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <span>{accommodationCategoryLabel(category)}</span>
+                                    </li>
+                                ))}
+                            </ol>
+                        </section>
+                        <section className="trip-route-preference-section">
+                            <h3 className="trip-route-preference-section-title">Activity Type</h3>
+                            <ol className="trip-route-preference-list">
+                                {ACTIVITY_CATEGORIES.map((category) => (
+                                    <li key={category} className="trip-route-preference-item">
+                                        <div className="trip-route-preference-buttons">
+                                            <label htmlFor={`rank-activity-${category}`} className="visually-hidden">
+                                                Rank for {activityCategoryLabel(category)}
+                                            </label>
+                                            <select
+                                                id={`rank-activity-${category}`}
+                                                value={activityRankByCategory[category]}
+                                                onChange={(e) =>
+                                                    handleCategoryRankSelectChange(
+                                                        setActivityRankByCategory,
+                                                        ACTIVITY_CATEGORIES,
+                                                        category,
+                                                        e.target.value
+                                                    )
+                                                }
+                                                disabled={isSavingPreference}
+                                            >
+                                                <option value="">--</option>
+                                                {[1, 2, 3, 4, 5, 6].map((rank) => (
+                                                    <option key={`${category}-${rank}`} value={rank}>{rank}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <span>{activityCategoryLabel(category)}</span>
+                                    </li>
+                                ))}
+                            </ol>
+                        </section>
                         <div className="trip-route-preference-modal-actions">
                             <button
                                 type="button"
@@ -2206,10 +2420,22 @@ export default function TripDetails() {
                                 onClick={handleSavePreferences}
                                 disabled={isSavingPreference || isLoadingPreferenceData}
                             >
-                                {isSavingPreference ? 'Saving...' : 'Save Preferences'}
+                                {isSavingPreference ? 'Saving...' : 'Save Group Preferences'}
                             </button>
                         </div>
                         {renderModalGroupSummary()}
+                        {renderCategorySummary(
+                            'Accommodation group summary',
+                            groupCategorySummary?.accommodation,
+                            ACCOMMODATION_CATEGORIES,
+                            accommodationCategoryLabel
+                        )}
+                        {renderCategorySummary(
+                            'Activity group summary',
+                            groupCategorySummary?.activity,
+                            ACTIVITY_CATEGORIES,
+                            activityCategoryLabel
+                        )}
                         {preferenceError && <p className="trip-route-preference-error">{preferenceError}</p>}
                     </section>
                 </div>
