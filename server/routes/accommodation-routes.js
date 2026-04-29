@@ -68,7 +68,17 @@ router.post('/', async (req, res) => {
     });
 
     try {
-        const savedAccommodation = await newAccommodation.save();
+       // const savedAccommodation = await newAccommodation.save();
+        const newTotalCost = (trip.totalCost || 0) + (Number(cost) || 0);
+        const [savedTrip, savedAccommodation] = await Promise.all([
+                Trip.findByIdAndUpdate(trip._id, {
+                        $set: { 
+                            totalCost: newTotalCost,
+                            updatedAt: new Date() }
+                    },  { returnDocument: "after", runValidators: true }),
+                newAccommodation.save()
+            ]);
+
         const actorName = await actorLabel(userId);
         const message = `${actorName} added accommodation "${savedAccommodation.name}" to ${trip.name}.`;
         await appendCollaborationAlerts({
@@ -141,7 +151,26 @@ router.delete('/:accId', async (req, res) => {
         }
 
         const deletedName = existing.name;
-        await Accommodation.findByIdAndDelete(accId);
+
+         const accToDelete = await Accommodation.findOne({ _id: accId, tripId });
+        if (!accToDelete) {
+            return res.status(404).json({ error: 'Accommodation not found' });
+        }
+
+        // Update the trip's cost
+        const newTotalCost = (trip.totalCost || 0) - (accToDelete.cost || 0);
+        console.log(`Deleting accommodation with cost ${accToDelete.cost}, total cost now: ${newTotalCost}`);
+
+            const [savedTrip] = await Promise.all([
+                Trip.findByIdAndUpdate(trip._id, {
+                        $set: { 
+                            totalCost: newTotalCost,
+                            updatedAt: new Date() 
+                        }
+                    },  { returnDocument: "after", runValidators: true }),
+                accToDelete.deleteOne()
+            ]);
+
         const actorName = await actorLabel(userId);
         const message = `${actorName} removed accommodation "${deletedName}" from ${trip.name}.`;
         await appendCollaborationAlerts({

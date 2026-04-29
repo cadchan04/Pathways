@@ -58,8 +58,16 @@ router.post('/', async (req, res) => {
     });
 
     try {
-        const savedActivity = await newActivity.save();
-        res.status(201).json(savedActivity);
+        const newTotalCost = (trip.totalCost || 0) + (Number(cost) || 0);
+        const [savedTrip, savedActivity] = await Promise.all([
+                Trip.findByIdAndUpdate(trip._id, {
+                        $set: { 
+                            totalCost: newTotalCost,
+                            updatedAt: new Date() }
+                    },  { returnDocument: "after", runValidators: true }),
+                newActivity.save()
+            ]);
+        res.status(201).json({ trip: savedTrip, activity: savedActivity });
     } catch (err) {
         console.error("Mongoose Save Error:", err.message);
         res.status(400).json({ error: err.message });
@@ -150,17 +158,32 @@ router.put('/:activityId', async (req, res) => {
     }
 
     try {
-        const updatedActivity = await Activity.findOneAndUpdate(
-            { _id: activityId, tripId },
-            updateData,
-            { returnDocument: 'after' }
-        );
-
-        if (!updatedActivity) {
+        const activityToUpdate = await Activity.findOne({ _id: activityId, tripId });
+        if (!activityToUpdate) {
             return res.status(404).json({ error: 'Activity not found' });
         }
 
-        res.json(updatedActivity);
+        let newTotalCost = 0;
+        if (updateData.cost !== undefined) {
+            const oldCost = activityToUpdate.cost || 0;
+            const newCost = Number(updateData.cost) || 0;
+            newTotalCost = (trip.totalCost || 0) - oldCost + newCost;
+            console.log(`Updating activity cost from ${oldCost} to ${newCost}, total cost now: ${newTotalCost}`);
+        }
+
+        Object.assign(activityToUpdate, updateData);
+
+         const [savedTrip, savedActivity] = await Promise.all([
+                Trip.findByIdAndUpdate(trip._id, {
+                        $set: { 
+                            totalCost: newTotalCost,
+                            updatedAt: new Date() 
+                        }
+                    },  { returnDocument: "after", runValidators: true }),
+                activityToUpdate.save()
+            ]);
+
+        res.json({ trip: savedTrip, activity: savedActivity });
     } catch (err) {
         console.error("Mongoose Update Error:", err.message);
         res.status(400).json({ error: err.message });
@@ -187,13 +210,26 @@ router.delete('/:activityId', async (req, res) => {
     }
 
     try {
-        const deletedActivity = await Activity.findOneAndDelete({ _id: activityId, tripId });
-
-        if (!deletedActivity) {
+        const activityToDelete = await Activity.findOne({ _id: activityId, tripId });
+        if (!activityToDelete) {
             return res.status(404).json({ error: 'Activity not found' });
         }
 
-        res.json({ message: 'Activity deleted successfully' });
+        // Update the trip's cost
+        const newTotalCost = (trip.totalCost || 0) - (activityToDelete.cost || 0);
+        console.log(`Deleting activity with cost ${activityToDelete.cost}, total cost now: ${newTotalCost}`);
+
+         const [savedTrip] = await Promise.all([
+                Trip.findByIdAndUpdate(trip._id, {
+                        $set: { 
+                            totalCost: newTotalCost,
+                            updatedAt: new Date() 
+                        }
+                    },  { returnDocument: "after", runValidators: true }),
+                activityToDelete.deleteOne()
+            ]);
+
+        res.json({ trip: savedTrip, message: 'Activity deleted successfully' });
     } catch (err) {
         console.error("Mongoose Delete Error:", err.message);
         res.status(500).json({ error: 'Server error while deleting activity' });
