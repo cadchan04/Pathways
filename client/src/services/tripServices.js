@@ -51,6 +51,20 @@ export const getTripChangelog = async (id, userId) => {
     }
 };
 
+export const rollbackTripVersion = async (id, historyId, userId) => {
+    try {
+        const response = await axios.post(
+            `${API_URL}/api/trips/${id}/rollback`,
+            { historyId },
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error rolling back trip ${id}:`, err);
+        throw err;
+    }
+};
+
 export const leaveTrip = async (tripId, userId) => {
     try {
         const response = await axios.post(

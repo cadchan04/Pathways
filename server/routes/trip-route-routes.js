@@ -6,6 +6,7 @@ const { canViewTrip, canEditTrip, readUserId } = require('../collaboration/tripA
 const {
     actorNameFromUser,
     addTripHistoryEntry,
+    buildTripVersionSnapshot,
 } = require('../services/trip-changelog-service');
 const {
     actorLabel,
@@ -31,6 +32,7 @@ router.post('/', async (req, res) => {
         }
 
         const costBefore = Number(trip.totalCost) || 0;
+        const snapshotBefore = buildTripVersionSnapshot(trip);
         const routeToAdd = {
             name: req.body.name,
             origin: req.body.origin,
@@ -53,6 +55,7 @@ router.post('/', async (req, res) => {
             action: 'route_added',
             summary: `Added route: ${routeToAdd.name || 'Untitled route'}`,
             changes: [],
+            snapshotBefore,
         });
         await trip.save();
         const newRoute = trip.routes[trip.routes.length - 1];
@@ -118,6 +121,7 @@ router.delete('/:routeId', async (req, res) => {
         }
 
         const costBefore = Number(trip.totalCost) || 0;
+        const snapshotBefore = buildTripVersionSnapshot(trip);
         const deletedRouteName = route.name;
         const deletedRouteId = String(route._id);
         const routeName = route.name || 'Untitled route';
@@ -132,6 +136,7 @@ router.delete('/:routeId', async (req, res) => {
             action: 'route_deleted',
             summary: `Deleted route: ${routeName}`,
             changes: [],
+            snapshotBefore,
         });
         await trip.save();
         const actorName = await actorLabel(userId);

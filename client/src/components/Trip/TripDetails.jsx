@@ -9,7 +9,14 @@ import { useUser } from '../../../context/useUser';
 import AccommodationsTab from '../Accommodation/AccommodationsTab';
 import ActivitiesTab from '../Activity/ActivitiesTab';
 import TripChangelog from './TripChangelog';
-import { getTripById, getTripChangelog, updatePackingList, duplicateTrip, leaveTrip } from '../../services/tripServices';
+import {
+    getTripById,
+    getTripChangelog,
+    rollbackTripVersion,
+    updatePackingList,
+    duplicateTrip,
+    leaveTrip,
+} from '../../services/tripServices';
 import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../collaboration/tripCollaboration';
 import RouteMap from './RouteMap';
 
@@ -88,6 +95,10 @@ export default function TripDetails() {
     const [changelog, setChangelog] = useState([]);
     const [changelogLoading, setChangelogLoading] = useState(false);
     const [changelogError, setChangelogError] = useState('');
+    const [rollbackTarget, setRollbackTarget] = useState(null);
+    const [rollbackSaving, setRollbackSaving] = useState(false);
+    const [rollbackError, setRollbackError] = useState('');
+    const [rollbackMessage, setRollbackMessage] = useState('');
 
     // Packing list
     const [packingItems, setPackingItems] = useState([])
@@ -516,6 +527,31 @@ export default function TripDetails() {
             console.error('Leave trip:', e);
         } finally {
             setSidebarLeaving(false);
+        }
+    };
+
+    const handleRollbackTrip = async () => {
+        if (!rollbackTarget || !dbUser?._id || !trip?._id) return;
+        setRollbackSaving(true);
+        setRollbackError('');
+        setRollbackMessage('');
+        try {
+            const tripId = mongoIdString(trip._id);
+            const updatedTrip = await rollbackTripVersion(
+                tripId,
+                mongoIdString(rollbackTarget.historyId || rollbackTarget._id),
+                mongoIdString(dbUser._id)
+            );
+            setTrip(updatedTrip);
+            setRollbackTarget(null);
+            setRollbackMessage('Trip restored to the selected previous version.');
+            const history = await getTripChangelog(tripId, dbUser._id);
+            setChangelog(Array.isArray(history) ? history : []);
+            window.dispatchEvent(new Event('refreshNotifications'));
+        } catch (err) {
+            setRollbackError(err?.response?.data?.error || 'Could not roll back this trip.');
+        } finally {
+            setRollbackSaving(false);
         }
     };
 
@@ -1214,13 +1250,21 @@ export default function TripDetails() {
                     <p>No routes added to this trip yet.</p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '2rem' }}>
-                    {sortedRoutes.map((route, index) => (
-                        <div key={`map-route-${index}`}>
-                            <h3 style={{ marginBottom: '1rem', color: '#333' }}>{getRouteTitle(route)}</h3>
-                            <RouteMap route={route} />
-                        </div>
-                    ))}
+                <div className="td-map-panel">
+                    <div className="td-map-summary">
+                        <h3>Trip Route Map</h3>
+                        <p>
+                            Showing {sortedRoutes.length} {sortedRoutes.length === 1 ? 'route' : 'routes'} as direct point-to-point connections.
+                        </p>
+                    </div>
+                    <RouteMap routes={sortedRoutes} />
+                    <ul className="td-map-route-list" aria-label="Mapped routes">
+                        {sortedRoutes.map((route, index) => (
+                            <li key={`map-route-${mongoIdString(route._id) || index}`}>
+                                {getRouteTitle(route)}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             )}
         </div>
@@ -1318,7 +1362,18 @@ export default function TripDetails() {
     );
 
     const renderChangelog = () => (
-        <TripChangelog changelog={changelog} loading={changelogLoading} error={changelogError} />
+        <TripChangelog
+            changelog={changelog}
+            loading={changelogLoading}
+            error={changelogError}
+            canRollback={canEditTripPage}
+            rollbackMessage={rollbackMessage}
+            onRollbackRequest={(version) => {
+                setRollbackError('');
+                setRollbackMessage('');
+                setRollbackTarget(version);
+            }}
+        />
     );
 
     const tabContent = {
@@ -1528,6 +1583,35 @@ export default function TripDetails() {
                                 Confirm
                             </button>
                             <button className="td-modal-btn td-modal-btn--cancel" onClick={() => setShowConfirm(false)}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {rollbackTarget && (
+                <div className="td-modal-overlay" onClick={() => !rollbackSaving && setRollbackTarget(null)}>
+                    <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Confirm Rollback</h3>
+                        <p>
+                            Restore "{rollbackTarget.snapshotBefore?.name || 'this trip'}" from before{' '}
+                            "{rollbackTarget.summary || 'the selected change'}"?
+                        </p>
+                        {rollbackError && <p className="td-invite-error" role="alert">{rollbackError}</p>}
+                        <div className="td-modal-actions">
+                            <button
+                                className="td-modal-btn td-modal-btn--danger"
+                                onClick={handleRollbackTrip}
+                                disabled={rollbackSaving}
+                            >
+                                {rollbackSaving ? 'Restoring...' : 'Confirm'}
+                            </button>
+                            <button
+                                className="td-modal-btn td-modal-btn--cancel"
+                                onClick={() => setRollbackTarget(null)}
+                                disabled={rollbackSaving}
+                            >
                                 Cancel
                             </button>
                         </div>

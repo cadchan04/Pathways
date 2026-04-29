@@ -55,25 +55,64 @@ function actorNameFromUser(user, fallbackUserId) {
   return user?.name || user?.email || String(fallbackUserId || 'Unknown user');
 }
 
-function addTripHistoryEntry(trip, { userId, userName, action, summary, changes = [] }) {
+function clonePlainValue(value) {
+  if (value == null) return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function buildTripVersionSnapshot(trip) {
+  if (!trip) return null;
+  const source = trip.toObject ? trip.toObject({ versionKey: false }) : trip;
+
+  return {
+    name: source.name,
+    description: source.description,
+    startDate: clonePlainValue(source.startDate),
+    endDate: clonePlainValue(source.endDate),
+    budget: source.budget,
+    routes: clonePlainValue(source.routes || []),
+    packingList: clonePlainValue(source.packingList || []),
+  };
+}
+
+function applyTripVersionSnapshot(trip, snapshot) {
+  if (!trip || !snapshot) return;
+  const restorableFields = ['name', 'description', 'startDate', 'endDate', 'budget', 'routes', 'packingList'];
+
+  restorableFields.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(snapshot, field)) {
+      trip[field] = clonePlainValue(snapshot[field]);
+    }
+  });
+}
+
+function addTripHistoryEntry(trip, { userId, userName, action, summary, changes = [], snapshotBefore = null }) {
   if (!trip) return;
   if (!Array.isArray(trip.editHistory)) {
     trip.editHistory = [];
   }
 
-  trip.editHistory.push({
+  const entry = {
     action,
     summary,
     changedBy: userId ? String(userId) : '',
     changedByName: userName || String(userId || 'Unknown user'),
     changedAt: new Date(),
     changes,
-  });
+  };
+
+  if (snapshotBefore) {
+    entry.snapshotBefore = clonePlainValue(snapshotBefore);
+  }
+
+  trip.editHistory.push(entry);
 }
 
 module.exports = {
   actorNameFromUser,
   addTripHistoryEntry,
+  applyTripVersionSnapshot,
+  buildTripVersionSnapshot,
   buildTripFieldChanges,
   formatValue,
   normalizeValue,

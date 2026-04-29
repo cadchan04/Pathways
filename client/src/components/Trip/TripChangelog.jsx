@@ -19,13 +19,21 @@ function formatChangelogTime(value) {
     });
 }
 
-export default function TripChangelog({ changelog = [], loading = false, error = '' }) {
+export default function TripChangelog({
+    changelog = [],
+    loading = false,
+    error = '',
+    canRollback = false,
+    rollbackMessage = '',
+    onRollbackRequest,
+}) {
     return (
         <div className="td-tab-content">
             <div className="td-content-header"><h2>Changelog</h2></div>
 
             {loading && <p className="td-changelog-muted">Loading edit history...</p>}
             {error && <p className="td-invite-error" role="alert">{error}</p>}
+            {rollbackMessage && <p className="td-rollback-success" role="status">{rollbackMessage}</p>}
 
             {!loading && !error && changelog.length === 0 && (
                 <div className="td-empty-state">
@@ -58,6 +66,17 @@ export default function TripChangelog({ changelog = [], loading = false, error =
                                             </li>
                                         ))}
                                     </ul>
+                                )}
+                                {canRollback && entry.snapshotBefore && (
+                                    <div className="td-changelog-actions">
+                                        <button
+                                            type="button"
+                                            className="td-changelog-rollback-btn"
+                                            onClick={() => onRollbackRequest?.(entry)}
+                                        >
+                                            Roll Back
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </li>

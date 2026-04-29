@@ -59,7 +59,7 @@ const TripSchema = new mongoose.Schema({
         {
             action: {
                 type: String,
-                enum: ['trip_updated', 'route_added', 'route_updated', 'route_deleted'],
+                enum: ['trip_updated', 'route_added', 'route_updated', 'route_deleted', 'trip_rolled_back'],
                 required: true,
             },
             summary: { type: String, required: true },
@@ -74,6 +74,7 @@ const TripSchema = new mongoose.Schema({
                     newValue: { type: String },
                 }
             ],
+            snapshotBefore: { type: mongoose.Schema.Types.Mixed },
         }
     ],
     collabAlerts: [collabNotificationSchema],
