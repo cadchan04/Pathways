@@ -2,6 +2,10 @@ const express = require('express');
 const Activity = require('../models/Activity');
 const Trip = require('../models/Trip');
 const { canViewTrip, canEditTrip, readUserId } = require('../collaboration/tripAccess');
+const {
+    actorLabel,
+    appendCollaborationAlerts,
+} = require('../services/collaboration-notifications-service');
 
 const router = express.Router({ mergeParams: true });
 
@@ -33,6 +37,7 @@ router.post('/', async (req, res) => {
         startTime,
         endTime,
         cost,
+        attending,
         notes,
         owner
     } = req.body;
@@ -52,6 +57,7 @@ router.post('/', async (req, res) => {
         startTime,
         endTime,
         cost,
+        attending,
         notes,
         tripId,
         owner
@@ -95,7 +101,7 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        const activities = await Activity.find({ tripId });
+        const activities = await Activity.find({ tripId }).populate('attending', 'name');
         res.json(activities);
     } catch (err) {
         console.error("Mongoose Find Error:", err.message);
@@ -124,7 +130,7 @@ router.get('/:activityId', async (req, res) => {
 
 
     try {
-        const activity = await Activity.findOne({ _id: activityId, tripId });
+        const activity = await Activity.findOne({ _id: activityId, tripId }).populate('attending', 'name');
 
         if (!activity) {
             return res.status(404).json({ error: 'Activity not found' });
@@ -168,20 +174,33 @@ router.put('/:activityId', async (req, res) => {
             const oldCost = activityToUpdate.cost || 0;
             const newCost = Number(updateData.cost) || 0;
             newTotalCost = (trip.totalCost || 0) - oldCost + newCost;
-            console.log(`Updating activity cost from ${oldCost} to ${newCost}, total cost now: ${newTotalCost}`);
         }
 
         Object.assign(activityToUpdate, updateData);
 
-         const [savedTrip, savedActivity] = await Promise.all([
-                Trip.findByIdAndUpdate(trip._id, {
-                        $set: { 
-                            totalCost: newTotalCost,
-                            updatedAt: new Date() 
-                        }
-                    },  { returnDocument: "after", runValidators: true }),
-                activityToUpdate.save()
-            ]);
+        const [savedTrip, savedActivity] = await Promise.all([
+            Trip.findByIdAndUpdate(trip._id, {
+                    $set: { 
+                        totalCost: newTotalCost,
+                        updatedAt: new Date() 
+                    }
+                },  { returnDocument: "after", runValidators: true }),
+            activityToUpdate.save()
+        ]);
+
+        // const actorName = await actorLabel(userId);
+        //         const message = `${actorName} added activity "${savedActivity.name}" to ${trip.name}.`;
+        //         await appendCollaborationAlerts({
+        //             trip,
+        //             actorUserId: userId,
+        //             type: 'activity_added',
+        //             message,
+        //             metadata: {
+        //                 tripId: String(trip._id),
+        //                 activityId: String(savedActivity._id),
+        //                 activityName: savedActivity.name,
+        //             },
+        //         });
 
         res.json({ trip: savedTrip, activity: savedActivity });
     } catch (err) {
@@ -217,7 +236,6 @@ router.delete('/:activityId', async (req, res) => {
 
         // Update the trip's cost
         const newTotalCost = (trip.totalCost || 0) - (activityToDelete.cost || 0);
-        console.log(`Deleting activity with cost ${activityToDelete.cost}, total cost now: ${newTotalCost}`);
 
          const [savedTrip] = await Promise.all([
                 Trip.findByIdAndUpdate(trip._id, {
@@ -228,6 +246,20 @@ router.delete('/:activityId', async (req, res) => {
                     },  { returnDocument: "after", runValidators: true }),
                 activityToDelete.deleteOne()
             ]);
+
+        // const actorName = await actorLabel(userId);
+        // const message = `${actorName} removed activity "${activityToDelete.name}" from ${trip.name}.`;
+        // await appendCollaborationAlerts({
+        //     trip,
+        //     actorUserId: userId,
+        //     type: 'activity_deleted',
+        //     message,
+        //     metadata: {
+        //         tripId: String(trip._id),
+        //         activityId: String(activityToDelete._id),
+        //         activityName: activityToDelete.name,
+        //     },
+        // });
 
         res.json({ trip: savedTrip, message: 'Activity deleted successfully' });
     } catch (err) {

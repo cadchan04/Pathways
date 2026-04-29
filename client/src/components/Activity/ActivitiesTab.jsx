@@ -21,7 +21,7 @@ export default function ActivitiesTab({
             const dateA = new Date(a.activityDate?.$date || a.activityDate);
             const dateB = new Date(b.activityDate?.$date || b.activityDate);
             
-            if (dateA == dateB) {
+            if (dateA.getTime() == dateB.getTime()) {
                 // If same date, sort by start time
                 const startA = a.startTime || '00:00';
                 const startB = b.startTime || '00:00';
@@ -156,7 +156,7 @@ export default function ActivitiesTab({
                                 <div className="activity-col activity-col-meta">
                                     <div className="activity-meta-item">
                                         <span className="activity-label"># People</span>
-                                        <strong>coming soon</strong>
+                                        <strong>{activity.attending ? activity.attending.length : 0}</strong>
                                     </div>
                                     <div className="activity-meta-item">
                                         <span className="activity-label">Total Cost</span>
