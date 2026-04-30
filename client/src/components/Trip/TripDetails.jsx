@@ -17,8 +17,14 @@ import {
     updatePackingList,
     duplicateTrip,
     leaveTrip,
+    createItineraryOption,
+    getItineraryOptions,
+    updateItineraryOption,
+    deleteItineraryOption,
+    reviewItineraryOption,
+    addItineraryOptionComment,
 } from '../../services/tripServices';
-import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../collaboration/tripCollaboration';
+import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../Collaboration/tripCollaboration';
 import RouteMap from './RouteMap';
 
 import './TripDetails.css';
@@ -28,6 +34,17 @@ function mongoIdString(value) {
     if (typeof value === 'string') return value;
     if (typeof value === 'object' && value.$oid) return value.$oid;
     return String(value);
+}
+
+function extractApiErrorMessage(err, fallback) {
+    const payload = err?.response?.data;
+    if (typeof payload === 'string' && payload.trim()) return payload;
+    if (payload && typeof payload === 'object') {
+        if (typeof payload.error === 'string' && payload.error.trim()) return payload.error;
+        if (typeof payload.message === 'string' && payload.message.trim()) return payload.message;
+    }
+    if (typeof err?.message === 'string' && err.message.trim()) return err.message;
+    return fallback;
 }
 
 const TABS = [
@@ -324,7 +341,7 @@ export default function TripDetails() {
                 if (!cancelled) {
                     setItineraryOptions([]);
                     setItineraryOptionsError(
-                        err?.response?.data?.error || 'Could not load itinerary options right now.'
+                        extractApiErrorMessage(err, 'Could not load itinerary options right now.')
                     );
                 }
             } finally {
@@ -350,7 +367,7 @@ export default function TripDetails() {
         } catch (err) {
             setItineraryOptions([]);
             setItineraryOptionsError(
-                err?.response?.data?.error || 'Could not load itinerary options right now.'
+                extractApiErrorMessage(err, 'Could not load itinerary options right now.')
             );
         } finally {
             setIsLoadingItineraryOptions(false);
@@ -985,7 +1002,7 @@ export default function TripDetails() {
             setShowItineraryOptionModal(false);
         } catch (err) {
             setItinerarySaveError(
-                err?.response?.data?.error || 'Could not save itinerary option right now.'
+                extractApiErrorMessage(err, 'Could not save itinerary option right now.')
             );
         } finally {
             setIsSavingItineraryOption(false);
