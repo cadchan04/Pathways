@@ -143,3 +143,98 @@ export const dismissCollabAlert = async (tripId, alertId, userId) => {
     );
     return response.data;
 };
+
+export const createItineraryOption = async (tripId, payload, userId) => {
+    try {
+        const response = await axios.post(
+            `${API_URL}/api/trips/${tripId}/itinerary-options`,
+            payload,
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error creating itinerary option for trip ${tripId}:`, err);
+        throw err;
+    }
+};
+
+export const getItineraryOptions = async (tripId, userId) => {
+    try {
+        const response = await axios.get(
+            `${API_URL}/api/trips/${tripId}/itinerary-options`,
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error fetching itinerary options for trip ${tripId}:`, err);
+        throw err;
+    }
+};
+
+export const getItineraryOptionById = async (tripId, optionId, userId) => {
+    try {
+        const response = await axios.get(
+            `${API_URL}/api/trips/${tripId}/itinerary-options/${optionId}`,
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error fetching itinerary option ${optionId} for trip ${tripId}:`, err);
+        throw err;
+    }
+};
+
+export const updateItineraryOption = async (tripId, optionId, payload, userId) => {
+    try {
+        const response = await axios.put(
+            `${API_URL}/api/trips/${tripId}/itinerary-options/${optionId}`,
+            payload,
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error updating itinerary option ${optionId} for trip ${tripId}:`, err);
+        throw err;
+    }
+};
+
+export const deleteItineraryOption = async (tripId, optionId, userId) => {
+    try {
+        const response = await axios.delete(
+            `${API_URL}/api/trips/${tripId}/itinerary-options/${optionId}`,
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error deleting itinerary option ${optionId} for trip ${tripId}:`, err);
+        throw err;
+    }
+};
+
+export const reviewItineraryOption = async (tripId, optionId, payload, userId) => {
+    try {
+        const response = await axios.put(
+            `${API_URL}/api/trips/${tripId}/itinerary-options/${optionId}/review`,
+            payload,
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error reviewing itinerary option ${optionId} for trip ${tripId}:`, err);
+        throw err;
+    }
+};
+
+export const addItineraryOptionComment = async (tripId, optionId, payload, userId) => {
+    try {
+        const response = await axios.post(
+            `${API_URL}/api/trips/${tripId}/itinerary-options/${optionId}/comments`,
+            payload,
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error adding itinerary option comment for option ${optionId} trip ${tripId}:`, err);
+        throw err;
+    }
+};

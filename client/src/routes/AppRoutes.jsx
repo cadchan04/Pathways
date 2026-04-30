@@ -16,6 +16,7 @@ import InvitationsPage from "../components/Invitations/InvitationsPage.jsx";
 import CreateAccommodation from "../components/Accommodation/CreateAccommodation.jsx";
 import CreateActivity from "../components/Activity/CreateActivity.jsx";
 import EditActivity from "../components/Activity/EditActivity.jsx";
+import EditAccommodations from "../components/Accommodation/EditAccommodations.jsx";
 
 export default function AppRoutes() {
   return (
@@ -40,6 +41,7 @@ export default function AppRoutes() {
       <Route path="/view-route-details" element={<ProtectedRoute><RouteDetails /></ProtectedRoute>} />
       <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
       <Route path="/add-accommodation/:tripId" element={<ProtectedRoute><CreateAccommodation /></ProtectedRoute>} />
+      <Route path="/edit-accommodation/:tripId/:accId" element={<ProtectedRoute><EditAccommodations /></ProtectedRoute>} />
       <Route path="/add-activity/:tripId" element={<ProtectedRoute><CreateActivity /></ProtectedRoute>} />
       <Route path="/edit-activity/:tripId/:activityId" element={<ProtectedRoute><EditActivity /></ProtectedRoute>} />
 

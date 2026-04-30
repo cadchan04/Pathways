@@ -128,6 +128,13 @@
     white-space: nowrap;
 }
 
+.activity-row-date {
+       font-family: 'DM Mono', monospace; font-size: .72rem; font-weight: 600;
+       color: var(--td-accent); letter-spacing: .04em;
+       background: var(--td-accent-light); padding: 4px 9px;
+       border-radius: 6px; white-space: nowrap; flex-shrink: 0;
+}
+
 /* Meta */
 .activity-col-meta {
     display: flex;

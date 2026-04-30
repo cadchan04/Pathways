@@ -13,6 +13,7 @@ const legRoute = require('./routes/leg-routes.js');
 const userRoute = require('./routes/user-routes.js');
 const tripRoute = require('./routes/trip-routes.js');
 const routePreferenceRoute = require('./routes/route-preference-routes.js');
+const accommodationActivityPreferenceRoute = require('./routes/accommodation-activity-preference-routes.js');
 const pushRoutes = require('./routes/push-routes.js');
 const {
   tripInvitationsRouter,
@@ -52,6 +53,7 @@ app.get("/protected", checkJwt, (req, res) => {
 app.use('/api/example', exampleRoute); //examples route functions
 app.use('/api/trips/:tripId/invitations', tripInvitationsRouter);
 app.use('/api/trips/:tripId/route-preferences', routePreferenceRoute);
+app.use('/api/trips/:tripId/accommodation-activity-preferences', accommodationActivityPreferenceRoute);
 app.use('/api/trips/:tripId/routes', tripRouteRoute); //trip route route functions - handles adding/getting/editing routes for a specific trip
 app.use('/api/trips/:tripId/routes/:routeId/legs', legRoute); //route leg functions
 app.use('/api/routes', routesRoute);

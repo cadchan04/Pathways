@@ -2,6 +2,10 @@ const express = require('express');
 const Activity = require('../models/Activity');
 const Trip = require('../models/Trip');
 const { canViewTrip, canEditTrip, readUserId } = require('../collaboration/tripAccess');
+const {
+    actorLabel,
+    appendCollaborationAlerts,
+} = require('../services/collaboration-notifications-service');
 
 const router = express.Router({ mergeParams: true });
 
@@ -33,6 +37,7 @@ router.post('/', async (req, res) => {
         startTime,
         endTime,
         cost,
+        attending,
         notes,
         owner
     } = req.body;
@@ -52,14 +57,36 @@ router.post('/', async (req, res) => {
         startTime,
         endTime,
         cost,
+        attending,
         notes,
         tripId,
         owner
     });
 
     try {
-        const savedActivity = await newActivity.save();
-        res.status(201).json(savedActivity);
+        const newTotalCost = (trip.totalCost || 0) + (Number(cost) || 0);
+        const [savedTrip, savedActivity] = await Promise.all([
+                Trip.findByIdAndUpdate(trip._id, {
+                        $set: { 
+                            totalCost: newTotalCost,
+                            updatedAt: new Date() }
+                    },  { returnDocument: "after", runValidators: true }),
+                newActivity.save()
+            ]);
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} added activity "${savedActivity.name}" to ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'activity_added',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                activityId: String(savedActivity._id),
+                activityName: savedActivity.name,
+            },
+        });
+        res.status(201).json({ trip: savedTrip, activity: savedActivity });
     } catch (err) {
         console.error("Mongoose Save Error:", err.message);
         res.status(400).json({ error: err.message });
@@ -87,7 +114,7 @@ router.get('/', async (req, res) => {
     }
 
     try {
-        const activities = await Activity.find({ tripId });
+        const activities = await Activity.find({ tripId }).populate('attending', 'name');
         res.json(activities);
     } catch (err) {
         console.error("Mongoose Find Error:", err.message);
@@ -116,7 +143,7 @@ router.get('/:activityId', async (req, res) => {
 
 
     try {
-        const activity = await Activity.findOne({ _id: activityId, tripId });
+        const activity = await Activity.findOne({ _id: activityId, tripId }).populate('attending', 'name');
 
         if (!activity) {
             return res.status(404).json({ error: 'Activity not found' });
@@ -150,17 +177,45 @@ router.put('/:activityId', async (req, res) => {
     }
 
     try {
-        const updatedActivity = await Activity.findOneAndUpdate(
-            { _id: activityId, tripId },
-            updateData,
-            { returnDocument: 'after' }
-        );
-
-        if (!updatedActivity) {
+        const activityToUpdate = await Activity.findOne({ _id: activityId, tripId });
+        if (!activityToUpdate) {
             return res.status(404).json({ error: 'Activity not found' });
         }
 
-        res.json(updatedActivity);
+        let newTotalCost = 0;
+        if (updateData.cost !== undefined) {
+            const oldCost = activityToUpdate.cost || 0;
+            const newCost = Number(updateData.cost) || 0;
+            newTotalCost = (trip.totalCost || 0) - oldCost + newCost;
+        }
+
+        Object.assign(activityToUpdate, updateData);
+
+        const [savedTrip, savedActivity] = await Promise.all([
+            Trip.findByIdAndUpdate(trip._id, {
+                    $set: { 
+                        totalCost: newTotalCost,
+                        updatedAt: new Date() 
+                    }
+                },  { returnDocument: "after", runValidators: true }),
+            activityToUpdate.save()
+        ]);
+
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} updated activity "${savedActivity.name}" on ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'activity_updated',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                activityId: String(savedActivity._id),
+                activityName: savedActivity.name,
+            },
+        });
+
+        res.json({ trip: savedTrip, activity: savedActivity });
     } catch (err) {
         console.error("Mongoose Update Error:", err.message);
         res.status(400).json({ error: err.message });
@@ -187,13 +242,39 @@ router.delete('/:activityId', async (req, res) => {
     }
 
     try {
-        const deletedActivity = await Activity.findOneAndDelete({ _id: activityId, tripId });
-
-        if (!deletedActivity) {
+        const activityToDelete = await Activity.findOne({ _id: activityId, tripId });
+        if (!activityToDelete) {
             return res.status(404).json({ error: 'Activity not found' });
         }
 
-        res.json({ message: 'Activity deleted successfully' });
+        // Update the trip's cost
+        const newTotalCost = (trip.totalCost || 0) - (activityToDelete.cost || 0);
+
+         const [savedTrip] = await Promise.all([
+                Trip.findByIdAndUpdate(trip._id, {
+                        $set: { 
+                            totalCost: newTotalCost,
+                            updatedAt: new Date() 
+                        }
+                    },  { returnDocument: "after", runValidators: true }),
+                activityToDelete.deleteOne()
+            ]);
+
+        const actorName = await actorLabel(userId);
+        const message = `${actorName} removed activity "${activityToDelete.name}" from ${trip.name}.`;
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'activity_deleted',
+            message,
+            metadata: {
+                tripId: String(trip._id),
+                activityId: String(activityToDelete._id),
+                activityName: activityToDelete.name,
+            },
+        });
+
+        res.json({ trip: savedTrip, message: 'Activity deleted successfully' });
     } catch (err) {
         console.error("Mongoose Delete Error:", err.message);
         res.status(500).json({ error: 'Server error while deleting activity' });

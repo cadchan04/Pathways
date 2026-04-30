@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import Select from 'react-select';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getActivityById, updateActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
 import { getTodayDateString } from '../Route/routeUtils';
+import { getTripById } from '../../services/tripServices';
+import { getUserById } from '../../services/userServices';
 
 import './EditActivity.css';
 
@@ -13,6 +16,8 @@ export default function EditActivity() {
     const today = getTodayDateString();
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [collaboratorOptions, setCollaboratorOptions] = useState([]);
+    
 
     const [formData, setFormData] = useState(null);
 
@@ -21,8 +26,12 @@ export default function EditActivity() {
         const fetchActivity = async () => {
             try {
                 const activity = await getActivityById(tripId, activityId, dbUser._id);
+                const attendingIds = activity.attending ? activity.attending.map(user => user._id) : [];
                 console.log("Fetched activity for editing:", activity);
-                setFormData(activity);
+                setFormData({
+                    ...activity,
+                    attending: attendingIds
+                });
             } catch (err) {
                 console.error("Error fetching activity:", err);
             }
@@ -32,6 +41,35 @@ export default function EditActivity() {
             fetchActivity();
         }
     }, [tripId, activityId]);
+
+    // Get trip details to find collaborators for people attending this activity
+    useEffect(() => {
+        const fetchTrip = async () => {
+            try {
+                const tripData = await getTripById(tripId, dbUser._id);
+                
+                const potentialAttendees = tripData.collaborators.map(collab => collab.userId);
+                if (!potentialAttendees.includes(tripData.owner)) {
+                    potentialAttendees.push(tripData.owner);
+                }
+    
+                const collaboratorDetails = await Promise.all(potentialAttendees.map(userId => getUserById(userId)));
+
+                // Set collaborator options for the select dropdown
+                setCollaboratorOptions(collaboratorDetails.map(collab => ({
+                    value: collab._id,
+                    label: collab.name || collab.email
+                })));
+
+            } catch (err) {
+                console.error("Failed to fetch trip data:", err);
+            }
+        };
+
+        if (dbUser?._id) {
+            fetchTrip();
+        }
+    }, [tripId, dbUser]);
 
     const validateDates = () => {
         const newErrors = {};
@@ -95,6 +133,14 @@ export default function EditActivity() {
         setFormData(prev => ({
             ...prev,
             [name]: value
+        }));
+    };
+
+      const updateAttending = (selectedIds) => {
+        console.log("Selected attending IDs:", selectedIds);
+        setFormData(prev => ({
+            ...prev,
+            attending: selectedIds
         }));
     };
 
@@ -202,7 +248,6 @@ export default function EditActivity() {
                             value={formData.endTime}
                             onChange={handleChange}
                         />
-                        {errors.endTime && <p className="error-text">{errors.endTime}</p>}
                     </div>
                 </div>
 
@@ -227,6 +272,27 @@ export default function EditActivity() {
                         </div>
                     </div>
                 </div>
+
+                 <div className="form-group">
+                    <label>Attending</label>
+                    <Select
+                        options={collaboratorOptions}
+                        value={
+                            formData.attending ? formData.attending
+                                .map(id => collaboratorOptions.find(option => String(option.value) === String(id)))
+                                .filter(Boolean) 
+                            : []
+                        }
+                        onChange={
+                            (selectedOptions) => {
+                                const selected = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
+                                updateAttending(selected);
+                            }}
+                        isMulti
+                        placeholder="Who's Coming?"
+                    />
+                </div>
+
 
                 <div className="form-group">
                     <label>Notes</label>

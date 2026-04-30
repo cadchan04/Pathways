@@ -16,6 +16,7 @@ const {
     canEditTrip,
     canDuplicateTrip,
     isCollaborator,
+    collaboratorEntries,
     readUserId,
 } = require('../collaboration/tripAccess');
 const {
@@ -54,6 +55,10 @@ function cloneRoutesForDuplicate(routes) {
         }
         return obj;
     });
+}
+
+function isCollaborativeTrip(trip) {
+    return collaboratorEntries(trip).length > 0;
 }
 
 // POST route to create a new trip
@@ -471,6 +476,354 @@ router.patch('/:id/collab-alerts/:alertId/read', async (req, res) => {
       res.status(500).json({ error: err.message });
     }
   });
+
+router.post('/:id/itinerary-options', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) return res.status(404).json({ error: 'Trip not found' });
+        if (!canEditTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have permission to add itinerary options on this trip' });
+        }
+        if (!isCollaborativeTrip(trip)) {
+            return res.status(400).json({ error: 'Itinerary options are available only for collaborative trips' });
+        }
+
+        const optionPayload = {
+            title: req.body?.title,
+            summary: req.body?.summary,
+            status: req.body?.status,
+            items: Array.isArray(req.body?.items) ? req.body.items : [],
+            estimatedTotalCost: req.body?.estimatedTotalCost,
+            proposedByUserId: userIdString(userId),
+        };
+
+        trip.itineraryOptions = trip.itineraryOptions || [];
+        trip.itineraryOptions.push(optionPayload);
+        await trip.save();
+
+        const createdOption = trip.itineraryOptions[trip.itineraryOptions.length - 1];
+        const actorName = await actorLabel(userId);
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'itinerary_option_added',
+            message: `${actorName} proposed itinerary option "${createdOption.title}" on ${trip.name}.`,
+            metadata: {
+                tripId: String(trip._id),
+                itineraryOptionId: String(createdOption._id),
+            },
+        });
+
+        res.status(201).json(createdOption);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.get('/:id/itinerary-options', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) return res.status(404).json({ error: 'Trip not found' });
+        if (!canViewTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have access to this trip' });
+        }
+        if (!isCollaborativeTrip(trip)) {
+            return res.status(400).json({ error: 'Itinerary options are available only for collaborative trips' });
+        }
+
+        const options = trip.itineraryOptions || [];
+        const labelUids = new Set();
+        for (const option of options) {
+            for (const review of option?.reviews || []) {
+                const needs = !String(review?.userLabel || '').trim();
+                if (needs && review?.userId) labelUids.add(userIdString(review.userId));
+            }
+            for (const comment of option?.comments || []) {
+                const needs = !String(comment?.userLabel || '').trim();
+                if (needs && comment?.userId) labelUids.add(userIdString(comment.userId));
+            }
+        }
+        const labelByUid = {};
+        for (const uid of labelUids) {
+            labelByUid[uid] = await actorLabel(uid);
+        }
+        for (const option of options) {
+            for (const review of option?.reviews || []) {
+                if (String(review?.userLabel || '').trim()) continue;
+                if (!review?.userId) continue;
+                const uid = userIdString(review.userId);
+                review.userLabel = labelByUid[uid] || review.userLabel || '';
+            }
+            for (const comment of option?.comments || []) {
+                if (String(comment?.userLabel || '').trim()) continue;
+                if (!comment?.userId) continue;
+                const uid = userIdString(comment.userId);
+                comment.userLabel = labelByUid[uid] || comment.userLabel || '';
+            }
+        }
+
+        res.json(options);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/:id/itinerary-options/:optionId', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) return res.status(404).json({ error: 'Trip not found' });
+        if (!canViewTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have access to this trip' });
+        }
+        if (!isCollaborativeTrip(trip)) {
+            return res.status(400).json({ error: 'Itinerary options are available only for collaborative trips' });
+        }
+
+        const option = trip.itineraryOptions?.id(req.params.optionId);
+        if (!option) return res.status(404).json({ error: 'Itinerary option not found' });
+
+        const labelUids = new Set();
+        for (const review of option?.reviews || []) {
+            const needs = !String(review?.userLabel || '').trim();
+            if (needs && review?.userId) labelUids.add(userIdString(review.userId));
+        }
+        for (const comment of option?.comments || []) {
+            const needs = !String(comment?.userLabel || '').trim();
+            if (needs && comment?.userId) labelUids.add(userIdString(comment.userId));
+        }
+        const labelByUid = {};
+        for (const uid of labelUids) {
+            labelByUid[uid] = await actorLabel(uid);
+        }
+        for (const review of option?.reviews || []) {
+            if (String(review?.userLabel || '').trim()) continue;
+            if (!review?.userId) continue;
+            const uid = userIdString(review.userId);
+            review.userLabel = labelByUid[uid] || review.userLabel || '';
+        }
+        for (const comment of option?.comments || []) {
+            if (String(comment?.userLabel || '').trim()) continue;
+            if (!comment?.userId) continue;
+            const uid = userIdString(comment.userId);
+            comment.userLabel = labelByUid[uid] || comment.userLabel || '';
+        }
+
+        res.json(option);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/:id/itinerary-options/:optionId', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) return res.status(404).json({ error: 'Trip not found' });
+        if (!canEditTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have permission to update itinerary options on this trip' });
+        }
+        if (!isCollaborativeTrip(trip)) {
+            return res.status(400).json({ error: 'Itinerary options are available only for collaborative trips' });
+        }
+
+        const option = trip.itineraryOptions?.id(req.params.optionId);
+        if (!option) return res.status(404).json({ error: 'Itinerary option not found' });
+
+        if (req.body?.title !== undefined) option.title = req.body.title;
+        if (req.body?.summary !== undefined) option.summary = req.body.summary;
+        if (req.body?.status !== undefined) option.status = req.body.status;
+        if (req.body?.estimatedTotalCost !== undefined) option.estimatedTotalCost = req.body.estimatedTotalCost;
+        if (Array.isArray(req.body?.items)) option.items = req.body.items;
+
+        await trip.save();
+
+        const actorName = await actorLabel(userId);
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'itinerary_option_updated',
+            message: `${actorName} updated itinerary option "${option.title}" on ${trip.name}.`,
+            metadata: {
+                tripId: String(trip._id),
+                itineraryOptionId: String(option._id),
+            },
+        });
+
+        res.json(option);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.put('/:id/itinerary-options/:optionId/review', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) return res.status(404).json({ error: 'Trip not found' });
+        if (!canViewTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have access to this trip' });
+        }
+        if (!isCollaborativeTrip(trip)) {
+            return res.status(400).json({ error: 'Itinerary options are available only for collaborative trips' });
+        }
+
+        const option = trip.itineraryOptions?.id(req.params.optionId);
+        if (!option) return res.status(404).json({ error: 'Itinerary option not found' });
+
+        const allowedVotes = ['preferred', 'acceptable', 'not_preferred'];
+        const requestedVote = String(req.body?.value || '').trim();
+
+        const uid = userIdString(userId);
+        const actorName = await actorLabel(userId);
+        option.reviews = option.reviews || [];
+        const existing = option.reviews.find((r) => userIdString(r.userId) === uid);
+
+        let voteValue = requestedVote;
+        if (voteValue) {
+            if (!allowedVotes.includes(voteValue)) {
+                return res.status(400).json({ error: 'Invalid vote value' });
+            }
+        } else {
+            if (existing?.value && allowedVotes.includes(existing.value)) {
+                voteValue = existing.value;
+            } else {
+                voteValue = 'acceptable';
+            }
+        }
+
+        if (existing) {
+            existing.value = voteValue;
+            existing.comment = String(req.body?.comment || '').trim();
+            existing.userLabel = actorName;
+        } else {
+            option.reviews.push({
+                userId: uid,
+                value: voteValue,
+                comment: String(req.body?.comment || '').trim(),
+                userLabel: actorName,
+            });
+        }
+
+        await trip.save();
+
+        res.json(option);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.post('/:id/itinerary-options/:optionId/comments', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) return res.status(404).json({ error: 'Trip not found' });
+        if (!canViewTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have access to this trip' });
+        }
+        if (!isCollaborativeTrip(trip)) {
+            return res.status(400).json({ error: 'Itinerary options are available only for collaborative trips' });
+        }
+
+        const option = trip.itineraryOptions?.id(req.params.optionId);
+        if (!option) return res.status(404).json({ error: 'Itinerary option not found' });
+
+        const trimmed = String(req.body?.comment || '').trim();
+        if (!trimmed) return res.status(400).json({ error: 'comment is required' });
+
+        const actorName = await actorLabel(userId);
+        option.comments = option.comments || [];
+        option.comments.push({
+            userId: userIdString(userId),
+            comment: trimmed,
+            userLabel: actorName,
+        });
+
+        await trip.save();
+
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'itinerary_option_commented',
+            message: `${actorName} commented on itinerary option "${option.title}" on ${trip.name}.`,
+            metadata: {
+                tripId: String(trip._id),
+                itineraryOptionId: String(option._id),
+            },
+        });
+
+        res.json(option);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+router.delete('/:id/itinerary-options/:optionId', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) return res.status(404).json({ error: 'Trip not found' });
+        if (!canEditTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have permission to delete itinerary options on this trip' });
+        }
+        if (!isCollaborativeTrip(trip)) {
+            return res.status(400).json({ error: 'Itinerary options are available only for collaborative trips' });
+        }
+
+        const option = trip.itineraryOptions?.id(req.params.optionId);
+        if (!option) return res.status(404).json({ error: 'Itinerary option not found' });
+        const deletedTitle = option.title;
+        const deletedId = String(option._id);
+        option.deleteOne();
+        await trip.save();
+
+        const actorName = await actorLabel(userId);
+        await appendCollaborationAlerts({
+            trip,
+            actorUserId: userId,
+            type: 'itinerary_option_deleted',
+            message: `${actorName} removed itinerary option "${deletedTitle}" from ${trip.name}.`,
+            metadata: {
+                tripId: String(trip._id),
+                itineraryOptionId: deletedId,
+            },
+        });
+
+        res.json({ message: 'Itinerary option deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
   
 // Edit a route in a trip
 router.put('/:tripId/routes/:routeId/update', async (req, res) => {
@@ -496,6 +849,12 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
         const route = trip.routes.id(routeId);
         if (!route) {
             return res.status(404).json({ message: "Route not found" });
+        }
+
+        if (cleanData.totalCost !== undefined) {
+            const costBefore = Number(route.totalCost) || 0;
+            const costAfter = Number(cleanData.totalCost) || 0;
+            trip.totalCost = trip.totalCost + (costAfter - costBefore);
         }
 
         const changedKeys = Object.keys(cleanData).filter((key) => {

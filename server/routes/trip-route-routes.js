@@ -48,6 +48,7 @@ router.post('/', async (req, res) => {
         trip.routes.push(routeToAdd);
 
         trip.lastKnownCost = costBefore;
+        trip.totalCost = trip.totalCost + (Number(req.body.totalCost) || 0);
         const actor = await User.findById(userId).catch(() => null);
         addTripHistoryEntry(trip, {
             userId,
@@ -127,7 +128,8 @@ router.delete('/:routeId', async (req, res) => {
         const routeName = route.name || 'Untitled route';
         route.deleteOne();
 
-        trip.totalCost = trip.routes.reduce((sum, r) => sum + (Number(r.totalCost) || 0), 0);
+        //trip.totalCost = trip.routes.reduce((sum, r) => sum + (Number(r.totalCost) || 0), 0);
+        trip.totalCost = costBefore - (Number(route.totalCost) || 0);
         trip.lastKnownCost = costBefore;
         const actor = await User.findById(userId).catch(() => null);
         addTripHistoryEntry(trip, {

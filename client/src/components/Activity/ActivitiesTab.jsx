@@ -5,7 +5,7 @@ import './ActivitiesTab.css';
 
 export default function ActivitiesTab({
     activities = [],
-    isOwner,
+    canEdit = false,
     tripDates = { start: null, end: null },
     onOpenModal,
     onDelete
@@ -21,7 +21,7 @@ export default function ActivitiesTab({
             const dateA = new Date(a.activityDate?.$date || a.activityDate);
             const dateB = new Date(b.activityDate?.$date || b.activityDate);
             
-            if (dateA == dateB) {
+            if (dateA.getTime() == dateB.getTime()) {
                 // If same date, sort by start time
                 const startA = a.startTime || '00:00';
                 const startB = b.startTime || '00:00';
@@ -52,9 +52,6 @@ export default function ActivitiesTab({
         const activityDateStr = formatDate(activityDate);
         const tripStartStr = formatDate(tripDates.start);
         const tripEndStr = formatDate(tripDates.end);
-
-        // DEBUGGING
-        // console.log(`Comparing ==> Acc Checkin: ${checkInStr} vs Trip Start: ${tripStartStr} | Acc Checkout: ${checkOutStr} vs Trip End: ${tripEndStr}`);
 
         if (!activityDateStr || !tripStartStr || !tripEndStr) return false;
 
@@ -124,7 +121,10 @@ export default function ActivitiesTab({
                         return (
                             <div key={activity._id} className={`activity-card ${warning ? 'activity-card--warning' : ''}`}>
 
-                                {/* Name, Type, Address  */}
+                                {/* Date, Name, Type, Address  */}
+                                <div className="activity-col activity-col-date">
+                                    <span className="activity-row-date">{formatDate(activity.activityDate) || 'N/A'}</span>
+                                </div>
                                 <div className="activity-col activity-col-main">
                                     <span className="activity-type-tag">{activity.activityType}</span>
                                     <div className="activity-header-row">
@@ -134,7 +134,7 @@ export default function ActivitiesTab({
                                     {activity.notes && <p className="activity-notes-preview">"{activity.notes}"</p>}
                                 </div>
 
-                                {/* Dates and Times */}
+                                {/* Start and End Times */}
                                 <div className="activity-col activity-col-dates">
                                     <div className="activity-date-block">
                                         <span className="activity-label">Start</span>
@@ -155,8 +155,8 @@ export default function ActivitiesTab({
                                 {/* Logistics and Cost */}
                                 <div className="activity-col activity-col-meta">
                                     <div className="activity-meta-item">
-                                        <span className="activity-label">Date</span>
-                                        <strong>{formatDate(activity.activityDate) || 'N/A'}</strong>
+                                        <span className="activity-label"># People</span>
+                                        <strong>{activity.attending ? activity.attending.length : 0}</strong>
                                     </div>
                                     <div className="activity-meta-item">
                                         <span className="activity-label">Total Cost</span>
@@ -178,7 +178,7 @@ export default function ActivitiesTab({
                                             <div className="activity-dropdown">
                                                 <button onClick={() => onOpenModal(activity)}>View Details</button>
                                                 
-                                                {isOwner && (
+                                                {canEdit && (
                                                     <>
                                                         <button onClick={() => navigate(`/edit-activity/${tripId.id}/${activity._id}`)}>
                                                             Edit
