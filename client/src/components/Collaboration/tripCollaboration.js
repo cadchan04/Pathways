@@ -22,8 +22,17 @@ export function tripRoleForUser(trip, userId) {
 export function hasCollaboratorsOnTrip(trip) {
   if (!trip) return false;
   const ids = new Set();
-  (trip.collaborators || []).forEach((c) => ids.add(mongoIdString(c.userId)));
-  (trip.collaboratorIds || []).forEach((id) => ids.add(mongoIdString(id)));
+  const ownerId = mongoIdString(trip.owner);
+  (trip.collaborators || []).forEach((c) => {
+    const uid = mongoIdString(c.userId);
+    if (!uid || uid === ownerId) return;
+    ids.add(uid);
+  });
+  (trip.collaboratorIds || []).forEach((id) => {
+    const uid = mongoIdString(id);
+    if (!uid || uid === ownerId) return;
+    ids.add(uid);
+  });
   return ids.size > 0;
 }
 
