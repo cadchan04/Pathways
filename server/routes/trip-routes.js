@@ -165,6 +165,7 @@ router.post('/:id/leave', async (req, res) => {
         const uid = userIdString(userId);
         trip.collaboratorIds = (trip.collaboratorIds || []).filter((id) => userIdString(id) !== uid);
         trip.collaborators = (trip.collaborators || []).filter((c) => userIdString(c.userId) !== uid);
+        await trip.save();
         const actorName = await actorLabel(uid);
         const message = `${actorName} left collaboration on ${trip.name}.`;
         await appendCollaborationAlerts({
