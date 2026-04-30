@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Trip = require('../models/Trip.js');
+const Activity = require('../models/Activity');
+const Accommodation = require('../models/Accommodation');
 const User = require('../models/User.js');
 const {
     actorNameFromUser,
@@ -55,6 +57,39 @@ function cloneRoutesForDuplicate(routes) {
         }
         return obj;
     });
+}
+
+async function duplicateTripChildren(sourceTripId, newTripId, newOwnerId) {
+    const [activities, accommodations] = await Promise.all([
+        Activity.find({ tripId: sourceTripId }).lean(),
+        Accommodation.find({ tripId: sourceTripId }).lean(),
+    ]);
+
+    if (activities.length > 0) {
+        const activityCopies = activities.map((activity) => {
+            const copy = { ...activity };
+            delete copy._id;
+            delete copy.createdAt;
+            delete copy.updatedAt;
+            copy.tripId = newTripId;
+            copy.owner = newOwnerId;
+            return copy;
+        });
+        await Activity.insertMany(activityCopies);
+    }
+
+    if (accommodations.length > 0) {
+        const accommodationCopies = accommodations.map((accommodation) => {
+            const copy = { ...accommodation };
+            delete copy._id;
+            delete copy.createdAt;
+            delete copy.updatedAt;
+            copy.tripId = newTripId;
+            copy.owner = newOwnerId;
+            return copy;
+        });
+        await Accommodation.insertMany(accommodationCopies);
+    }
 }
 
 function isCollaborativeTrip(trip) {
@@ -132,6 +167,7 @@ router.post('/:id/duplicate', async (req, res) => {
         });
 
         const saved = await duplicated.save();
+        await duplicateTripChildren(source._id, saved._id, newOwnerId);
         res.status(201).json(saved);
     } catch (err) {
         console.error('Error duplicating trip:', err);
