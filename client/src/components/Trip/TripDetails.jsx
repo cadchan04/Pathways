@@ -26,6 +26,8 @@ import {
 } from '../../services/tripServices';
 import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../Collaboration/tripCollaboration';
 import RouteMap from './RouteMap';
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 import './TripDetails.css';
 
@@ -1613,52 +1615,57 @@ export default function TripDetails() {
 
     const handleExportPDF = async () => {
         if (!timelineRef.current || !packingRef.current) return;
-
-        let jsPDF;
-        let html2canvas;
-        try {
-            const jspdfModuleName = 'jsp' + 'df';
-            const html2canvasModuleName = 'html2' + 'canvas';
-            const [{ default: JSPDFModule }, { default: html2canvasModule }] = await Promise.all([
-                import(/* @vite-ignore */ jspdfModuleName),
-                import(/* @vite-ignore */ html2canvasModuleName),
-            ]);
-            jsPDF = JSPDFModule;
-            html2canvas = html2canvasModule;
-        } catch (err) {
-            console.error('PDF export dependencies are unavailable:', err);
-            alert('PDF export is unavailable because jspdf/html2canvas are not installed. Run npm install in the client folder and try again.');
-            return;
-        }
     
         const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
     
-        // Helper to convert HTML → image
         const renderSection = async (element) => {
             const canvas = await html2canvas(element, {
                 scale: 2,
                 useCORS: true,
             });
-            return canvas.toDataURL('image/png');
+            return canvas;
         };
     
-        // --- Page 1: Timeline ---
-        const timelineImg = await renderSection(timelineRef.current);
+        const addCanvasToPdf = (canvas, isFirstPage) => {
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = pageWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
     
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const imgProps = pdf.getImageProperties(timelineImg);
-        const imgHeight = (imgProps.height * pageWidth) / imgProps.width;
+            let yOffset = 0;
+            let remainingHeight = imgHeight;
+            let firstSlice = true;
     
-        pdf.addImage(timelineImg, 'PNG', 0, 0, pageWidth, imgHeight);
+            if (!isFirstPage) pdf.addPage();
     
-        // --- Page 2: Packing List ---
-        pdf.addPage();
+            while (remainingHeight > 0) {
+                if (!firstSlice) pdf.addPage();
     
-        const packingImg = await renderSection(packingRef.current);
-        const packingProps = pdf.getImageProperties(packingImg);
-        const packingHeight = (packingProps.height * pageWidth) / packingProps.width;
+                const sliceHeight = Math.min(remainingHeight, pageHeight - 30);                
+                const sourceY = (yOffset / imgHeight) * canvas.height;
+                const sourceHeight = (sliceHeight / imgHeight) * canvas.height;
     
-        pdf.addImage(packingImg, 'PNG', 0, 0, pageWidth, packingHeight);
+                // Create a slice canvas
+                const sliceCanvas = document.createElement('canvas');
+                sliceCanvas.width = canvas.width;
+                sliceCanvas.height = sourceHeight;
+                const ctx = sliceCanvas.getContext('2d');
+                ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+    
+                pdf.addImage(sliceCanvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, sliceHeight);
+    
+                yOffset += sliceHeight;
+                remainingHeight -= sliceHeight;
+                firstSlice = false;
+            }
+        };
+    
+        const timelineCanvas = await renderSection(timelineRef.current);
+        addCanvasToPdf(timelineCanvas, true);
+    
+        const packingCanvas = await renderSection(packingRef.current);
+        addCanvasToPdf(packingCanvas, false);
     
         pdf.save(`${trip.name}-trip.pdf`);
     };
@@ -3177,8 +3184,8 @@ export default function TripDetails() {
             <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
     
                 {/* Timeline PDF */}
-                <div ref={timelineRef} className="td-pdf-section">
-                    <div className="td-pdf-header">
+                <div ref={timelineRef} className="td-pdf-section" style={{ paddingBottom: '80px' }}>
+                <div className="td-pdf-header">
                         <h1>{trip.name}</h1>
                         {trip.description && <p>{trip.description}</p>}
                         <p>
@@ -3193,8 +3200,8 @@ export default function TripDetails() {
                 </div>
 
                 {/* Packing List PDF */}
-                <div ref={packingRef} className="td-pdf-section">
-                    <div className="td-pdf-header">
+                <div ref={packingRef} className="td-pdf-section" style={{ paddingBottom: '80px' }}>
+                <div className="td-pdf-header">
                         <h1>Packing List</h1>
                     </div>
 
