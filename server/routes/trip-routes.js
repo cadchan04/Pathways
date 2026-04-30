@@ -1,6 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const Trip = require('../models/Trip.js');
+const User = require('../models/User.js');
+const {
+    actorNameFromUser,
+    addTripHistoryEntry,
+    applyTripVersionSnapshot,
+    buildTripVersionSnapshot,
+    buildTripFieldChanges,
+} = require('../services/trip-changelog-service.js');
 const {
     userIdString,
     canViewTrip,
@@ -198,6 +206,133 @@ router.get('/:id', async (req, res) => {
     }
 })
 
+// GET chronological edit history for a trip (owner or collaborator only)
+router.get('/:id/changelog', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id).select('editHistory owner collaboratorIds collaborators');
+        if (!trip) {
+            return res.status(404).json({ message: "Trip not found" });
+        }
+
+        if (!canViewTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have access to this trip' });
+        }
+
+        const history = [...(trip.editHistory || [])].sort((a, b) => (
+            new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime()
+        ));
+
+        res.status(200).json(history);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET restorable previous versions for a trip (owner or collaborator only)
+router.get('/:id/versions', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id).select('editHistory owner collaboratorIds collaborators');
+        if (!trip) {
+            return res.status(404).json({ message: "Trip not found" });
+        }
+
+        if (!canViewTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have access to this trip' });
+        }
+
+        const versions = (trip.editHistory || [])
+            .filter((entry) => entry.snapshotBefore)
+            .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime())
+            .map((entry) => ({
+                _id: entry._id,
+                historyId: entry._id,
+                summary: entry.summary,
+                action: entry.action,
+                changedBy: entry.changedBy,
+                changedByName: entry.changedByName,
+                changedAt: entry.changedAt,
+                snapshot: entry.snapshotBefore,
+            }));
+
+        res.status(200).json(versions);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST restore a trip to a selected previous version (owner or editor only)
+router.post('/:id/rollback', async (req, res) => {
+    try {
+        const userId = readUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'userId is required' });
+        }
+
+        const { historyId, versionId } = req.body || {};
+        const selectedId = String(historyId || versionId || '');
+        if (!selectedId) {
+            return res.status(400).json({ error: 'historyId is required' });
+        }
+
+        const trip = await Trip.findById(req.params.id);
+        if (!trip) {
+            return res.status(404).json({ message: "Trip not found" });
+        }
+
+        if (!canEditTrip(trip, userId)) {
+            return res.status(403).json({ error: 'You do not have permission to roll back this trip' });
+        }
+
+        const versionEntry = (trip.editHistory || []).find((entry) => String(entry._id) === selectedId);
+        if (!versionEntry || !versionEntry.snapshotBefore) {
+            return res.status(404).json({ error: 'Selected trip version was not found' });
+        }
+
+        const snapshotBeforeRollback = buildTripVersionSnapshot(trip);
+        applyTripVersionSnapshot(trip, versionEntry.snapshotBefore);
+        trip.updatedAt = new Date();
+
+        const actor = await User.findById(userId).catch(() => null);
+        addTripHistoryEntry(trip, {
+            userId,
+            userName: actorNameFromUser(actor, userId),
+            action: 'trip_rolled_back',
+            summary: `Rolled back trip to version before: ${versionEntry.summary || 'previous change'}`,
+            changes: [],
+            snapshotBefore: snapshotBeforeRollback,
+        });
+
+        const updatedTrip = await trip.save();
+        const actorName = await actorLabel(userId);
+        await appendCollaborationAlerts({
+            trip: updatedTrip,
+            actorUserId: userId,
+            type: 'trip_updated',
+            message: `${actorName} rolled back ${updatedTrip.name} to a previous version.`,
+            metadata: {
+                tripId: String(updatedTrip._id),
+                rollbackHistoryId: selectedId,
+                changedFields: ['rollback'],
+            },
+        });
+
+        res.status(200).json(updatedTrip);
+    } catch (err) {
+        console.error('Error rolling back trip:', err);
+        res.status(500).json({ error: 'Could not roll back trip' });
+    }
+});
+
 // Delete a trip by ID (owner only)
 router.delete('/:id', async(req, res) => {
     try {
@@ -241,30 +376,34 @@ router.put('/:id', async (req, res) => {
         }
 
         const updatePayload = { ...req.body };
+        delete updatePayload._id;
+        delete updatePayload.editHistory;
+        delete updatePayload.priceAlerts;
         if (!canManageTrip(trip, userId)) {
             delete updatePayload.owner;
             delete updatePayload.collaboratorIds;
             delete updatePayload.collaborators;
         }
 
-        const trackedFields = ['name', 'description', 'startDate', 'endDate'];
-        const changedFields = trackedFields.filter((field) => {
-            if (!(field in updatePayload)) return false;
-            const beforeRaw = trip[field];
-            const afterRaw = updatePayload[field];
-            const before = beforeRaw instanceof Date ? beforeRaw.toISOString() : String(beforeRaw ?? '');
-            const afterDate = (field === 'startDate' || field === 'endDate') && afterRaw ? new Date(afterRaw) : null;
-            const after = afterDate instanceof Date && !Number.isNaN(afterDate.getTime())
-                ? afterDate.toISOString()
-                : String(afterRaw ?? '');
-            return before !== after;
-        });
+        const changes = buildTripFieldChanges(trip.toObject(), updatePayload);
+        const changedFields = changes.map((change) => change.field);
+        const snapshotBefore = changes.length > 0 ? buildTripVersionSnapshot(trip) : null;
 
-        const updatedTrip = await Trip.findByIdAndUpdate(
-            id,
-            updatePayload,
-            { returnDocument: "after", runValidators: true }
-        );
+        Object.assign(trip, updatePayload);
+        trip.updatedAt = new Date();
+        if (changes.length > 0) {
+            const actor = await User.findById(userId).catch(() => null);
+            addTripHistoryEntry(trip, {
+                userId,
+                userName: actorNameFromUser(actor, userId),
+                action: 'trip_updated',
+                summary: `Updated ${changes.map((change) => change.label.toLowerCase()).join(', ')}`,
+                changes,
+                snapshotBefore,
+            });
+        }
+
+        const updatedTrip = await trip.save();
 
         if (changedFields.length > 0) {
             const actorName = await actorLabel(userId);
@@ -726,8 +865,19 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
             return before !== after;
         });
 
+        const actor = await User.findById(userId).catch(() => null);
+        const routeName = route.name || cleanData.name || 'route';
+        const snapshotBefore = buildTripVersionSnapshot(trip);
+
         Object.assign(route, cleanData);
-        await trip.save();
+        addTripHistoryEntry(trip, {
+            userId,
+            userName: actorNameFromUser(actor, userId),
+            action: 'route_updated',
+            summary: `Updated route: ${routeName}`,
+            changes: [],
+            snapshotBefore,
+        });
 
         if (changedKeys.length > 0) {
             const actorName = await actorLabel(userId);
@@ -743,6 +893,8 @@ router.put('/:tripId/routes/:routeId/update', async (req, res) => {
                     changedFields: changedKeys,
                 },
             });
+        } else {
+            await trip.save();
         }
 
         res.status(200).json(route);

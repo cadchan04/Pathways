@@ -1,7 +1,13 @@
 const express = require('express');
 const Trip = require('../models/Trip');
+const User = require('../models/User');
 const { checkAndSendPriceChangeNotifications } = require('../services/notifications-service');
 const { canViewTrip, canEditTrip, readUserId } = require('../collaboration/tripAccess');
+const {
+    actorNameFromUser,
+    addTripHistoryEntry,
+    buildTripVersionSnapshot,
+} = require('../services/trip-changelog-service');
 const {
     actorLabel,
     appendCollaborationAlerts,
@@ -26,7 +32,8 @@ router.post('/', async (req, res) => {
         }
 
         const costBefore = Number(trip.totalCost) || 0;
-        trip.routes.push({
+        const snapshotBefore = buildTripVersionSnapshot(trip);
+        const routeToAdd = {
             name: req.body.name,
             origin: req.body.origin,
             destination: req.body.destination,
@@ -36,10 +43,21 @@ router.post('/', async (req, res) => {
             totalCost: req.body.totalCost,
             totalDuration: req.body.totalDuration,
             totalDistance: req.body.totalDistance
-        });
+        };
+
+        trip.routes.push(routeToAdd);
 
         trip.lastKnownCost = costBefore;
         trip.totalCost = trip.totalCost + (Number(req.body.totalCost) || 0);
+        const actor = await User.findById(userId).catch(() => null);
+        addTripHistoryEntry(trip, {
+            userId,
+            userName: actorNameFromUser(actor, userId),
+            action: 'route_added',
+            summary: `Added route: ${routeToAdd.name || 'Untitled route'}`,
+            changes: [],
+            snapshotBefore,
+        });
         await trip.save();
         const newRoute = trip.routes[trip.routes.length - 1];
         const actorName = await actorLabel(userId);
@@ -104,13 +122,24 @@ router.delete('/:routeId', async (req, res) => {
         }
 
         const costBefore = Number(trip.totalCost) || 0;
+        const snapshotBefore = buildTripVersionSnapshot(trip);
         const deletedRouteName = route.name;
         const deletedRouteId = String(route._id);
+        const routeName = route.name || 'Untitled route';
         route.deleteOne();
 
         //trip.totalCost = trip.routes.reduce((sum, r) => sum + (Number(r.totalCost) || 0), 0);
         trip.totalCost = costBefore - (Number(route.totalCost) || 0);
         trip.lastKnownCost = costBefore;
+        const actor = await User.findById(userId).catch(() => null);
+        addTripHistoryEntry(trip, {
+            userId,
+            userName: actorNameFromUser(actor, userId),
+            action: 'route_deleted',
+            summary: `Deleted route: ${routeName}`,
+            changes: [],
+            snapshotBefore,
+        });
         await trip.save();
         const actorName = await actorLabel(userId);
         const message = `${actorName} deleted route "${deletedRouteName}" from ${trip.name}.`;

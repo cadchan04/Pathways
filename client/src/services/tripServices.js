@@ -39,6 +39,32 @@ export const getTripById = async (id, userId) => {
     }
 };
 
+export const getTripChangelog = async (id, userId) => {
+    try {
+        const response = await axios.get(`${API_URL}/api/trips/${id}/changelog`, {
+            params: { userId },
+        });
+        return response.data;
+    } catch (err) {
+        console.error(`Error fetching trip changelog ${id}:`, err);
+        throw err;
+    }
+};
+
+export const rollbackTripVersion = async (id, historyId, userId) => {
+    try {
+        const response = await axios.post(
+            `${API_URL}/api/trips/${id}/rollback`,
+            { historyId },
+            { params: { userId } }
+        );
+        return response.data;
+    } catch (err) {
+        console.error(`Error rolling back trip ${id}:`, err);
+        throw err;
+    }
+};
+
 export const leaveTrip = async (tripId, userId) => {
     try {
         const response = await axios.post(

@@ -1,0 +1,23 @@
+.route-map-container {
+  height: 400px;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.route-map-container .leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+.route-map-fallback {
+  padding: 2rem;
+  text-align: center;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #ccc;
+  color: #555;
+  font-weight: 500;
+}

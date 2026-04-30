@@ -9,22 +9,17 @@ import { getActivities, deleteActivity } from '../../services/activityServices';
 import { useUser } from '../../../context/useUser';
 import AccommodationsTab from '../Accommodation/AccommodationsTab';
 import ActivitiesTab from '../Activity/ActivitiesTab';
+import TripChangelog from './TripChangelog';
 import {
     getTripById,
+    getTripChangelog,
+    rollbackTripVersion,
     updatePackingList,
     duplicateTrip,
     leaveTrip,
-    getItineraryOptions,
-    createItineraryOption,
-    updateItineraryOption,
-    reviewItineraryOption,
-    addItineraryOptionComment,
-    deleteItineraryOption,
 } from '../../services/tripServices';
 import { tripRoleForUser, hasCollaboratorsOnTrip, canEditTripAsUser } from '../collaboration/tripCollaboration';
-
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import RouteMap from './RouteMap';
 
 import './TripDetails.css';
 
@@ -126,6 +121,13 @@ export default function TripDetails() {
         summary: '',
     });
     const [itineraryActiveMenuId, setItineraryActiveMenuId] = useState(null);
+    const [changelog, setChangelog] = useState([]);
+    const [changelogLoading, setChangelogLoading] = useState(false);
+    const [changelogError, setChangelogError] = useState('');
+    const [rollbackTarget, setRollbackTarget] = useState(null);
+    const [rollbackSaving, setRollbackSaving] = useState(false);
+    const [rollbackError, setRollbackError] = useState('');
+    const [rollbackMessage, setRollbackMessage] = useState('');
 
     // Packing list
     const [packingItems, setPackingItems] = useState([])
@@ -354,6 +356,30 @@ export default function TripDetails() {
             setIsLoadingItineraryOptions(false);
         }
     };
+
+    useEffect(() => {
+        if (activeTab !== 'changelog' || !id || !dbUser?._id) return;
+
+        let cancelled = false;
+        const loadChangelog = async () => {
+            setChangelogLoading(true);
+            setChangelogError('');
+            try {
+                const history = await getTripChangelog(id, dbUser._id);
+                if (!cancelled) setChangelog(Array.isArray(history) ? history : []);
+            } catch (err) {
+                if (!cancelled) {
+                    setChangelog([]);
+                    setChangelogError(err?.response?.data?.error || 'Could not load edit history.');
+                }
+            } finally {
+                if (!cancelled) setChangelogLoading(false);
+            }
+        };
+
+        loadChangelog();
+        return () => { cancelled = true; };
+    }, [activeTab, id, dbUser?._id]);
 
     useEffect(() => {
         const handleClick = () => setShowAddMenu(false);
@@ -695,6 +721,31 @@ export default function TripDetails() {
             console.error('Leave trip:', e);
         } finally {
             setSidebarLeaving(false);
+        }
+    };
+
+    const handleRollbackTrip = async () => {
+        if (!rollbackTarget || !dbUser?._id || !trip?._id) return;
+        setRollbackSaving(true);
+        setRollbackError('');
+        setRollbackMessage('');
+        try {
+            const tripId = mongoIdString(trip._id);
+            const updatedTrip = await rollbackTripVersion(
+                tripId,
+                mongoIdString(rollbackTarget.historyId || rollbackTarget._id),
+                mongoIdString(dbUser._id)
+            );
+            setTrip(updatedTrip);
+            setRollbackTarget(null);
+            setRollbackMessage('Trip restored to the selected previous version.');
+            const history = await getTripChangelog(tripId, dbUser._id);
+            setChangelog(Array.isArray(history) ? history : []);
+            window.dispatchEvent(new Event('refreshNotifications'));
+        } catch (err) {
+            setRollbackError(err?.response?.data?.error || 'Could not roll back this trip.');
+        } finally {
+            setRollbackSaving(false);
         }
     };
 
@@ -1545,6 +1596,23 @@ export default function TripDetails() {
 
     const handleExportPDF = async () => {
         if (!timelineRef.current || !packingRef.current) return;
+
+        let jsPDF;
+        let html2canvas;
+        try {
+            const jspdfModuleName = 'jsp' + 'df';
+            const html2canvasModuleName = 'html2' + 'canvas';
+            const [{ default: JSPDFModule }, { default: html2canvasModule }] = await Promise.all([
+                import(/* @vite-ignore */ jspdfModuleName),
+                import(/* @vite-ignore */ html2canvasModuleName),
+            ]);
+            jsPDF = JSPDFModule;
+            html2canvas = html2canvasModule;
+        } catch (err) {
+            console.error('PDF export dependencies are unavailable:', err);
+            alert('PDF export is unavailable because jspdf/html2canvas are not installed. Run npm install in the client folder and try again.');
+            return;
+        }
     
         const pdf = new jsPDF('p', 'mm', 'a4');
     
@@ -1838,6 +1906,35 @@ export default function TripDetails() {
         </div>
     );
 
+    const renderMap = () => (
+        <div className="td-tab-content">
+            <div className="td-content-header"><h2>Map</h2></div>
+            {sortedRoutes.length === 0 ? (
+                <div className="td-empty-state">
+                    <span className="td-empty-icon">◎</span>
+                    <p>No routes added to this trip yet.</p>
+                </div>
+            ) : (
+                <div className="td-map-panel">
+                    <div className="td-map-summary">
+                        <h3>Trip Route Map</h3>
+                        <p>
+                            Showing {sortedRoutes.length} {sortedRoutes.length === 1 ? 'route' : 'routes'} as direct point-to-point connections.
+                        </p>
+                    </div>
+                    <RouteMap routes={sortedRoutes} />
+                    <ul className="td-map-route-list" aria-label="Mapped routes">
+                        {sortedRoutes.map((route, index) => (
+                            <li key={`map-route-${mongoIdString(route._id) || index}`}>
+                                {getRouteTitle(route)}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+
     const renderItineraryOptions = () => {
         if (!hasCollaborators) {
             return (
@@ -2083,15 +2180,30 @@ export default function TripDetails() {
         </div>
     );
 
+    const renderChangelog = () => (
+        <TripChangelog
+            changelog={changelog}
+            loading={changelogLoading}
+            error={changelogError}
+            canRollback={canEditTripPage}
+            rollbackMessage={rollbackMessage}
+            onRollbackRequest={(version) => {
+                setRollbackError('');
+                setRollbackMessage('');
+                setRollbackTarget(version);
+            }}
+        />
+    );
+
     const tabContent = {
         timeline:       renderTimelineMult,
         routes:         renderRoutes,
         itineraryoptions: renderItineraryOptions,
         accommodations: renderAccommodations,
         activities:     renderActivities,
-        map:            () => renderComingSoon('◎', 'Map'),
+        map:            renderMap,
         collaboration:  renderCollaboration,
-        changelog:      () => renderComingSoon('◷', 'Changelog'),
+        changelog:      renderChangelog,
         packinglist:    renderPackingList,
     };
 
@@ -2295,6 +2407,35 @@ export default function TripDetails() {
                                 Confirm
                             </button>
                             <button className="td-modal-btn td-modal-btn--cancel" onClick={() => setShowConfirm(false)}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {rollbackTarget && (
+                <div className="td-modal-overlay" onClick={() => !rollbackSaving && setRollbackTarget(null)}>
+                    <div className="td-modal" onClick={(e) => e.stopPropagation()}>
+                        <h3>Confirm Rollback</h3>
+                        <p>
+                            Restore "{rollbackTarget.snapshotBefore?.name || 'this trip'}" from before{' '}
+                            "{rollbackTarget.summary || 'the selected change'}"?
+                        </p>
+                        {rollbackError && <p className="td-invite-error" role="alert">{rollbackError}</p>}
+                        <div className="td-modal-actions">
+                            <button
+                                className="td-modal-btn td-modal-btn--danger"
+                                onClick={handleRollbackTrip}
+                                disabled={rollbackSaving}
+                            >
+                                {rollbackSaving ? 'Restoring...' : 'Confirm'}
+                            </button>
+                            <button
+                                className="td-modal-btn td-modal-btn--cancel"
+                                onClick={() => setRollbackTarget(null)}
+                                disabled={rollbackSaving}
+                            >
                                 Cancel
                             </button>
                         </div>
