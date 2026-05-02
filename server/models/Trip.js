@@ -14,6 +14,7 @@ const collabNotificationSchema = new mongoose.Schema(
                 'route_deleted',
                 'accommodation_added',
                 'accommodation_deleted',
+                'accommodation_updated',
                 'activity_added',
                 'activity_updated',
                 'activity_deleted',
